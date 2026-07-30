@@ -8,12 +8,14 @@ It reads all its data from `data.json`, generated from the master workbook `Depa
 
 ```
 index.html         Tab bar + layout for all 7 pages
-css/style.css       Theme (navy/coral/teal/gold, Sharp Sans Display No.2 with system fallback)
-js/app.js           Tab switching, Year (and Category/Status) filters, all KPI + chart logic
+style.css           Theme (Visit Anaheim "ReBrand Teal" palette + Sharp Sans Disp No2)
+app.js              Tab switching, Year (and Category/Status) filters, all KPI + chart logic
 data.json           Raw per-record data (regenerate whenever the workbook changes)
 build_data.py       Turns "Department KPIs.xlsx" into data.json
 test/verify.mjs     Headless logic check (jsdom) — runs every tab and asserts it renders cleanly
 ```
+
+Everything the browser loads (`index.html`, `style.css`, `app.js`, `data.json`) lives flat at the repo root — no subfolders. This is deliberate: GitHub's "upload files" web UI (drag-and-drop or file picker) frequently drops nested folders like `css/` or `js/` when you upload individual files instead of dragging a folder handle, which is exactly what happened on the first deploy of this dashboard (`style.css` and `app.js` both 404'd on the live Vercel URL even though `index.html` and `data.json` deployed fine). Keeping the browser-facing files flat means there's nothing for a file-picker upload to lose.
 
 ## Why raw rows, not pre-aggregated numbers
 
@@ -71,8 +73,23 @@ This section is **not** in the source Power BI report — it's included because 
 
 Two rows in the **Events** sheet have a typo'd year (`2206` instead of, presumably, `2026`). `build_data.py` excludes any Events date outside 2020–2030 rather than guessing the intended year (`data.json → events.skippedInvalidDates`). Fix the dates in the source workbook and regenerate to include them.
 
-## Brand / typography note
+## Brand / typography
 
-Org styling calls for **Sharp Sans Display No.2**. It's a licensed font, so it isn't bundled — `css/style.css` references it by name with a system-font fallback (Segoe UI/Arial). Add licensed font files under a `fonts/` folder and an `@font-face` rule if you have them.
+This dashboard uses Visit Anaheim's actual brand theme, pulled from `RebrandTheme.json` (the Power BI custom theme file found alongside `Department KPIs.xlsx` in this workspace) rather than a placeholder:
 
-The color palette (navy/coral/teal/gold) is a professional placeholder, not Visit Anaheim's official brand palette — no official hex values were available at build time. Swap the CSS variables at the top of `css/style.css` when you have brand guidelines.
+| Variable | Hex | Role |
+|---|---|---|
+| `--navy` | `#125C60` | Primary deep teal (header, dark backgrounds) |
+| `--teal` | `#43A3A3` | Mid teal (tags, secondary series) |
+| `--teal-light` | `#77C7C9` | Light teal (chart series) |
+| `--pale` | `#B4D9E3` | Pale blue (chart series) |
+| `--gold` | `#D9B300` | Gold accent |
+| `--coral` | `#D64550` | Accent red (KPI card edge, "down" deltas) |
+| `--bg` | `#F9F9F2` | Warm off-white page background |
+| `--text` | `#231F20` | Near-black body text |
+
+Typeface is **Sharp Sans Disp No2** (the exact name used in the theme file), referenced by name in `style.css` with a system-font fallback (Segoe UI/Arial) since it's a licensed font not bundled here. Add licensed font files and an `@font-face` rule if you have them.
+
+## Known deployment issue (fixed)
+
+The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.

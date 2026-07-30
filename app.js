@@ -5,15 +5,18 @@
    reverse-engineered by comparing computed values against the numbers
    shown live in that report. Reads data.json (built by build_data.py). */
 
+// Visit Anaheim "ReBrand Teal" palette, pulled directly from the
+// department's own Power BI theme file (RebrandTheme.json).
 const COLORS = {
-  navy: "#101c2c", coral: "#f2603c", coralDark: "#d6461f",
-  teal: "#1f9c93", gold: "#f4a623", grid: "#e2e5ea", muted: "#8a92a3",
-  seriesA: "#1f9c93", seriesB: "#101c2c", seriesC: "#f2603c", seriesD: "#f4a623"
+  navy: "#125C60", coral: "#D64550", coralDark: "#b6363f",
+  teal: "#43A3A3", tealLight: "#77C7C9", pale: "#B4D9E3",
+  gold: "#D9B300", grid: "#e6e3d6", muted: "#8a9a9a",
+  seriesA: "#43A3A3", seriesB: "#125C60", seriesC: "#D64550", seriesD: "#D9B300"
 };
-const YEAR_PALETTE = { 2023: "#8a92a3", 2024: "#1f9c93", 2025: "#101c2c", 2026: "#f2603c" };
+const YEAR_PALETTE = { 2023: "#B4D9E3", 2024: "#77C7C9", 2025: "#43A3A3", 2026: "#125C60" };
 
-Chart.defaults.font.family = "'Sharp Sans Display No.2','Segoe UI',Arial,sans-serif";
-Chart.defaults.color = "#4b5568";
+Chart.defaults.font.family = "'Sharp Sans Disp No2','Sharp Sans Display No2','Segoe UI',Arial,sans-serif";
+Chart.defaults.color = "#5c6d6d";
 Chart.defaults.borderColor = COLORS.grid;
 
 let DATA = null;
@@ -434,8 +437,8 @@ function renderQ2Q7() {
   const years = Object.keys(spot.q2Yearly).sort();
   makeChart("chartQ2", {
     type: "line",
-    data: { labels: years, datasets: [{ label: "Q2 Rating", data: years.map(y => spot.q2Yearly[y]), borderColor: COLORS.gold, backgroundColor: "rgba(244,166,35,.15)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: COLORS.gold }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, ticks: { color: "#cfd7e4" }, grid: { color: "rgba(255,255,255,.08)" } }, x: { ticks: { color: "#cfd7e4" }, grid: { display: false } } } }
+    data: { labels: years, datasets: [{ label: "Q2 Rating", data: years.map(y => spot.q2Yearly[y]), borderColor: COLORS.gold, backgroundColor: "rgba(217,179,0,.18)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: COLORS.gold }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, ticks: { color: "#cfe6e6" }, grid: { color: "rgba(255,255,255,.08)" } }, x: { ticks: { color: "#cfe6e6" }, grid: { display: false } } } }
   });
   const cols = document.getElementById("testimonialCols");
   cols.innerHTML = years.map(y => {
