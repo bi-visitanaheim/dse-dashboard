@@ -239,6 +239,14 @@ table.mini tr:last-child td { border-bottom: none; }
 table.mini td.up { color: var(--up); font-weight: 700; }
 table.mini td.down { color: var(--down); font-weight: 700; }
 table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; font-weight: 700; background: var(--card); }
+/* Question text wraps instead of forcing the table wider than its panel
+   (which was pushing these two tables out of alignment with the rest of the
+   page's centered layout). */
+#sur-yoyValuesTable th:first-child, #sur-yoyValuesTable td:first-child,
+#sur-yoyPctTable th:first-child, #sur-yoyPctTable td:first-child {
+  white-space: normal;
+  min-width: 160px;
+}
 
 /* ---------- Insight narrative ---------- */
 .insight-panel { border-left: 4px solid var(--navy); }

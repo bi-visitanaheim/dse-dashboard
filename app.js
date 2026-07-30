@@ -257,7 +257,7 @@ function renderOverview() {
   document.getElementById("ov-kpiGrid").innerHTML = cards.join("");
 
   const cutoffMonthName = MONTH_NAMES[pvCutoff - 1] || "June";
-  document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${cutoffMonthName}, the last month of data.`;
+  document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${cutoffMonthName}.`;
 
   // ---- narrative insight (So What / Why / Now What, in plain prose) ----
   // Uses the most recent year with substantial (5+ months) data, compared to
@@ -479,8 +479,8 @@ function renderRepeat(year, accountName) {
     data: {
       labels: ["Repeat", "New"],
       datasets: [
-        { label: "Accounts", data: [repeatAccountsCount, accountsServiced - repeatAccountsCount], backgroundColor: [COLORS.navy, COLORS.pale], datalabels: { color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } },
-        { label: "Clients", data: [repeatYes, total - repeatYes], backgroundColor: [COLORS.teal, COLORS.tealLight], datalabels: { color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }
+        { label: "Accounts", data: [repeatAccountsCount, accountsServiced - repeatAccountsCount], backgroundColor: [COLORS.navy, COLORS.pale], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } },
+        { label: "Clients", data: [repeatYes, total - repeatYes], backgroundColor: [COLORS.teal, COLORS.tealLight], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }
       ]
     },
     options: {
@@ -555,7 +555,9 @@ function renderSurvey(year, manager) {
   makeChart("sur-chart3", {
     type: "bar",
     data: { labels: mgrList.map(x => x.m), datasets: [{ label: "Avg Rating", data: mgrList.map(x => x.avg), backgroundColor: COLORS.teal, borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
+    // Extra top padding so a bar hitting the max (10) still has room to show
+    // its data label above it instead of getting clipped by the chart edge.
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
   });
 
   // Both YoY tables always show the full multi-year view regardless of the
@@ -674,13 +676,13 @@ function renderEvents(year, category, eventName) {
   });
 
   const qDef = [
-    { label: "Overall Experience", fn: r => r.overall },
-    { label: "Recommend Future Events", fn: r => r.recommend },
-    { label: "Registration and Arrival Process", fn: r => r.registration },
-    { label: "Satisfaction", fn: r => (r.satisfaction === null || r.satisfaction === undefined) ? null : r.satisfaction * 5 }
+    { label: "Overall Experience", fn: r => r.overall, format: (v) => fmt(v, 2) },
+    { label: "Recommend Future Events", fn: r => r.recommend, format: (v) => fmt(v, 2) },
+    { label: "Registration and Arrival Process", fn: r => r.registration, format: (v) => fmt(v, 2) },
+    { label: "Satisfaction", fn: r => r.satisfaction, format: (v) => pct(v) }
   ];
   document.querySelector("#hev-byQuestionTable tbody").innerHTML = qDef.map(q =>
-    `<tr><td>${q.label}</td><td>${fmt(mean(attendeeRows, q.fn), 2)}</td><td>${fmt(mean(partnerRows, q.fn), 2)}</td><td><strong>${fmt(mean(rows, q.fn), 2)}</strong></td></tr>`
+    `<tr><td>${q.label}</td><td>${q.format(mean(attendeeRows, q.fn))}</td><td>${q.format(mean(partnerRows, q.fn))}</td><td><strong>${q.format(mean(rows, q.fn))}</strong></td></tr>`
   ).join("");
 
   const byCat = groupBy(rows, r => r.category);
@@ -797,7 +799,7 @@ function renderBooked(year, status, eventName) {
   const statusLabels = [...byStatus.keys()];
   makeChart("bb-chart2", {
     type: "doughnut",
-    data: { labels: statusLabels, datasets: [{ data: statusLabels.map(s => byStatus.get(s).length), backgroundColor: [COLORS.teal, COLORS.navy, COLORS.tealLight, COLORS.pale], datalabels: { color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }] },
+    data: { labels: statusLabels, datasets: [{ data: statusLabels.map(s => byStatus.get(s).length), backgroundColor: [COLORS.teal, COLORS.navy, COLORS.tealLight, COLORS.pale], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
   });
 
