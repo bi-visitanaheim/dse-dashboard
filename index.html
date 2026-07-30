@@ -45,6 +45,12 @@
     <section class="panel insight-panel">
       <h2>Department at a Glance</h2>
       <p class="desc" id="ov-desc">The above data cards reflect totals from January 1, 2026 through the last month of data.</p>
+      <div class="table-scroll">
+        <table class="mini" id="ov-summaryTable">
+          <thead><tr><th>Category</th><th>Month</th><th>Previous Month</th><th>Year-to-Date (2026)</th><th>YoY % (vs 2025 YTD)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <div id="ov-insights" class="insight-text"></div>
     </section>
   </section>
@@ -137,7 +143,7 @@
   <!-- ================= CLIENT SURVEY ================= -->
   <section class="tab-panel" id="tab-survey">
     <div class="filter-row">
-      <label>Year (response recorded) <select id="sur-year"></select></label>
+      <label>Year (start date) <select id="sur-year"></select></label>
       <label>Services Manager <select id="sur-manager"></select></label>
     </div>
     <div class="kpi-grid" id="sur-kpiGrid"></div>

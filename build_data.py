@@ -76,15 +76,24 @@ Q_NUM = {q: i + 1 for i, q in enumerate(Q_ORDER)}
 survey_raw = []
 for r in range(5, ws.max_row + 1):
     q = ws.cell(row=r, column=5).value
-    d = ws.cell(row=r, column=4).value
-    if not q or not d:
+    sd = ws.cell(row=r, column=1).value
+    if not q or not sd:
         continue
+    # Per explicit instruction: "date"/"year" for the ACC Survey table are
+    # Start Date (column A) everywhere on this dashboard (Client Survey tab's
+    # Year filter/charts/YoY tables, the Q2/Q7 spotlight, and the Overview
+    # tab's "VA Team Experience Rating" card all use this same field now).
+    # "Recorded Date" (column D, when the response was submitted) is kept
+    # separately as "recordedDate" in case it's needed for reference later,
+    # but nothing on the dashboard filters by it as of this build.
+    rd = ws.cell(row=r, column=4).value
     survey_raw.append({
         "question": q,
         "qNum": Q_NUM[q],
         "rating": ws.cell(row=r, column=6).value,
-        "date": iso_dt(d),
-        "year": d.year,
+        "date": iso(sd),
+        "year": sd.year,
+        "recordedDate": iso_dt(rd),
         "feedback": (str(ws.cell(row=r, column=7).value).strip() if ws.cell(row=r, column=7).value else None),
         "manager": ws.cell(row=r, column=9).value,
         "leadId": ws.cell(row=r, column=10).value,

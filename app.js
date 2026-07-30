@@ -186,12 +186,22 @@ function switchTab(name) {
 // =====================================================================
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function monthOf(dateStr) { const n = dateStr ? Number(String(dateStr).slice(5, 7)) : NaN; return Number.isNaN(n) ? null : n; }
+// Year is derived directly from the same date field used for the month check
+// (not a separate pre-baked `r.year`) so each Overview KPI can be filtered by
+// whichever date column it's actually supposed to use -- e.g. the "VA Team
+// Experience Rating" card uses ACC Survey's "startDate" (Start Date, column
+// A) while the rest of the Client Survey tab still uses "date" (Recorded
+// Date, column D). See README.md "Data source mapping" for the full list.
+function yearOf(dateStr) { const n = dateStr ? Number(String(dateStr).slice(0, 4)) : NaN; return Number.isNaN(n) ? null : n; }
 function ytdCutoff(rowsInYear, dateField) {
   const months = rowsInYear.map(r => monthOf(r[dateField])).filter(m => m !== null);
   return months.length ? Math.max(...months) : 12;
 }
 function ytdRows(rows, dateField, year, cutoff) {
-  return rows.filter(r => r.year === year && monthOf(r[dateField]) !== null && monthOf(r[dateField]) <= cutoff);
+  return rows.filter(r => yearOf(r[dateField]) === year && monthOf(r[dateField]) !== null && monthOf(r[dateField]) <= cutoff);
+}
+function monthOnlyRows(rows, dateField, month) {
+  return rows.filter(r => monthOf(r[dateField]) === month);
 }
 function renderOverview() {
   const pv = DATA.planningVisits;
@@ -203,23 +213,48 @@ function renderOverview() {
   const booked = DATA.bookedBusiness.raw;
   const events = DATA.events.raw;
 
-  // ---- KPI cards: 2026 year-to-date only, each with a YoY delta vs the same
-  // year-to-date window in 2025 (cutoff month is whatever's latest in each
-  // sheet's own 2026 data, so the comparison stays apples-to-apples). ----
+  // ---- KPI cards: year-to-date only, each with a YoY delta vs the same
+  // year-to-date window in the prior year (cutoff month is whatever's latest
+  // in each sheet's own current-year data, so the comparison stays
+  // apples-to-apples). "Current year" is 2026 for every sheet except Booked
+  // Business, which as of this build only has 2025 event dates -- so its two
+  // cards ("Leads Generated From VA Events", "Avg. Lead Conversion Window")
+  // automatically use the latest year actually present in that sheet instead
+  // of a hardcoded 2026, and will shift to 2026 on their own once 2026
+  // events start appearing there. ----
   const CUR = 2026, PRI = 2025;
-  const pvCutoff = ytdCutoff(pv.filter(r => r.year === CUR), "date");
+  const bbYears = getYears(booked);
+  const BB_CUR = bbYears.length ? Math.max(...bbYears) : CUR;
+  const BB_PRI = BB_CUR - 1;
+  // Planning Visits pre-creates a placeholder row for the upcoming month
+  // before it has real numbers (all fields null) -- exclude that row when
+  // finding the latest *populated* month so the cutoff doesn't jump ahead to
+  // a month with no data yet.
+  const pvCutoff = ytdCutoff(pv.filter(r => r.year === CUR && r.planningVisits !== null && r.planningVisits !== undefined), "date");
   const refCutoff = ytdCutoff(referrals.filter(r => r.year === CUR), "date");
   const repCutoff = ytdCutoff(repeat.filter(r => r.year === CUR), "startDate");
+  // ACC Survey's "date"/"year" are Start Date (see build_data.py) -- used
+  // uniformly here and across the whole Client Survey tab.
   const surCutoff = ytdCutoff(survey.filter(r => r.year === CUR), "date");
   const evsCutoff = ytdCutoff(evSurveys.filter(r => r.year === CUR), "date");
-  const bbCutoff = ytdCutoff(booked.filter(r => r.year === CUR), "eventStartDate");
+  const bbCutoff = ytdCutoff(booked.filter(r => r.year === BB_CUR), "eventStartDate");
 
   const pvCurR = ytdRows(pv, "date", CUR, pvCutoff), pvPriR = ytdRows(pv, "date", PRI, pvCutoff);
   const refCurR = ytdRows(referrals, "date", CUR, refCutoff), refPriR = ytdRows(referrals, "date", PRI, refCutoff);
   const repCurR = ytdRows(repeat, "startDate", CUR, repCutoff), repPriR = ytdRows(repeat, "startDate", PRI, repCutoff);
   const surCurR = ytdRows(survey, "date", CUR, surCutoff), surPriR = ytdRows(survey, "date", PRI, surCutoff);
   const evsCurR = ytdRows(evSurveys, "date", CUR, evsCutoff), evsPriR = ytdRows(evSurveys, "date", PRI, evsCutoff);
-  const bbCurR = ytdRows(booked, "eventStartDate", CUR, bbCutoff), bbPriR = ytdRows(booked, "eventStartDate", PRI, bbCutoff);
+  const bbCurR = ytdRows(booked, "eventStartDate", BB_CUR, bbCutoff), bbPriR = ytdRows(booked, "eventStartDate", BB_PRI, bbCutoff);
+
+  // Single-month ("previous month") slices for the Department at a Glance
+  // summary table -- each category's own latest available month, same cutoff
+  // used for the YTD comparison above.
+  const pvMonthR = monthOnlyRows(pvCurR, "date", pvCutoff);
+  const refMonthR = monthOnlyRows(refCurR, "date", refCutoff);
+  const repMonthR = monthOnlyRows(repCurR, "startDate", repCutoff);
+  const surMonthR = monthOnlyRows(surCurR, "date", surCutoff);
+  const evsMonthR = monthOnlyRows(evsCurR, "date", evsCutoff);
+  const bbMonthR = monthOnlyRows(bbCurR, "eventStartDate", bbCutoff);
 
   const visitsCur = sum(pvCurR, r => r.planningVisits), visitsPri = sum(pvPriR, r => r.planningVisits);
   const clientsCur = sum(pvCurR, r => r.clientsServiced), clientsPri = sum(pvPriR, r => r.clientsServiced);
@@ -235,29 +270,63 @@ function renderOverview() {
   const leadsCurYtd = distinctCount(bbCurR, r => r.leadId), leadsPriYtd = distinctCount(bbPriR, r => r.leadId);
   const convWinCur = mean(bbCurR, r => r.daysFromLeadCreatedToEvent), convWinPri = mean(bbPriR, r => r.daysFromLeadCreatedToEvent);
 
-  function cardWithDelta(label, valueText, cur, pri) {
+  // Previous-month-only values (same single latest month as each category's
+  // own YTD cutoff above) -- feeds the Department at a Glance summary table.
+  const visitsMonth = sum(pvMonthR, r => r.planningVisits);
+  const clientsMonth = sum(pvMonthR, r => r.clientsServiced);
+  const partnersMonth = sum(pvMonthR, r => r.partnersVisited);
+  const convMonth = sum(pvMonthR, r => r.conventionGroupsServiced);
+  const inHouseMonth = sum(pvMonthR, r => r.inHouseGroupsServiced);
+  const totalReferralsMonth = sum(refMonthR, r => r.count);
+  const rateMonth = repMonthR.length ? repMonthR.filter(r => r.repeat === "Yes").length / repMonthR.length : null;
+  const teamScoreMonth = mean(surMonthR, r => r.rating);
+  const hostedEventsMonth = distinctCount(evsMonthR, r => r.eventId);
+  const eventSatMonth = mean(evsMonthR, r => r.satisfaction);
+  const leadsMonth = distinctCount(bbMonthR, r => r.leadId);
+  const convWinMonth = mean(bbMonthR, r => r.daysFromLeadCreatedToEvent);
+
+  function cardWithDelta(label, valueText, cur, pri, priYear) {
     const d = pctChange(pri, cur);
-    const text = d === null ? null : `${deltaArrow(d)}${pct(d)} vs 2025 YTD`;
+    const text = d === null ? null : `${deltaArrow(d)}${pct(d)} vs ${priYear} YTD`;
     return kpiCard(label, valueText, text, deltaClass(d));
   }
-  const cards = [
-    cardWithDelta("Planning Visits", fmt(visitsCur), visitsCur, visitsPri),
-    cardWithDelta("Clients Serviced", fmt(clientsCur), clientsCur, clientsPri),
-    cardWithDelta("Partners Visited", fmt(partnersCur), partnersCur, partnersPri),
-    cardWithDelta("Convention Groups Serviced", fmt(convCur), convCur, convPri),
-    cardWithDelta("In House Groups Serviced", fmt(inHouseCur), inHouseCur, inHousePri),
-    cardWithDelta("Partner Referrals", fmt(totalReferralsCur), totalReferralsCur, totalReferralsPri),
-    cardWithDelta("Repeat Client %", pct(rateCur), rateCur, ratePri),
-    cardWithDelta("VA Team Experience Rating", fmt(teamScoreCur, 2) + " / 10", teamScoreCur, teamScorePri),
-    cardWithDelta("VA Hosted Events", fmt(hostedEventsCur), hostedEventsCur, hostedEventsPri),
-    cardWithDelta("VA Event Satisfaction Score", pct(eventSatCur), eventSatCur, eventSatPri),
-    cardWithDelta("Leads Generated From VA Events", fmt(leadsCurYtd), leadsCurYtd, leadsPriYtd),
-    cardWithDelta("Avg. Lead Conversion Window", fmt(convWinCur) + " days", convWinCur, convWinPri)
+
+  // Single source of truth for both the 12 KPI cards above and the
+  // Department at a Glance summary table below -- see README.md
+  // "Data source mapping" for the exact table/column/date-field each of
+  // these pulls from. curYear/priYear default to 2026/2025 except the two
+  // Booked-Business-driven categories, which track BB_CUR/BB_PRI (see note
+  // above -- that sheet doesn't have 2026 event dates yet).
+  const categories = [
+    { label: "Planning Visits", cur: visitsCur, pri: visitsPri, month: visitsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
+    { label: "Clients Serviced", cur: clientsCur, pri: clientsPri, month: clientsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
+    { label: "Partners Visited", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
+    { label: "Convention Groups Serviced", cur: convCur, pri: convPri, month: convMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
+    { label: "In House Groups Serviced", cur: inHouseCur, pri: inHousePri, month: inHouseMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
+    { label: "Partner Referrals", cur: totalReferralsCur, pri: totalReferralsPri, month: totalReferralsMonth, cutoff: refCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
+    { label: "Repeat Account %", cur: rateCur, pri: ratePri, month: rateMonth, cutoff: repCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v) },
+    { label: "VA Team Experience Rating", cur: teamScoreCur, pri: teamScorePri, month: teamScoreMonth, cutoff: surCutoff, curYear: CUR, priYear: PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v, 2) + " / 10") },
+    { label: "VA Hosted Events", cur: hostedEventsCur, pri: hostedEventsPri, month: hostedEventsMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
+    { label: "VA Event Satisfaction Score", cur: eventSatCur, pri: eventSatPri, month: eventSatMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v) },
+    { label: `${BB_CUR} Leads Generated From VA Events`, cur: leadsCurYtd, pri: leadsPriYtd, month: leadsMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v) },
+    { label: `${BB_CUR} Avg. Lead Conversion Window`, cur: convWinCur, pri: convWinPri, month: convWinMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v) + " days") }
   ];
-  document.getElementById("ov-kpiGrid").innerHTML = cards.join("");
+
+  document.getElementById("ov-kpiGrid").innerHTML =
+    categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear)).join("");
 
   const cutoffMonthName = MONTH_NAMES[pvCutoff - 1] || "June";
   document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${cutoffMonthName}.`;
+
+  // ---- Department at a Glance: automated monthly summary table covering
+  // all 12 categories (previous month, year-to-date, YoY %). Regenerates
+  // itself from data.json every time the workbook is updated and rebuilt --
+  // no manual editing needed month to month. ----
+  document.querySelector("#ov-summaryTable tbody").innerHTML = categories.map(c => {
+    const d = pctChange(c.pri, c.cur);
+    const monthName = MONTH_NAMES[c.cutoff - 1] || "&mdash;";
+    return `<tr><td>${c.label}</td><td>${monthName} ${c.curYear}</td><td>${c.fmtFn(c.month)}</td><td>${c.fmtFn(c.cur)}</td><td class="${deltaClass(d)}">${d === null ? "&mdash;" : deltaArrow(d) + pct(d)}</td></tr>`;
+  }).join("");
 
   // ---- narrative insight (So What / Why / Now What, in plain prose) ----
   // Uses the most recent year with substantial (5+ months) data, compared to

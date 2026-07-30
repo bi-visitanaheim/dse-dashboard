@@ -41,6 +41,35 @@ git push -u origin main
 ```
 Then in [Vercel](https://vercel.com): **Add New → Project** → import the repo → deploy. No framework preset or build command needed.
 
+## Data source mapping (Overview tab's 12 KPI cards)
+
+**This section is the authoritative reference for exactly which sheet, column, and date field feeds each Overview KPI card and the Department at a Glance summary table below it. Any future change to these cards must update this table first, then `build_data.py`/`app.js` to match — not the other way around.**
+
+All 12 cards are year-to-date (Jan 1 through the latest populated month), each compared against the same year-to-date window one year earlier. "Current year" is 2026 for every card except the two Booked Business cards, which automatically track whatever the latest year actually present in that sheet is (see note below the table) instead of a hardcoded year.
+
+| # | Overview card | Source sheet | Value column | Aggregation | Date column used to filter |
+|---|---|---|---|---|---|
+| 1 | Planning Visits | Planning Visits | Planning Visits | Sum | Date |
+| 2 | Clients Serviced | Planning Visits | Clients Serviced | Sum | Date |
+| 3 | Partners Visited | Planning Visits | Partners Visited | Sum | Date |
+| 4 | Convention Groups Serviced | Planning Visits | Convention Groups Serviced | Sum | Date |
+| 5 | In House Groups Serviced | Planning Visits | In House Groups Serviced | Sum | Date |
+| 6 | Partner Referrals | Partner Referrals | Partner Referrals | Sum | Date |
+| 7 | Repeat Account % (formerly "Repeat Client %") | Repeating ACC Clients Services | Repeat Business (Yes/No) &mdash; % is computed as count of "Yes" &divide; total rows; there is no literal "Repeat Client %" column in the sheet | Ratio | Meeting Dates (Preferred Start) |
+| 8 | VA Team Experience Rating | ACC Survey | Rating | Average | Start Date (column A) &mdash; this is the date field for the entire ACC Survey table dashboard-wide (Client Survey tab's Year filter, charts, YoY tables, Q2/Q7 spotlight, and this Overview card all use it). "Recorded Date" (column D, when the response was submitted) is captured separately as `recordedDate` in `data.json` but nothing on the dashboard currently filters by it |
+| 9 | VA Hosted Events | Event Surveys | Event ID | Distinct count | Event Date |
+| 10 | VA Event Satisfaction Score | Event Surveys | Satisfaction Score | Average | Event Date |
+| 11 | "[Year] Leads Generated From VA Events" | Booked Business | Lead ID | Distinct count | Event Start Date |
+| 12 | "[Year] Avg. Lead Conversion Window" | Booked Business | Days of Lead Created from Event | Average | Event Start Date |
+
+Two things worth flagging about this mapping, found while reconciling it against the actual workbook headers:
+
+- **Card 7** doesn't have a literal "Repeat Client %" column to pull from &mdash; the sheet only has a "Repeat Business" Yes/No flag per row (matches the same field the Repeat Clients tab already uses for its own repeat-rate cards). The percentage is computed client-side (Yes count &divide; total rows) exactly the same way on both tabs.
+- **Cards 11 & 12** carry a dynamic year prefix (e.g. "2025 Leads Generated From VA Events") rather than a fixed one, because as of this build the Booked Business sheet only contains 2025 event dates &mdash; there's no 2026 data in that sheet yet. Rather than hardcode 2026 and show a false "-100%" drop, these two cards detect the latest year actually present in Booked Business and use that as "current," with the year before it as the comparison. Once 2026 events start appearing in that sheet, these two cards (and their year prefix) will automatically shift to 2026 vs. 2025 on the next `build_data.py` run &mdash; no code change needed.
+- **Planning Visits** (and the four other cards that share its sheet) exclude any month whose row exists but has no data filled in yet (all five metric columns null) when finding the "latest month" cutoff &mdash; otherwise an empty placeholder row for an upcoming month would make the cutoff (and the subtitle above the narrative) jump ahead of the actual last-reported month.
+
+**Department at a Glance** (the table directly under the 12 cards) is fully automated: it shows, for each of the same 12 categories, that category's own latest single month's actual value, its year-to-date value, and the year-over-year % change vs. the prior year's YTD &mdash; regenerated from `data.json` on every page load, with no manually-written numbers. Re-run `build_data.py` after updating the workbook and this table (along with the 12 cards and the narrative below it) updates itself.
+
 ## How the KPI formulas were verified
 
 Every KPI on this dashboard was checked against the numbers shown live in the Power BI report (viewed via browser on 2026-07-29) rather than assumed from column names. Some notable, non-obvious formulas this uncovered:
@@ -71,7 +100,7 @@ On tabs where more than one chart shares the same actual-calendar-month x-axis, 
 
 ## Overview tab: year-to-date only
 
-The Overview KPI cards show 2026 year-to-date totals only (not all-time), each with a YoY delta against the same year-to-date window in 2025 — the cutoff month is whichever month is latest in each underlying sheet's own 2026 data (so, e.g., if Booked Business has data through a different month than Planning Visits, each card's comparison stays apples-to-apples rather than using one fixed month for everything). The subtitle above the narrative panel states the cutoff month dynamically. The narrative paragraphs below are unchanged — they still use the "most recent year with 5+ months of data vs. the year before it" logic, which independently resolves to the same 2026-vs-2025 comparison.
+The Overview KPI cards show year-to-date totals only (not all-time), each with a YoY delta against the same year-to-date window one year earlier — the cutoff month is whichever month is latest in each underlying sheet's own current-year data (so, e.g., if Booked Business has data through a different month than Planning Visits, each card's comparison stays apples-to-apples rather than using one fixed month for everything). See "Data source mapping" above for the exact sheet/column/date-field each card pulls from. The subtitle above the narrative panel states the cutoff month dynamically. The narrative paragraphs below are unchanged — they still use the "most recent year with 5+ months of data vs. the year before it" logic, which independently resolves to the same current-vs-prior-year comparison.
 
 ## Insight narrative (Overview tab)
 
