@@ -285,9 +285,12 @@ function renderOverview() {
   const leadsMonth = distinctCount(bbMonthR, r => r.leadId);
   const convWinMonth = mean(bbMonthR, r => r.daysFromLeadCreatedToEvent);
 
-  function cardWithDelta(label, valueText, cur, pri, priYear) {
+  // priValueText is the same prior-year YTD figure shown in the "Year-to-Date"
+  // column of the Department at a Glance table below, just surfaced inline
+  // on the card too so the % change is never shown without the number behind it.
+  function cardWithDelta(label, valueText, cur, pri, priYear, priValueText) {
     const d = pctChange(pri, cur);
-    const text = d === null ? null : `${deltaArrow(d)}${pct(d)} vs ${priYear} YTD`;
+    const text = d === null ? null : `${deltaArrow(d)}${pct(d)} (${priValueText} in ${priYear}) vs ${priYear} YTD`;
     return kpiCard(label, valueText, text, deltaClass(d));
   }
 
@@ -313,7 +316,7 @@ function renderOverview() {
   ];
 
   document.getElementById("ov-kpiGrid").innerHTML =
-    categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear)).join("");
+    categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear, c.fmtFn(c.pri))).join("");
 
   const cutoffMonthName = MONTH_NAMES[pvCutoff - 1] || "June";
   document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${cutoffMonthName}.`;
