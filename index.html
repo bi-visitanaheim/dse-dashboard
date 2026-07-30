@@ -12,14 +12,18 @@
 
 <header class="top">
   <div class="wrap head-wrap">
-    <div>
-      <p class="brand-eyebrow">Visit Anaheim &middot; Internal KPI Dashboard</p>
-      <h1>Destination Services &amp; Events Dashboard</h1>
-      <p class="sub" id="headerSub">Planning visits, partner referrals, repeat business, events supported, booked business, and survey feedback.</p>
+    <div class="head-title">
+      <img class="brand-logo" src="logo.png" alt="Visit Anaheim" onerror="this.style.display='none'" />
+      <div>
+        <p class="brand-eyebrow">Visit Anaheim &middot; Internal KPI Dashboard</p>
+        <h1>Destination Services &amp; Events Dashboard</h1>
+        <p class="sub" id="headerSub">Planning visits, partner referrals, repeat business, events supported, booked business, and survey feedback.</p>
+      </div>
     </div>
     <div class="pill-group">
       <div class="updated-pill">Reporting period: <strong>Jan 1, 2026 &ndash; Jun 30, 2026</strong></div>
       <div class="updated-pill">Data last refreshed: <strong id="updatedAt">&mdash;</strong></div>
+      <div class="updated-pill">Updates monthly on the 15th, reflecting data through the prior month.</div>
     </div>
   </div>
   <nav class="tabbar wrap" id="tabbar">
@@ -40,7 +44,7 @@
     <div class="kpi-grid" id="ov-kpiGrid"></div>
     <section class="panel insight-panel">
       <h2>Department at a Glance</h2>
-      <p class="desc">All-time totals above; the notes below compare the most recent complete year to the one before it.</p>
+      <p class="desc" id="ov-desc">The above data cards reflect totals from January 1, 2026 through the last month of data.</p>
       <div id="ov-insights" class="insight-text"></div>
     </section>
   </section>
@@ -54,11 +58,12 @@
     <div class="grid-2">
       <section class="panel">
         <h2>Partners Visited &amp; Planning Visits <span class="tag">Monthly</span></h2>
-        <div class="chart-box"><canvas id="team-chart1"></canvas></div>
+        <p class="desc">Click a month to highlight it across all three charts on this tab.</p>
+        <div class="chart-box clickable"><canvas id="team-chart1"></canvas></div>
       </section>
       <section class="panel">
         <h2>Groups Serviced <span class="tag">Monthly</span></h2>
-        <div class="chart-box"><canvas id="team-chart2"></canvas></div>
+        <div class="chart-box clickable"><canvas id="team-chart2"></canvas></div>
       </section>
     </div>
     <div class="grid-2">
@@ -68,7 +73,7 @@
       </section>
       <section class="panel">
         <h2>Clients Serviced <span class="tag">Monthly</span></h2>
-        <div class="chart-box"><canvas id="team-chart3"></canvas></div>
+        <div class="chart-box clickable"><canvas id="team-chart3"></canvas></div>
       </section>
     </div>
   </section>
@@ -86,7 +91,8 @@
       </section>
       <section class="panel">
         <h2>Partner Referrals by Month <span class="tag">Monthly</span></h2>
-        <div class="chart-box"><canvas id="ref-chart2"></canvas></div>
+        <p class="desc">Click a month to highlight it in this chart and in Monthly Referrals by Staff.</p>
+        <div class="chart-box clickable"><canvas id="ref-chart2"></canvas></div>
       </section>
     </div>
     <div class="grid-2">
@@ -96,7 +102,7 @@
       </section>
       <section class="panel">
         <h2>Monthly Referrals by Staff</h2>
-        <div class="chart-box"><canvas id="ref-chart3"></canvas></div>
+        <div class="chart-box clickable"><canvas id="ref-chart3"></canvas></div>
       </section>
     </div>
   </section>
@@ -114,7 +120,8 @@
         <div class="chart-box"><canvas id="rep-chart1"></canvas></div>
       </section>
       <section class="panel">
-        <h2>Repeat vs. New Clients</h2>
+        <h2>Repeat vs. New: Clients &amp; Accounts</h2>
+        <p class="desc">Inner ring = distinct accounts; outer ring = individual client bookings (rows).</p>
         <div class="chart-box short"><canvas id="rep-chart2"></canvas></div>
       </section>
     </div>
@@ -137,23 +144,29 @@
     <div class="grid-2">
       <section class="panel">
         <h2>Category Rating</h2>
-        <div class="chart-box"><canvas id="sur-chart1"></canvas></div>
+        <div class="chart-box tall"><canvas id="sur-chart1"></canvas></div>
       </section>
       <section class="panel">
         <h2>Avg. Score by Month</h2>
         <div class="chart-box"><canvas id="sur-chart2"></canvas></div>
       </section>
     </div>
+    <section class="panel">
+      <h2>Avg. Rating by DS&amp;E Manager</h2>
+      <p class="desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
+      <div class="chart-box"><canvas id="sur-chart3"></canvas></div>
+    </section>
     <div class="grid-2">
       <section class="panel">
-        <h2>Avg. Rating by DS&amp;E Manager</h2>
-        <p class="desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
-        <div class="chart-box"><canvas id="sur-chart3"></canvas></div>
+        <h2>Ratings by Year</h2>
+        <div class="table-scroll">
+          <table class="mini" id="sur-yoyValuesTable"><thead><tr><th>Question</th><th>2023</th><th>2024</th><th>2025</th><th>2026</th></tr></thead><tbody></tbody></table>
+        </div>
       </section>
       <section class="panel">
-        <h2>Year over Year Ratings</h2>
+        <h2>Year-over-Year % Change</h2>
         <div class="table-scroll">
-          <table class="mini" id="sur-yoyTable"><thead><tr><th>Question</th><th>2023</th><th>2024</th><th>YoY</th><th>2025</th><th>YoY</th><th>2026</th><th>YoY</th></tr></thead><tbody></tbody></table>
+          <table class="mini" id="sur-yoyPctTable"><thead><tr><th>Question</th><th>2023&rarr;24</th><th>2024&rarr;25</th><th>2025&rarr;26</th></tr></thead><tbody></tbody></table>
         </div>
       </section>
     </div>
@@ -199,6 +212,25 @@
         </div>
       </section>
     </div>
+
+    <section class="panel">
+      <h2>Event Survey Detail</h2>
+      <p class="desc">One row per event / survey type (attendee vs. partner), reflecting the current filters above.</p>
+      <div class="table-scroll">
+        <table class="mini" id="hev-detailTable"><thead><tr><th>Event</th><th>Type</th><th>Date</th><th>Category</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Hosted Events &amp; Booked Business <span class="tag">Cross-Reference</span></h2>
+      <p class="desc">Of the 35 hosted events tracked here, these are matched by Event ID to a Booked Business record, showing how survey engagement on an event relates to the leads it generated. Always shows all years, independent of the filters above.</p>
+      <div class="grid-2">
+        <div class="chart-box"><canvas id="hev-bbChart"></canvas></div>
+        <div class="table-scroll">
+          <table class="mini" id="hev-bbTable"><thead><tr><th>Event</th><th>Survey Respondents</th><th>Avg Satisfaction</th><th>Leads Generated</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
   </section>
 
   <!-- ================= BOOKED BUSINESS ================= -->
@@ -212,7 +244,7 @@
     <div class="grid-2">
       <section class="panel">
         <h2>Leads Generated by Event</h2>
-        <div class="chart-box"><canvas id="bb-chart1"></canvas></div>
+        <div class="chart-box tall"><canvas id="bb-chart1"></canvas></div>
       </section>
       <section class="panel">
         <h2>Lead Status Breakdown</h2>
@@ -220,16 +252,29 @@
       </section>
     </div>
     <section class="panel">
-      <h2>Conversion Window by Event</h2>
+      <h2>Conversion Window by Event <span class="tag">% of Leads</span></h2>
+      <p class="desc">Same data as the table below, read as a share of each event's leads so it's easy to compare a fast-converting event against a slow one at a glance.</p>
+      <div class="chart-box tall"><canvas id="bb-chart3"></canvas></div>
+    </section>
+    <section class="panel">
+      <h2>Conversion Window by Event <span class="tag">Detail</span></h2>
       <p class="desc">Days from lead created to event start, bucketed. "Total" is the number of leads in each bucket.</p>
       <div class="table-scroll">
         <table class="mini" id="bb-conversionTable"><thead><tr><th>Event</th><th>0&ndash;30d</th><th>31&ndash;90d</th><th>91&ndash;180d</th><th>181&ndash;365d</th><th>365d+</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
       </div>
     </section>
+
+    <section class="panel">
+      <h2>Booked Business Detail</h2>
+      <p class="desc">One row per unique lead.</p>
+      <div class="table-scroll">
+        <table class="mini" id="bb-detailTable"><thead><tr><th>Event</th><th>Account</th><th>Event Start Date</th><th>Lead Created Date</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
   </section>
 
   <footer class="foot">
-    Source: <strong>Granicus, Association Insights, and internal tracking</strong>. Regenerate <code>data.json</code> with <code>build_data.py</code> whenever the workbook is updated.
+    Source: <strong>Granicus, Association Insights, and internal tracking</strong>.
   </footer>
 
 </div>

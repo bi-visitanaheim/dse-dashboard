@@ -49,6 +49,16 @@ header.top {
   gap: 16px;
   padding-bottom: 20px;
 }
+.head-title {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.brand-logo {
+  height: 48px;
+  width: auto;
+  display: block;
+}
 .brand-eyebrow {
   text-transform: uppercase;
   letter-spacing: .12em;
@@ -212,6 +222,8 @@ section.panel p.desc {
 }
 .chart-box { position: relative; height: 260px; }
 .chart-box.short { height: 220px; }
+.chart-box.tall { height: 400px; }
+.chart-box.clickable canvas { cursor: pointer; }
 
 /* ---------- Tables ---------- */
 .table-scroll { max-height: 320px; overflow-y: auto; }
@@ -238,6 +250,10 @@ table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; fo
 }
 .insight-text p:last-child { margin-bottom: 0; }
 .insight-text strong { color: var(--navy); }
+.insight-text .delta-inline { font-weight: 800; }
+.insight-text .delta-inline.up { color: var(--teal); }
+.insight-text .delta-inline.down { color: var(--navy); }
+.insight-text .delta-inline.flat { color: var(--text-muted); }
 
 /* ---------- Q2/Q7 spotlight ---------- */
 .spotlight {

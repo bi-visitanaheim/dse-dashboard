@@ -55,6 +55,8 @@ Every KPI on this dashboard was checked against the numbers shown live in the Po
 
 One number I could **not** reproduce: the source report's Booked Business "Total Events" (35) and "Event Conversion Rate" (28.6%). The Booked Business sheet only contains events that already generated at least one lead, so a "total events" and "conversion rate" computed from it alone are tautological (always 100%). The live report's 35 almost certainly comes from a join to the broader Events calendar filtered to the same window — I didn't have enough visibility into that relationship to replicate it with confidence, so this dashboard shows "Distinct Events with Leads" instead and omits the conversion-rate card rather than presenting a number I couldn't verify.
 
+**Hosted Events ↔ Booked Business relationship** (bottom of the Hosted Events tab): `eventSurveys` and `bookedBusiness` share the same `eventId` values even though the two sheets label events differently (e.g. "Ducks vs. Stars" in Event Surveys is "2025 March Ducks vs. Dallas Stars" in Booked Business). 6 of the 35 hosted events match a Booked Business `eventId`; the cross-reference table/chart shows 5 of those 6, because it counts unique leads the same way the rest of the tab does (`dedupeBy` on Lead ID), and a few leads in the source data span more than one event, so they get attributed to whichever event lists them first.
+
 ## Filters implemented vs. the source report
 
 Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** on Client Survey (drives the KPI grid, all three charts, the YoY table, and the Q2/Q7 spotlight), and **Account Name** on Repeat Clients. The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
@@ -63,9 +65,17 @@ The Team KPIs YoY table now follows the Year filter: pick a year and the table c
 
 Every chart dashboard-wide shows data labels (via the `chartjs-plugin-datalabels` CDN plugin, registered globally in `app.js`), with contrast-aware label colors on stacked bars and doughnut/pie slices.
 
+## Click-to-highlight a month across charts
+
+On tabs where more than one chart shares the same actual-calendar-month x-axis, clicking a bar highlights that month in every other chart sharing that axis (and fades the rest); clicking it again clears the highlight. This currently links Team KPIs' three charts together, and Partner Referrals' "by Month" and "Monthly Referrals by Staff" charts together (the latter was changed from a calendar-month-of-year view to the same continuous month timeline specifically so the two could link). Charts that are the only monthly chart on their tab (Client Survey's "Avg. Score by Month", Hosted Events' "Events by Month") don't have anything to cross-highlight against, so clicking them has no visible effect.
+
+## Overview tab: year-to-date only
+
+The Overview KPI cards show 2026 year-to-date totals only (not all-time), each with a YoY delta against the same year-to-date window in 2025 — the cutoff month is whichever month is latest in each underlying sheet's own 2026 data (so, e.g., if Booked Business has data through a different month than Planning Visits, each card's comparison stays apples-to-apples rather than using one fixed month for everything). The subtitle above the narrative panel states the cutoff month dynamically. The narrative paragraphs below are unchanged — they still use the "most recent year with 5+ months of data vs. the year before it" logic, which independently resolves to the same 2026-vs-2025 comparison.
+
 ## Insight narrative (Overview tab)
 
-The Overview tab's narrative paragraphs are generated (not hand-written) by comparing the latest year with substantial data against the year before it, following a "So what → why → now what" structure: state the finding, suggest a likely explanation, and point to a next step or where to look for more context (e.g., pointing to the Q2/Q7 spotlight when the manager-experience score moves). Re-run `build_data.py` and refresh the page and the narrative updates itself from the new numbers.
+The Overview tab's narrative paragraphs are generated (not hand-written) by comparing the latest year with substantial data against the year before it, following a "So what → why → now what" structure: state the finding, suggest a likely explanation, and point to a next step or where to look for more context (e.g., pointing to the Q2/Q7 spotlight when the manager-experience score moves). Re-run `build_data.py` and refresh the page and the narrative updates itself from the new numbers. Inline percentage deltas in both the KPI cards and this narrative are bold and colored (teal for up, navy for down) via the `.delta` / `.delta-inline` CSS classes.
 
 ## Q2 & Q7 spotlight (Client Survey tab)
 
@@ -89,6 +99,10 @@ This dashboard is restricted to **only** the six approved Visit Anaheim brand co
 | `--bg` | `#F9F9F2` | Warm off-white page background |
 
 Typeface is **Sharp Sans Disp No2** (the exact name used in the theme file), referenced by name in `style.css` with a system-font fallback (Segoe UI/Arial) since it's a licensed font not bundled here. Add licensed font files and an `@font-face` rule if you have them.
+
+### Logo
+
+The header already has an `<img class="brand-logo" src="logo.png">` in place (it appears on every tab since the header is shared across the whole single-page app). It's wired to fail silently (`onerror` hides the element) so the layout doesn't break if the file is missing. To show the logo: save the white/light version (for the dark navy-to-teal header background) as `logo.png` at the repo root, next to `index.html`, and it'll appear automatically — no code changes needed.
 
 ## Known deployment issue (fixed)
 
