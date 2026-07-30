@@ -1,21 +1,18 @@
 :root {
-  /* Visit Anaheim "ReBrand Teal" palette, pulled directly from the
-     department's own Power BI theme file (RebrandTheme.json). */
-  --navy: #125C60;        /* dataColors[0] - deep teal, primary dark */
-  --navy-light: #17787d;  /* derived lighter shade of the deep teal, for gradients */
-  --coral: #D64550;       /* dataColors[7] - accent red */
-  --coral-dark: #b6363f;  /* derived darker shade of the accent red */
-  --teal: #43A3A3;        /* dataColors[1] - mid teal */
-  --teal-light: #77C7C9;  /* dataColors[2] - light teal */
-  --pale: #B4D9E3;        /* dataColors[3] - pale blue */
-  --gold: #D9B300;        /* dataColors[6] */
-  --bg: #F9F9F2;          /* dataColors[4] - warm off-white */
+  /* Visit Anaheim "ReBrand Teal" palette -- restricted to the six approved
+     brand colors only. Muted/border/shadow values are opacity variants of
+     these same six colors, not new hues. */
+  --navy: #125C60;        /* primary deep teal */
+  --teal: #43A3A3;        /* mid teal */
+  --teal-light: #77C7C9;  /* light teal */
+  --pale: #B4D9E3;        /* pale blue */
+  --bg: #F9F9F2;          /* warm off-white */
+  --text: #231F20;        /* near-black */
   --card: #ffffff;
-  --border: #e6e3d6;
-  --text: #231F20;        /* dataColors[5] - near-black */
-  --text-muted: #5c6d6d;
-  --up: #1f7a56;
-  --down: #D64550;
+  --border: rgba(18,92,96,.16);      /* navy tint */
+  --text-muted: rgba(35,31,32,.6);   /* text tint */
+  --up: var(--teal);
+  --down: var(--navy);
   --radius: 12px;
   --shadow: 0 1px 2px rgba(18,92,96,.08), 0 4px 16px rgba(18,92,96,.08);
   --font-display: "Sharp Sans Disp No2", "Sharp Sans Display No2", "Sharp Sans", "Segoe UI", Arial, sans-serif;
@@ -40,7 +37,7 @@ body {
 
 /* ---------- Header ---------- */
 header.top {
-  background: linear-gradient(120deg, var(--navy) 0%, var(--navy-light) 100%);
+  background: linear-gradient(120deg, var(--navy) 0%, var(--teal) 100%);
   color: #fff;
   padding: 28px 0 0;
 }
@@ -56,7 +53,7 @@ header.top {
   text-transform: uppercase;
   letter-spacing: .12em;
   font-size: 12px;
-  color: var(--gold);
+  color: var(--teal-light);
   font-weight: 700;
   margin: 0 0 6px;
 }
@@ -71,6 +68,12 @@ header.top p.sub {
   margin: 6px 0 0;
   color: #c9d2e0;
   font-size: 14px;
+}
+.pill-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
 }
 .updated-pill {
   background: rgba(255,255,255,.08);
@@ -150,7 +153,7 @@ header.top p.sub {
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 16px 18px;
-  border-top: 3px solid var(--coral);
+  border-top: 3px solid var(--navy);
 }
 .kpi-card .label {
   font-size: 11.5px;
@@ -223,9 +226,10 @@ table.mini th { color: var(--text-muted); font-weight: 700; text-transform: uppe
 table.mini tr:last-child td { border-bottom: none; }
 table.mini td.up { color: var(--up); font-weight: 700; }
 table.mini td.down { color: var(--down); font-weight: 700; }
+table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; font-weight: 700; background: var(--card); }
 
 /* ---------- Insight narrative ---------- */
-.insight-panel { border-left: 4px solid var(--coral); }
+.insight-panel { border-left: 4px solid var(--navy); }
 .insight-text p {
   font-size: 14px;
   line-height: 1.65;
@@ -233,11 +237,11 @@ table.mini td.down { color: var(--down); font-weight: 700; }
   margin: 0 0 14px;
 }
 .insight-text p:last-child { margin-bottom: 0; }
-.insight-text strong { color: var(--coral-dark); }
+.insight-text strong { color: var(--navy); }
 
 /* ---------- Q2/Q7 spotlight ---------- */
 .spotlight {
-  background: linear-gradient(135deg, var(--navy) 0%, #0c3f42 100%);
+  background: linear-gradient(135deg, var(--navy) 0%, var(--teal) 100%);
   color: #fff;
   border-radius: var(--radius);
   padding: 26px;
@@ -245,7 +249,7 @@ table.mini td.down { color: var(--down); font-weight: 700; }
   box-shadow: var(--shadow);
 }
 .spotlight h2 { color: #fff; }
-.spotlight h2 .tag { background: var(--gold); color: var(--navy); }
+.spotlight h2 .tag { background: var(--teal-light); color: var(--navy); }
 .spotlight p.desc { color: #c9d2e0; }
 .testimonial {
   background: rgba(255,255,255,.06);
@@ -261,7 +265,7 @@ table.mini td.down { color: var(--down); font-weight: 700; }
   display: inline-block;
   font-size: 11px;
   font-weight: 700;
-  color: var(--gold);
+  color: var(--teal-light);
   margin-bottom: 6px;
 }
 .testimonial-cols {

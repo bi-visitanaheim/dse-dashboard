@@ -6,6 +6,7 @@
 <title>Destination Services &amp; Events Dashboard | Visit Anaheim</title>
 <link rel="stylesheet" href="style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
 </head>
 <body>
 
@@ -16,7 +17,10 @@
       <h1>Destination Services &amp; Events Dashboard</h1>
       <p class="sub" id="headerSub">Planning visits, partner referrals, repeat business, events supported, booked business, and survey feedback.</p>
     </div>
-    <div class="updated-pill">Data last refreshed: <strong id="updatedAt">&mdash;</strong></div>
+    <div class="pill-group">
+      <div class="updated-pill">Reporting period: <strong>Jan 1, 2026 &ndash; Jun 30, 2026</strong></div>
+      <div class="updated-pill">Data last refreshed: <strong id="updatedAt">&mdash;</strong></div>
+    </div>
   </div>
   <nav class="tabbar wrap" id="tabbar">
     <button class="tab-btn active" data-tab="overview">Overview</button>
@@ -35,7 +39,7 @@
   <section class="tab-panel active" id="tab-overview">
     <div class="kpi-grid" id="ov-kpiGrid"></div>
     <section class="panel insight-panel">
-      <h2>Department at a Glance <span class="tag">Auto-generated</span></h2>
+      <h2>Department at a Glance</h2>
       <p class="desc">All-time totals above; the notes below compare the most recent complete year to the one before it.</p>
       <div id="ov-insights" class="insight-text"></div>
     </section>
@@ -81,7 +85,7 @@
         <div class="chart-box"><canvas id="ref-chart1"></canvas></div>
       </section>
       <section class="panel">
-        <h2>Partner Referrals by Month <span class="tag">By Year</span></h2>
+        <h2>Partner Referrals by Month <span class="tag">Monthly</span></h2>
         <div class="chart-box"><canvas id="ref-chart2"></canvas></div>
       </section>
     </div>
@@ -101,6 +105,7 @@
   <section class="tab-panel" id="tab-repeat">
     <div class="filter-row">
       <label>Year (meeting start) <select id="rep-year"></select></label>
+      <label>Account Name <select id="rep-account"></select></label>
     </div>
     <div class="kpi-grid" id="rep-kpiGrid"></div>
     <div class="grid-2">
@@ -126,6 +131,7 @@
   <section class="tab-panel" id="tab-survey">
     <div class="filter-row">
       <label>Year (response recorded) <select id="sur-year"></select></label>
+      <label>Services Manager <select id="sur-manager"></select></label>
     </div>
     <div class="kpi-grid" id="sur-kpiGrid"></div>
     <div class="grid-2">
@@ -154,7 +160,7 @@
 
     <!-- Q2 & Q7 spotlight -- bonus content beyond the source Power BI report -->
     <section class="spotlight">
-      <h2>Spotlight: Manager Experience (Q2) &amp; Client Testimonials (Q7) <span class="tag">Beyond source report</span></h2>
+      <h2>Spotlight: Question 2: Visit Anaheim Destination Service Manager &amp; Q7: Visit Anaheim Team Experience Feedback</h2>
       <p class="desc" id="q2q7Desc"></p>
       <div class="grid-2">
         <div class="chart-box"><canvas id="chartQ2"></canvas></div>
@@ -168,6 +174,7 @@
     <div class="filter-row">
       <label>Year <select id="hev-year"></select></label>
       <label>Event Category <select id="hev-category"></select></label>
+      <label>Event Name <select id="hev-event"></select></label>
     </div>
     <div class="kpi-grid" id="hev-kpiGrid"></div>
     <div class="grid-2">
@@ -199,6 +206,7 @@
     <div class="filter-row">
       <label>Year (event start) <select id="bb-year"></select></label>
       <label>Lead Status <select id="bb-status"></select></label>
+      <label>Event Name <select id="bb-event"></select></label>
     </div>
     <div class="kpi-grid" id="bb-kpiGrid"></div>
     <div class="grid-2">
@@ -215,13 +223,13 @@
       <h2>Conversion Window by Event</h2>
       <p class="desc">Days from lead created to event start, bucketed. "Total" is the number of leads in each bucket.</p>
       <div class="table-scroll">
-        <table class="mini" id="bb-conversionTable"><thead><tr><th>Event</th><th>0&ndash;30d</th><th>31&ndash;90d</th><th>91&ndash;180d</th><th>181&ndash;365d</th><th>365d+</th></tr></thead><tbody></tbody></table>
+        <table class="mini" id="bb-conversionTable"><thead><tr><th>Event</th><th>0&ndash;30d</th><th>31&ndash;90d</th><th>91&ndash;180d</th><th>181&ndash;365d</th><th>365d+</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
       </div>
     </section>
   </section>
 
   <footer class="foot">
-    Source: <strong>Department KPIs.xlsx</strong> (Visit Anaheim internal). Tab structure and KPI definitions mirror the live Power BI &ldquo;Destination Services &amp; Events KPIs&rdquo; report. Regenerate <code>data.json</code> with <code>build_data.py</code> whenever the workbook is updated.
+    Source: <strong>Granicus, Association Insights, and internal tracking</strong>. Regenerate <code>data.json</code> with <code>build_data.py</code> whenever the workbook is updated.
   </footer>
 
 </div>

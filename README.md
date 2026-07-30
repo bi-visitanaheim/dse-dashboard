@@ -2,7 +2,7 @@
 
 A static, no-build web dashboard for Visit Anaheim's Destination Services & Events (DS&E) KPIs. Its structure mirrors the live Power BI **"Destination Services & Events KPIs"** report tab-for-tab: Overview, Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, and Booked Business.
 
-It reads all its data from `data.json`, generated from the master workbook `Department KPIs.xlsx` by `build_data.py`. No build step, no server-side code — plain HTML/CSS/JS plus Chart.js from a CDN, so it deploys as-is to GitHub + Vercel.
+It reads all its data from `data.json`, generated from the master workbook `Department KPIs.xlsx` by `build_data.py`. No build step, no server-side code — plain HTML/CSS/JS plus Chart.js and the `chartjs-plugin-datalabels` plugin, both from a CDN, so it deploys as-is to GitHub + Vercel.
 
 ## Project structure
 
@@ -57,9 +57,11 @@ One number I could **not** reproduce: the source report's Booked Business "Total
 
 ## Filters implemented vs. the source report
 
-This version implements a **Year** filter on every tab (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus **Event Category** on Hosted Events and **Lead Status** on Booked Business. The source Power BI report also has a **Staff** slicer (Partner Referrals, Repeat Clients) and a **Rating range** slicer (Client Survey) that aren't wired up yet — the underlying data needed for them is already in `data.json` (staff/manager fields on every relevant row), so they can be added later without touching `build_data.py`.
+Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** on Client Survey (drives the KPI grid, all three charts, the YoY table, and the Q2/Q7 spotlight), and **Account Name** on Repeat Clients. The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
 
-The Year-over-Year tables (Team KPIs, Partner Referrals, Client Survey) always compare the two most recent years with data, independent of the Year filter — that matches the behavior observed in the live report.
+The Team KPIs YoY table now follows the Year filter: pick a year and the table compares it against the year before; "All" falls back to the two most recent years with data. The Partner Referrals and Client Survey YoY tables still always show the latest two (or full 2023–2026) years regardless of the Year filter, matching the source report's behavior — the Client Survey one does respect the Services Manager filter, though.
+
+Every chart dashboard-wide shows data labels (via the `chartjs-plugin-datalabels` CDN plugin, registered globally in `app.js`), with contrast-aware label colors on stacked bars and doughnut/pie slices.
 
 ## Insight narrative (Overview tab)
 
@@ -67,7 +69,7 @@ The Overview tab's narrative paragraphs are generated (not hand-written) by comp
 
 ## Q2 & Q7 spotlight (Client Survey tab)
 
-This section is **not** in the source Power BI report — it's included because the DS&E dashboard brief specifically asked to relate Question 2 ("The Experience With Your Visit Anaheim Destination Service and Events Manager" — numeric, 0–10) with Question 7 (open-ended client testimonials) so the rating trend can be read alongside the qualitative feedback behind it. It always shows the full multi-year trend regardless of the Year filter.
+This section is **not** in the source Power BI report — it's included because the DS&E dashboard brief specifically asked to relate Question 2 ("The Experience With Your Visit Anaheim Destination Service and Events Manager" — numeric, 0–10) with Question 7 (open-ended client testimonials) so the rating trend can be read alongside the qualitative feedback behind it. It always shows the full multi-year trend regardless of the Year filter, but does respect the Services Manager filter (both the Q2 line chart and the testimonial samples are recomputed client-side from the raw survey rows).
 
 ## Known data-quality issue
 
@@ -75,18 +77,16 @@ Two rows in the **Events** sheet have a typo'd year (`2206` instead of, presumab
 
 ## Brand / typography
 
-This dashboard uses Visit Anaheim's actual brand theme, pulled from `RebrandTheme.json` (the Power BI custom theme file found alongside `Department KPIs.xlsx` in this workspace) rather than a placeholder:
+This dashboard is restricted to **only** the six approved Visit Anaheim brand colors below — no other hues (including the gold/coral accents in the original Power BI theme) appear anywhere in the CSS or chart palettes. Borders, shadows, and muted text are opacity tints of these same six colors, not new hues.
 
 | Variable | Hex | Role |
 |---|---|---|
-| `--navy` | `#125C60` | Primary deep teal (header, dark backgrounds) |
-| `--teal` | `#43A3A3` | Mid teal (tags, secondary series) |
-| `--teal-light` | `#77C7C9` | Light teal (chart series) |
+| `--navy` | `#125C60` | Primary deep teal (header, dark backgrounds, KPI card edge, "down" deltas) |
+| `--teal` | `#43A3A3` | Mid teal (tags, chart series, "up" deltas) |
+| `--teal-light` | `#77C7C9` | Light teal (chart series, spotlight accents) |
 | `--pale` | `#B4D9E3` | Pale blue (chart series) |
-| `--gold` | `#D9B300` | Gold accent |
-| `--coral` | `#D64550` | Accent red (KPI card edge, "down" deltas) |
-| `--bg` | `#F9F9F2` | Warm off-white page background |
 | `--text` | `#231F20` | Near-black body text |
+| `--bg` | `#F9F9F2` | Warm off-white page background |
 
 Typeface is **Sharp Sans Disp No2** (the exact name used in the theme file), referenced by name in `style.css` with a system-font fallback (Segoe UI/Arial) since it's a licensed font not bundled here. Add licensed font files and an `@font-face` rule if you have them.
 

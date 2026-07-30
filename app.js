@@ -7,17 +7,42 @@
 
 // Visit Anaheim "ReBrand Teal" palette, pulled directly from the
 // department's own Power BI theme file (RebrandTheme.json).
+// Restricted to the six approved brand colors only (navy, teal, teal-light,
+// pale, near-black text, off-white bg). Grid/muted are opacity tints of
+// those same colors, not new hues.
 const COLORS = {
-  navy: "#125C60", coral: "#D64550", coralDark: "#b6363f",
-  teal: "#43A3A3", tealLight: "#77C7C9", pale: "#B4D9E3",
-  gold: "#D9B300", grid: "#e6e3d6", muted: "#8a9a9a",
-  seriesA: "#43A3A3", seriesB: "#125C60", seriesC: "#D64550", seriesD: "#D9B300"
+  navy: "#125C60", teal: "#43A3A3", tealLight: "#77C7C9", pale: "#B4D9E3",
+  text: "#231F20", bg: "#F9F9F2",
+  grid: "rgba(18,92,96,.14)", muted: "rgba(35,31,32,.55)",
+  seriesA: "#43A3A3", seriesB: "#125C60", seriesC: "#77C7C9", seriesD: "#B4D9E3"
 };
 const YEAR_PALETTE = { 2023: "#B4D9E3", 2024: "#77C7C9", 2025: "#43A3A3", 2026: "#125C60" };
 
 Chart.defaults.font.family = "'Sharp Sans Disp No2','Sharp Sans Display No2','Segoe UI',Arial,sans-serif";
-Chart.defaults.color = "#5c6d6d";
+Chart.defaults.color = COLORS.muted;
 Chart.defaults.borderColor = COLORS.grid;
+
+// ---------- data labels (every chart, dashboard-wide) ----------
+if (typeof ChartDataLabels !== "undefined") Chart.register(ChartDataLabels);
+// Dark brand colors need white labels; light ones need the near-black text color.
+function labelContrast(hex) {
+  return (hex === COLORS.navy || hex === COLORS.teal) ? "#ffffff" : COLORS.text;
+}
+function numberLabel(value) {
+  if (value === null || value === undefined || Number.isNaN(value)) return "";
+  const num = typeof value === "object" ? (value.y ?? value.r ?? value.v ?? null) : value;
+  if (typeof num !== "number" || Number.isNaN(num)) return "";
+  return Number.isInteger(num) ? num.toLocaleString("en-US") : num.toFixed(1);
+}
+Chart.defaults.set("plugins.datalabels", {
+  color: COLORS.text,
+  anchor: "end",
+  align: "end",
+  offset: 2,
+  clamp: true,
+  font: { size: 10, weight: "700" },
+  formatter: numberLabel
+});
 
 let DATA = null;
 const CHARTS = {};
@@ -217,7 +242,7 @@ function renderTeam(year) {
   });
   makeChart("team-chart3", {
     type: "bar",
-    data: { labels, datasets: [{ label: "Clients Serviced", data: rows.map(r => r.clientsServiced), backgroundColor: COLORS.coral, borderRadius: 4 }] },
+    data: { labels, datasets: [{ label: "Clients Serviced", data: rows.map(r => r.clientsServiced), backgroundColor: COLORS.teal, borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
 
@@ -227,20 +252,28 @@ function renderTeam(year) {
     { label: "Planning Visits", fn: r => r.planningVisits },
     { label: "Partners Visited", fn: r => r.partnersVisited },
     { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced }
-  ]);
+  ], year);
 }
-function renderYoyTable(tableId, rows, metrics) {
+function renderYoyTable(tableId, rows, metrics, selectedYear) {
   const years = getYears(rows);
-  const { prior, latest } = latestTwoYears(years);
+  let prior, latest;
+  if (selectedYear && selectedYear !== "All") {
+    latest = Number(selectedYear);
+    prior = latest - 1;
+  } else {
+    ({ prior, latest } = latestTwoYears(years));
+  }
   const tbody = document.querySelector(`#${tableId} tbody`);
-  if (prior === undefined || latest === undefined) { tbody.innerHTML = ""; return; }
-  tbody.innerHTML = metrics.map(m => {
+  const noData = `<tr><td colspan="4">No prior-year data available for this selection.</td></tr>`;
+  if (prior === undefined || latest === undefined) { tbody.innerHTML = noData; return; }
+  const html = metrics.map(m => {
     const priVal = sum(rows.filter(r => r.year === prior), m.fn);
     const curVal = sum(rows.filter(r => r.year === latest), m.fn);
     if (priVal === 0) return "";
     const d = pctChange(priVal, curVal);
     return `<tr><td>${m.label}</td><td>${fmt(priVal)}</td><td>${fmt(curVal)}</td><td class="${deltaClass(d)}">${deltaArrow(d)}${pct(d)}</td></tr>`;
   }).join("");
+  tbody.innerHTML = html || noData;
 }
 
 // =====================================================================
@@ -275,28 +308,30 @@ function renderReferrals(year) {
   const years = year === "All" ? getYears(all) : [Number(year)];
   const months = [...new Set(rows.map(r => r.date.slice(5, 7)))].sort();
   const monthLabels = months.map(m => new Date(2000, Number(m) - 1, 1).toLocaleDateString("en-US", { month: "short" }));
+
+  // Same continuous-timeline structure as the Team KPIs "Groups Serviced" chart:
+  // one bar per actual calendar month across the selected period, not grouped by year.
+  const byChronoMonth = groupBy(rows, r => monthKey(r.date));
+  const chronoMonths = [...byChronoMonth.keys()].sort();
   makeChart("ref-chart2", {
     type: "bar",
-    data: {
-      labels: monthLabels,
-      datasets: years.map(y => ({
-        label: String(y),
-        data: months.map(m => sum(rows.filter(r => r.year === y && r.date.slice(5, 7) === m), r => r.count)),
-        backgroundColor: YEAR_PALETTE[y] || COLORS.muted, borderRadius: 4
-      }))
-    },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } }
+    data: { labels: chronoMonths.map(monthLabel), datasets: [{ label: "Partner Referrals", data: chronoMonths.map(m => sum(byChronoMonth.get(m), r => r.count)), backgroundColor: COLORS.navy, borderRadius: 4 }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
 
   makeChart("ref-chart3", {
     type: "bar",
     data: {
       labels: monthLabels,
-      datasets: staffTotals.map((s, i) => ({
-        label: s.staff,
-        data: months.map(m => sum(rows.filter(r => r.staff === s.staff && r.date.slice(5, 7) === m), r => r.count)),
-        backgroundColor: [COLORS.navy, COLORS.teal, COLORS.coral, COLORS.gold, COLORS.muted][i % 5]
-      }))
+      datasets: staffTotals.map((s, i) => {
+        const bg = [COLORS.navy, COLORS.teal, COLORS.tealLight, COLORS.pale][i % 4];
+        return {
+          label: s.staff,
+          data: months.map(m => sum(rows.filter(r => r.staff === s.staff && r.date.slice(5, 7) === m), r => r.count)),
+          backgroundColor: bg,
+          datalabels: { color: labelContrast(bg), anchor: "center", align: "center" }
+        };
+      })
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
   });
@@ -308,12 +343,19 @@ function renderReferrals(year) {
 // REPEAT CLIENTS
 // =====================================================================
 function initRepeat() {
-  const sel = document.getElementById("rep-year");
-  populateYearSelect(sel, getYears(DATA.repeatingClients.raw), () => renderRepeat(sel.value));
-  renderRepeat("All");
+  const yearSel = document.getElementById("rep-year");
+  const acctSel = document.getElementById("rep-account");
+  function applyFilters() { renderRepeat(yearSel.value, acctSel.value); }
+  populateYearSelect(yearSel, getYears(DATA.repeatingClients.raw), applyFilters);
+  const accounts = [...new Set(DATA.repeatingClients.raw.map(r => r.accountName).filter(Boolean))].sort();
+  acctSel.innerHTML = `<option value="All">All</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
+  acctSel.value = "All";
+  acctSel.onchange = applyFilters;
+  applyFilters();
 }
-function renderRepeat(year) {
-  const rows = byYear(DATA.repeatingClients.raw, year);
+function renderRepeat(year, accountName) {
+  let rows = byYear(DATA.repeatingClients.raw, year);
+  if (accountName && accountName !== "All") rows = rows.filter(r => r.accountName === accountName);
   const total = rows.length;
   const repeatYes = rows.filter(r => r.repeat === "Yes").length;
   const rate = total ? repeatYes / total : null;
@@ -338,15 +380,15 @@ function renderRepeat(year) {
     data: {
       labels: mgrs,
       datasets: [
-        { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat === "Yes").length), backgroundColor: COLORS.navy, borderRadius: 4 },
-        { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat !== "Yes").length), backgroundColor: COLORS.teal, borderRadius: 4 }
+        { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat === "Yes").length), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center" } },
+        { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat !== "Yes").length), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center" } }
       ]
     },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true } } }
   });
   makeChart("rep-chart2", {
     type: "doughnut",
-    data: { labels: ["Repeat", "New"], datasets: [{ data: [repeatYes, total - repeatYes], backgroundColor: [COLORS.coral, COLORS.grid] }] },
+    data: { labels: ["Repeat", "New"], datasets: [{ data: [repeatYes, total - repeatYes], backgroundColor: [COLORS.navy, COLORS.pale], datalabels: { color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }] },
     options: { responsive: true, maintainAspectRatio: false, cutout: "70%", plugins: { legend: { position: "bottom" } } }
   });
 
@@ -362,13 +404,19 @@ function renderRepeat(year) {
 // CLIENT SURVEY
 // =====================================================================
 function initSurvey() {
-  const sel = document.getElementById("sur-year");
-  populateYearSelect(sel, getYears(DATA.accSurvey.raw), () => renderSurvey(sel.value));
-  renderSurvey("All");
-  renderQ2Q7(); // static, all years, independent of the filter
+  const yearSel = document.getElementById("sur-year");
+  const mgrSel = document.getElementById("sur-manager");
+  function applyFilters() { renderSurvey(yearSel.value, mgrSel.value); renderQ2Q7(mgrSel.value); }
+  populateYearSelect(yearSel, getYears(DATA.accSurvey.raw), applyFilters);
+  const managers = [...new Set(DATA.accSurvey.raw.map(r => r.manager).filter(Boolean))].sort();
+  mgrSel.innerHTML = `<option value="All">All</option>` + managers.map(m => `<option value="${m}">${m}</option>`).join("");
+  mgrSel.value = "All";
+  mgrSel.onchange = applyFilters;
+  applyFilters();
 }
-function renderSurvey(year) {
-  const all = DATA.accSurvey.raw;
+function renderSurvey(year, manager) {
+  let all = DATA.accSurvey.raw;
+  if (manager && manager !== "All") all = all.filter(r => r.manager === manager);
   const rows = byYear(all, year);
   const q2Text = DATA.accSurvey.q2q7.q2Text;
   const q5Text = DATA.accSurvey.questions[4];
@@ -398,7 +446,7 @@ function renderSurvey(year) {
   const months = [...byMonth.keys()].sort();
   makeChart("sur-chart2", {
     type: "bar",
-    data: { labels: months.map(monthLabel), datasets: [{ label: "Avg Score", data: months.map(m => mean(byMonth.get(m), r => r.rating)), backgroundColor: COLORS.coral, borderRadius: 4 }] },
+    data: { labels: months.map(monthLabel), datasets: [{ label: "Avg Score", data: months.map(m => mean(byMonth.get(m), r => r.rating)), backgroundColor: COLORS.tealLight, borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
   });
 
@@ -410,7 +458,8 @@ function renderSurvey(year) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
   });
 
-  // Year-over-year table is always the full multi-year view regardless of the filter
+  // Year-over-year table always shows the full multi-year view regardless of the
+  // Year filter (but does respect the Services Manager filter via `all` above).
   const YEARS = [2023, 2024, 2025, 2026];
   const questions = DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
   const rowsHtml = questions.map(q => {
@@ -428,21 +477,33 @@ function renderSurvey(year) {
   }).join("");
   document.querySelector("#sur-yoyTable tbody").innerHTML = rowsHtml;
 }
-function renderQ2Q7() {
+function renderQ2Q7(manager) {
   const spot = DATA.accSurvey.q2q7;
+  let raw = DATA.accSurvey.raw;
+  if (manager && manager !== "All") raw = raw.filter(r => r.manager === manager);
+
   document.getElementById("q2q7Desc").innerHTML =
     `Question 2 (&ldquo;${spot.q2Text}&rdquo;) is the numeric rating clients give their Destination Service &amp; Events Manager. ` +
     `Question 7 (&ldquo;${spot.q7Text}&rdquo;) is open-ended feedback from the same respondents. This section isn't in the source Power BI report ` +
-    `&mdash; it's added here per the DS&amp;E dashboard brief to read the rating trend alongside <em>why</em> it moved.`;
-  const years = Object.keys(spot.q2Yearly).sort();
+    `&mdash; it's added here per the DS&amp;E dashboard brief to read the rating trend alongside <em>why</em> it moved.` +
+    (manager && manager !== "All" ? ` Filtered to responses naming <strong>${manager}</strong> as the Services Manager.` : "");
+
+  const YEARS = [2023, 2024, 2025, 2026];
+  const q2Yearly = {};
+  YEARS.forEach(y => { q2Yearly[y] = mean(raw.filter(r => r.question === spot.q2Text && r.year === y), r => r.rating); });
   makeChart("chartQ2", {
     type: "line",
-    data: { labels: years, datasets: [{ label: "Q2 Rating", data: years.map(y => spot.q2Yearly[y]), borderColor: COLORS.gold, backgroundColor: "rgba(217,179,0,.18)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: COLORS.gold }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10, ticks: { color: "#cfe6e6" }, grid: { color: "rgba(255,255,255,.08)" } }, x: { ticks: { color: "#cfe6e6" }, grid: { display: false } } } }
+    data: { labels: YEARS, datasets: [{ label: "Q2 Rating", data: YEARS.map(y => q2Yearly[y]), borderColor: COLORS.tealLight, backgroundColor: "rgba(119,199,201,.22)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: COLORS.tealLight }] },
+    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { color: "#ffffff" } }, scales: { y: { min: 0, max: 10, ticks: { color: "#cfe6e6" }, grid: { color: "rgba(255,255,255,.08)" } }, x: { ticks: { color: "#cfe6e6" }, grid: { display: false } } } }
+  });
+
+  const testimonialsByYear = {};
+  YEARS.forEach(y => {
+    testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 3);
   });
   const cols = document.getElementById("testimonialCols");
-  cols.innerHTML = years.map(y => {
-    const items = spot.testimonialSamples[y] || [];
+  cols.innerHTML = YEARS.map(y => {
+    const items = testimonialsByYear[y] || [];
     return items.map(it => `<div class="testimonial"><span class="yr">${y}</span><br/>&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`).join("");
   }).join("");
 }
@@ -453,16 +514,23 @@ function renderQ2Q7() {
 function initEvents() {
   const yearSel = document.getElementById("hev-year");
   const catSel = document.getElementById("hev-category");
-  populateYearSelect(yearSel, getYears(DATA.eventSurveys.raw), () => renderEvents(yearSel.value, catSel.value));
+  const evtSel = document.getElementById("hev-event");
+  function applyFilters() { renderEvents(yearSel.value, catSel.value, evtSel.value); }
+  populateYearSelect(yearSel, getYears(DATA.eventSurveys.raw), applyFilters);
   const cats = [...new Set(DATA.eventSurveys.raw.map(r => r.category).filter(Boolean))].sort();
   catSel.innerHTML = `<option value="All">All</option>` + cats.map(c => `<option value="${c}">${c}</option>`).join("");
   catSel.value = "All";
-  catSel.onchange = () => renderEvents(yearSel.value, catSel.value);
-  renderEvents("All", "All");
+  catSel.onchange = applyFilters;
+  const evts = [...new Set(DATA.eventSurveys.raw.map(r => r.event).filter(Boolean))].sort();
+  evtSel.innerHTML = `<option value="All">All</option>` + evts.map(e => `<option value="${e}">${e}</option>`).join("");
+  evtSel.value = "All";
+  evtSel.onchange = applyFilters;
+  applyFilters();
 }
-function renderEvents(year, category) {
+function renderEvents(year, category, eventName) {
   let rows = byYear(DATA.eventSurveys.raw, year);
   if (category !== "All") rows = rows.filter(r => r.category === category);
+  if (eventName && eventName !== "All") rows = rows.filter(r => r.event === eventName);
 
   const totalEvents = distinctCount(rows, r => r.eventId);
   const attendeeRows = rows.filter(r => r.surveyType === "Attendee");
@@ -494,7 +562,10 @@ function renderEvents(year, category) {
       datasets: [
         { label: "Overall Experience", data: years.map(y => mean(rows.filter(r => r.year === y), r => r.overall)), backgroundColor: COLORS.seriesA },
         { label: "Recommend Future Events", data: years.map(y => mean(rows.filter(r => r.year === y), r => r.recommend)), backgroundColor: COLORS.seriesB },
-        { label: "Registration Experience", data: years.map(y => mean(rows.filter(r => r.year === y), r => r.registration)), backgroundColor: COLORS.seriesC }
+        { label: "Registration Experience", data: years.map(y => mean(rows.filter(r => r.year === y), r => r.registration)), backgroundColor: COLORS.seriesC },
+        // satisfaction is stored 0-1 (e.g. 0.8 = 4/5); *5 puts it on the same
+        // 0-5 scale as the other three so it's directly comparable here.
+        { label: "Satisfaction", data: years.map(y => { const v = mean(rows.filter(r => r.year === y), r => r.satisfaction); return v === null ? null : v * 5; }), backgroundColor: COLORS.seriesD }
       ]
     },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 5 } } }
@@ -503,7 +574,8 @@ function renderEvents(year, category) {
   const qDef = [
     { label: "Overall Experience", fn: r => r.overall },
     { label: "Recommend Future Events", fn: r => r.recommend },
-    { label: "Registration and Arrival Process", fn: r => r.registration }
+    { label: "Registration and Arrival Process", fn: r => r.registration },
+    { label: "Satisfaction", fn: r => (r.satisfaction === null || r.satisfaction === undefined) ? null : r.satisfaction * 5 }
   ];
   document.querySelector("#hev-byQuestionTable tbody").innerHTML = qDef.map(q =>
     `<tr><td>${q.label}</td><td>${fmt(mean(attendeeRows, q.fn), 2)}</td><td>${fmt(mean(partnerRows, q.fn), 2)}</td><td><strong>${fmt(mean(rows, q.fn), 2)}</strong></td></tr>`
@@ -522,16 +594,23 @@ function renderEvents(year, category) {
 function initBooked() {
   const yearSel = document.getElementById("bb-year");
   const statusSel = document.getElementById("bb-status");
-  populateYearSelect(yearSel, getYears(DATA.bookedBusiness.raw), () => renderBooked(yearSel.value, statusSel.value));
+  const evtSel = document.getElementById("bb-event");
+  function applyFilters() { renderBooked(yearSel.value, statusSel.value, evtSel.value); }
+  populateYearSelect(yearSel, getYears(DATA.bookedBusiness.raw), applyFilters);
   const statuses = [...new Set(DATA.bookedBusiness.raw.map(r => r.leadStatus).filter(Boolean))].sort();
   statusSel.innerHTML = `<option value="All">All</option>` + statuses.map(s => `<option value="${s}">${s}</option>`).join("");
   statusSel.value = "All";
-  statusSel.onchange = () => renderBooked(yearSel.value, statusSel.value);
-  renderBooked("All", "All");
+  statusSel.onchange = applyFilters;
+  const evts = [...new Set(DATA.bookedBusiness.raw.map(r => r.eventName).filter(Boolean))].sort();
+  evtSel.innerHTML = `<option value="All">All</option>` + evts.map(e => `<option value="${e}">${e}</option>`).join("");
+  evtSel.value = "All";
+  evtSel.onchange = applyFilters;
+  applyFilters();
 }
-function renderBooked(year, status) {
+function renderBooked(year, status, eventName) {
   let rows = byYear(DATA.bookedBusiness.raw, year);
   if (status !== "All") rows = rows.filter(r => r.leadStatus === status);
+  if (eventName && eventName !== "All") rows = rows.filter(r => r.eventName === eventName);
 
   const distinctEvents = distinctCount(rows, r => r.eventId);
   const leadsGenerated = distinctCount(rows, r => r.leadId);
@@ -556,7 +635,7 @@ function renderBooked(year, status) {
   const eventTotals = [...byEvent.entries()].map(([name, rs]) => ({ name, count: rs.length })).sort((a, b) => b.count - a.count).slice(0, 10);
   makeChart("bb-chart1", {
     type: "bar",
-    data: { labels: eventTotals.map(e => e.name.length > 40 ? e.name.slice(0, 40) + "…" : e.name), datasets: [{ label: "Leads", data: eventTotals.map(e => e.count), backgroundColor: COLORS.gold, borderRadius: 4 }] },
+    data: { labels: eventTotals.map(e => e.name.length > 40 ? e.name.slice(0, 40) + "…" : e.name), datasets: [{ label: "Leads", data: eventTotals.map(e => e.count), backgroundColor: COLORS.teal, borderRadius: 4 }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
   });
 
@@ -564,16 +643,21 @@ function renderBooked(year, status) {
   const statusLabels = [...byStatus.keys()];
   makeChart("bb-chart2", {
     type: "doughnut",
-    data: { labels: statusLabels, datasets: [{ data: statusLabels.map(s => byStatus.get(s).length), backgroundColor: [COLORS.teal, COLORS.navy, COLORS.coral, COLORS.gold] }] },
+    data: { labels: statusLabels, datasets: [{ data: statusLabels.map(s => byStatus.get(s).length), backgroundColor: [COLORS.teal, COLORS.navy, COLORS.tealLight, COLORS.pale], datalabels: { color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }] },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
   });
 
   const buckets = [[0, 30], [31, 90], [91, 180], [181, 365], [366, Infinity]];
-  const bucketLabel = i => ["0–30d", "31–90d", "91–180d", "181–365d", "365d+"][i];
-  document.querySelector("#bb-conversionTable tbody").innerHTML = [...byEvent.entries()].map(([name, rs]) => {
-    const counts = buckets.map(([lo, hi]) => rs.filter(r => r.daysFromLeadCreatedToEvent !== null && r.daysFromLeadCreatedToEvent >= lo && r.daysFromLeadCreatedToEvent <= hi).length);
-    return `<tr><td>${name}</td>${counts.map(c => `<td>${c || ""}</td>`).join("")}</tr>`;
-  }).join("");
+  const perEventCounts = [...byEvent.entries()].map(([name, rs]) => ({
+    name,
+    counts: buckets.map(([lo, hi]) => rs.filter(r => r.daysFromLeadCreatedToEvent !== null && r.daysFromLeadCreatedToEvent >= lo && r.daysFromLeadCreatedToEvent <= hi).length)
+  }));
+  document.querySelector("#bb-conversionTable tbody").innerHTML = perEventCounts.map(e =>
+    `<tr><td>${e.name}</td>${e.counts.map(c => `<td>${c || ""}</td>`).join("")}</tr>`
+  ).join("");
+  const bucketTotals = buckets.map((_, i) => perEventCounts.reduce((s, e) => s + e.counts[i], 0));
+  document.querySelector("#bb-conversionTable tfoot").innerHTML =
+    `<tr><td>Total</td>${bucketTotals.map(t => `<td>${t || 0}</td>`).join("")}</tr>`;
 }
 
 main();
