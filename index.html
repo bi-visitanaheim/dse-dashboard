@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Destination Services &amp; Events Dashboard | Visit Anaheim</title>
+<link rel="stylesheet" href="css/style.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap head-wrap">
+    <div>
+      <p class="brand-eyebrow">Visit Anaheim &middot; Internal KPI Dashboard</p>
+      <h1>Destination Services &amp; Events Dashboard</h1>
+      <p class="sub" id="headerSub">Planning visits, partner referrals, repeat business, events supported, booked business, and survey feedback.</p>
+    </div>
+    <div class="updated-pill">Data last refreshed: <strong id="updatedAt">&mdash;</strong></div>
+  </div>
+  <nav class="tabbar wrap" id="tabbar">
+    <button class="tab-btn active" data-tab="overview">Overview</button>
+    <button class="tab-btn" data-tab="team">Team KPIs</button>
+    <button class="tab-btn" data-tab="referrals">Partner Referrals</button>
+    <button class="tab-btn" data-tab="repeat">Repeat Clients</button>
+    <button class="tab-btn" data-tab="survey">Client Survey</button>
+    <button class="tab-btn" data-tab="events">Hosted Events</button>
+    <button class="tab-btn" data-tab="booked">Booked Business</button>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <!-- ================= OVERVIEW ================= -->
+  <section class="tab-panel active" id="tab-overview">
+    <div class="kpi-grid" id="ov-kpiGrid"></div>
+    <section class="panel insight-panel">
+      <h2>Department at a Glance <span class="tag">Auto-generated</span></h2>
+      <p class="desc">All-time totals above; the notes below compare the most recent complete year to the one before it.</p>
+      <div id="ov-insights" class="insight-text"></div>
+    </section>
+  </section>
+
+  <!-- ================= TEAM KPIS ================= -->
+  <section class="tab-panel" id="tab-team">
+    <div class="filter-row">
+      <label>Year <select id="team-year"></select></label>
+    </div>
+    <div class="kpi-grid" id="team-kpiGrid"></div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Partners Visited &amp; Planning Visits <span class="tag">Monthly</span></h2>
+        <div class="chart-box"><canvas id="team-chart1"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Groups Serviced <span class="tag">Monthly</span></h2>
+        <div class="chart-box"><canvas id="team-chart2"></canvas></div>
+      </section>
+    </div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Year over Year KPIs</h2>
+        <table class="mini" id="team-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+      </section>
+      <section class="panel">
+        <h2>Clients Serviced <span class="tag">Monthly</span></h2>
+        <div class="chart-box"><canvas id="team-chart3"></canvas></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ================= PARTNER REFERRALS ================= -->
+  <section class="tab-panel" id="tab-referrals">
+    <div class="filter-row">
+      <label>Year <select id="ref-year"></select></label>
+    </div>
+    <div class="kpi-grid" id="ref-kpiGrid"></div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Partner Referrals by Staff</h2>
+        <div class="chart-box"><canvas id="ref-chart1"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Partner Referrals by Month <span class="tag">By Year</span></h2>
+        <div class="chart-box"><canvas id="ref-chart2"></canvas></div>
+      </section>
+    </div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Year over Year</h2>
+        <table class="mini" id="ref-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+      </section>
+      <section class="panel">
+        <h2>Monthly Referrals by Staff</h2>
+        <div class="chart-box"><canvas id="ref-chart3"></canvas></div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ================= REPEAT CLIENTS ================= -->
+  <section class="tab-panel" id="tab-repeat">
+    <div class="filter-row">
+      <label>Year (meeting start) <select id="rep-year"></select></label>
+    </div>
+    <div class="kpi-grid" id="rep-kpiGrid"></div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Repeat vs. New by Services Manager</h2>
+        <div class="chart-box"><canvas id="rep-chart1"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Repeat vs. New Clients</h2>
+        <div class="chart-box short"><canvas id="rep-chart2"></canvas></div>
+      </section>
+    </div>
+    <section class="panel">
+      <h2>Clients</h2>
+      <p class="desc">"Bookings" = how many times this account appears in the dataset (a proxy for repeat-booking depth).</p>
+      <div class="table-scroll">
+        <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Attendance</th><th>Peak Room</th><th>Repeat?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+  </section>
+
+  <!-- ================= CLIENT SURVEY ================= -->
+  <section class="tab-panel" id="tab-survey">
+    <div class="filter-row">
+      <label>Year (response recorded) <select id="sur-year"></select></label>
+    </div>
+    <div class="kpi-grid" id="sur-kpiGrid"></div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Category Rating</h2>
+        <div class="chart-box"><canvas id="sur-chart1"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Avg. Score by Month</h2>
+        <div class="chart-box"><canvas id="sur-chart2"></canvas></div>
+      </section>
+    </div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Avg. Rating by DS&amp;E Manager</h2>
+        <p class="desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
+        <div class="chart-box"><canvas id="sur-chart3"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Year over Year Ratings</h2>
+        <div class="table-scroll">
+          <table class="mini" id="sur-yoyTable"><thead><tr><th>Question</th><th>2023</th><th>2024</th><th>YoY</th><th>2025</th><th>YoY</th><th>2026</th><th>YoY</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+    </div>
+
+    <!-- Q2 & Q7 spotlight -- bonus content beyond the source Power BI report -->
+    <section class="spotlight">
+      <h2>Spotlight: Manager Experience (Q2) &amp; Client Testimonials (Q7) <span class="tag">Beyond source report</span></h2>
+      <p class="desc" id="q2q7Desc"></p>
+      <div class="grid-2">
+        <div class="chart-box"><canvas id="chartQ2"></canvas></div>
+        <div><div id="testimonialCols" class="testimonial-cols"></div></div>
+      </div>
+    </section>
+  </section>
+
+  <!-- ================= HOSTED EVENTS ================= -->
+  <section class="tab-panel" id="tab-events">
+    <div class="filter-row">
+      <label>Year <select id="hev-year"></select></label>
+      <label>Event Category <select id="hev-category"></select></label>
+    </div>
+    <div class="kpi-grid" id="hev-kpiGrid"></div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Events by Month</h2>
+        <div class="chart-box"><canvas id="hev-chart1"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Question Ratings <span class="tag">By Year</span></h2>
+        <div class="chart-box"><canvas id="hev-chart2"></canvas></div>
+      </section>
+    </div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Avg. Rating by Question</h2>
+        <table class="mini" id="hev-byQuestionTable"><thead><tr><th>Question</th><th>Attendee</th><th>Partner</th><th>Total</th></tr></thead><tbody></tbody></table>
+      </section>
+      <section class="panel">
+        <h2>Ratings by Event Category</h2>
+        <div class="table-scroll">
+          <table class="mini" id="hev-byCategoryTable"><thead><tr><th>Category</th><th>Respondents</th><th>Avg Satisfaction</th><th>Overall</th><th>Registration</th><th>Recommend</th></tr></thead><tbody></tbody></table>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <!-- ================= BOOKED BUSINESS ================= -->
+  <section class="tab-panel" id="tab-booked">
+    <div class="filter-row">
+      <label>Year (event start) <select id="bb-year"></select></label>
+      <label>Lead Status <select id="bb-status"></select></label>
+    </div>
+    <div class="kpi-grid" id="bb-kpiGrid"></div>
+    <div class="grid-2">
+      <section class="panel">
+        <h2>Leads Generated by Event</h2>
+        <div class="chart-box"><canvas id="bb-chart1"></canvas></div>
+      </section>
+      <section class="panel">
+        <h2>Lead Status Breakdown</h2>
+        <div class="chart-box"><canvas id="bb-chart2"></canvas></div>
+      </section>
+    </div>
+    <section class="panel">
+      <h2>Conversion Window by Event</h2>
+      <p class="desc">Days from lead created to event start, bucketed. "Total" is the number of leads in each bucket.</p>
+      <div class="table-scroll">
+        <table class="mini" id="bb-conversionTable"><thead><tr><th>Event</th><th>0&ndash;30d</th><th>31&ndash;90d</th><th>91&ndash;180d</th><th>181&ndash;365d</th><th>365d+</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+  </section>
+
+  <footer class="foot">
+    Source: <strong>Department KPIs.xlsx</strong> (Visit Anaheim internal). Tab structure and KPI definitions mirror the live Power BI &ldquo;Destination Services &amp; Events KPIs&rdquo; report. Regenerate <code>data.json</code> with <code>build_data.py</code> whenever the workbook is updated.
+  </footer>
+
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>
