@@ -184,7 +184,6 @@ function switchTab(name) {
 // =====================================================================
 // OVERVIEW
 // =====================================================================
-const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 function monthOf(dateStr) { const n = dateStr ? Number(String(dateStr).slice(5, 7)) : NaN; return Number.isNaN(n) ? null : n; }
 // Year is derived directly from the same date field used for the month check
 // (not a separate pre-baked `r.year`) so each Overview KPI can be filtered by
@@ -326,8 +325,7 @@ function renderOverview() {
   document.getElementById("ov-kpiGrid").innerHTML =
     categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear, c.fmtFn(c.pri))).join("");
 
-  const cutoffMonthName = MONTH_NAMES[pvCutoff - 1] || "June";
-  document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${cutoffMonthName}.`;
+  document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${endOfMonthLabel(CUR, pvCutoff)}.`;
 
   // ---- Department at a Glance: automated monthly summary table covering
   // all 12 categories (previous month, year-to-date, YoY %). Regenerates
