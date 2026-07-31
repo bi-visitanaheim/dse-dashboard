@@ -197,6 +197,14 @@ function ytdCutoff(rowsInYear, dateField) {
   const months = rowsInYear.map(r => monthOf(r[dateField])).filter(m => m !== null);
   return months.length ? Math.max(...months) : 12;
 }
+// The full calendar date through which a category's data is complete (the
+// last day of its cutoff month) -- e.g. "May 31, 2026" -- for the Department
+// at a Glance summary table's "Data Through" column.
+function endOfMonthLabel(year, month) {
+  if (!month) return "&mdash;";
+  const d = new Date(year, month, 0); // day 0 of next month = last day of `month`
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
 function ytdRows(rows, dateField, year, cutoff) {
   return rows.filter(r => yearOf(r[dateField]) === year && monthOf(r[dateField]) !== null && monthOf(r[dateField]) <= cutoff);
 }
@@ -327,8 +335,7 @@ function renderOverview() {
   // no manual editing needed month to month. ----
   document.querySelector("#ov-summaryTable tbody").innerHTML = categories.map(c => {
     const d = pctChange(c.pri, c.cur);
-    const monthName = MONTH_NAMES[c.cutoff - 1] || "&mdash;";
-    return `<tr><td>${c.label}</td><td>${monthName} ${c.curYear}</td><td>${c.fmtFn(c.month)}</td><td>${c.fmtFn(c.cur)}</td><td class="${deltaClass(d)}">${d === null ? "&mdash;" : deltaArrow(d) + pct(d)}</td></tr>`;
+    return `<tr><td>${c.label}</td><td>${endOfMonthLabel(c.curYear, c.cutoff)}</td><td>${c.fmtFn(c.month)}</td><td>${c.fmtFn(c.cur)}</td><td class="${deltaClass(d)}">${d === null ? "&mdash;" : deltaArrow(d) + pct(d)}</td></tr>`;
   }).join("");
 
   // ---- narrative insight (So What / Why / Now What, in plain prose) ----

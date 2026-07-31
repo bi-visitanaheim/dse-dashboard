@@ -131,7 +131,7 @@ Typeface is **Sharp Sans Disp No2** (the exact name used in the theme file), ref
 
 ### Logo
 
-The header already has an `<img class="brand-logo" src="logo.png">` in place (it appears on every tab since the header is shared across the whole single-page app). It's wired to fail silently (`onerror` hides the element) so the layout doesn't break if the file is missing. To show the logo: save the white/light version (for the dark navy-to-teal header background) as `logo.png` at the repo root, next to `index.html`, and it'll appear automatically — no code changes needed.
+The header has an `<img class="brand-logo" src="logo.png">` in place (it appears on every tab since the header is shared across the whole single-page app), wired to fail silently (`onerror` hides the element) so the layout doesn't break if the file is ever missing. `logo.png` at the repo root is currently the off-white "A" mark (transparent background, tightly cropped, no padding) — it was chosen over the full "Anaheim California" wordmark and the dark/black "VISIT Anaheim" wordmark because it reads clearly at the small, fixed 48px height this space is designed for, and its off-white fill shows up against the dark navy-to-teal header gradient (the dark wordmark version would disappear against that background). To swap in a different logo variant, just replace `logo.png` with another transparent, light-colored file — no code changes needed.
 
 ## Known deployment issue (fixed)
 
