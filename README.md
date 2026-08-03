@@ -70,6 +70,24 @@ Two things worth flagging about this mapping, found while reconciling it against
 
 **Department at a Glance** (the table directly under the 12 cards) is fully automated: it shows, for each of the same 12 categories, that category's own latest single month's actual value, its year-to-date value, and the year-over-year % change vs. the prior year's YTD &mdash; regenerated from `data.json` on every page load, with no manually-written numbers. Re-run `build_data.py` after updating the workbook and this table (along with the 12 cards and the narrative below it) updates itself.
 
+## Data source mapping (Team KPIs tab)
+
+Confirmed against the actual workbook headers, same as the Overview mapping above. Every card, chart, and table on this tab reads from the single "Planning Visits" sheet, using its "Date" column for the Year filter and the x-axis on all three charts:
+
+| Visual | Column(s) | Aggregation |
+|---|---|---|
+| KPI cards (left to right: Partners Visited, Planning Visits, Convention Groups Serviced, In House Groups Serviced, Clients Serviced) | Partners Visited / Planning Visits / Convention Groups Serviced / In House Groups Serviced / Clients Serviced | Sum, for the selected Year |
+| "Partners Visited & Planning Visits" chart | Partners Visited, Planning Visits (y-axis); Date (x-axis) | Monthly values |
+| "Groups Serviced" chart | Convention Groups Serviced, In House Groups Serviced (y-axis); Date (x-axis) | Monthly values |
+| "Clients Serviced" chart | Clients Serviced (y-axis); Date (x-axis) | Monthly values |
+| Year-over-Year KPIs table (row order: Planning Visits, Partners Visited, Convention Groups Serviced, In House Groups Serviced, Clients Serviced) | Same five columns | Sum per year, Selected Year vs. the year immediately before it |
+
+Notes:
+
+- The **Year filter defaults to 2026** on page load (falls back to "All" automatically if a future data refresh ever removes 2026 from the sheet).
+- The KPI card order and the Year-over-Year table's row order are **intentionally different** from each other (cards: Partners Visited first; table: Planning Visits first) &mdash; this matches the explicit request, not an inconsistency.
+- The Year-over-Year table always shows all five rows even if a metric has no prior-year data at all. As of this build, the source sheet's 2025 rows have "Partners Visited" and "In House Groups Serviced" blank for every month (only Planning Visits, Convention Groups Serviced, and Clients Serviced were tracked in 2025) &mdash; those two rows show "&mdash;" for the % change instead of a misleading number or disappearing from the table. Once 2025 data is backfilled for those columns, the % change will populate automatically on the next `build_data.py` run.
+
 ## How the KPI formulas were verified
 
 Every KPI on this dashboard was checked against the numbers shown live in the Power BI report (viewed via browser on 2026-07-29) rather than assumed from column names. Some notable, non-obvious formulas this uncovered:

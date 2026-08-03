@@ -356,19 +356,23 @@ function renderOverview() {
 // =====================================================================
 function initTeam() {
   const sel = document.getElementById("team-year");
-  populateYearSelect(sel, getYears(DATA.planningVisits), () => renderTeam(sel.value));
-  renderTeam("All");
+  const years = getYears(DATA.planningVisits);
+  populateYearSelect(sel, years, () => renderTeam(sel.value));
+  // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
+  const defaultYear = years.includes(2026) ? "2026" : "All";
+  sel.value = defaultYear;
+  renderTeam(defaultYear);
 }
 function renderTeam(year) {
   const all = DATA.planningVisits;
   const rows = byYear(all, year);
 
   document.getElementById("team-kpiGrid").innerHTML = [
-    kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits))),
-    kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced))),
     kpiCard("Partners Visited", fmt(sum(rows, r => r.partnersVisited))),
+    kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits))),
     kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced))),
-    kpiCard("In House Groups Serviced", fmt(sum(rows, r => r.inHouseGroupsServiced)))
+    kpiCard("In House Groups Serviced", fmt(sum(rows, r => r.inHouseGroupsServiced))),
+    kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)))
   ].join("");
 
   const labels = rows.map(r => monthLabel(r.date.slice(0, 7)));
@@ -393,11 +397,11 @@ function renderTeam(year) {
   });
 
   renderYoyTable("team-yoyTable", all, [
-    { label: "Clients Serviced", fn: r => r.clientsServiced },
-    { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
     { label: "Planning Visits", fn: r => r.planningVisits },
     { label: "Partners Visited", fn: r => r.partnersVisited },
-    { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced }
+    { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
+    { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced },
+    { label: "Clients Serviced", fn: r => r.clientsServiced }
   ], year);
 
   bindMonthLink("team", ["team-chart1", "team-chart2", "team-chart3"]);
@@ -414,10 +418,13 @@ function renderYoyTable(tableId, rows, metrics, selectedYear) {
   const tbody = document.querySelector(`#${tableId} tbody`);
   const noData = `<tr><td colspan="4">No prior-year data available for this selection.</td></tr>`;
   if (prior === undefined || latest === undefined) { tbody.innerHTML = noData; return; }
+  // Always shows every metric passed in, in the order given -- if a metric
+  // has no prior-year data at all (e.g. a column the source sheet didn't
+  // start tracking until a later year), its % change just shows as "--"
+  // rather than the whole row disappearing.
   const html = metrics.map(m => {
     const priVal = sum(rows.filter(r => r.year === prior), m.fn);
     const curVal = sum(rows.filter(r => r.year === latest), m.fn);
-    if (priVal === 0) return "";
     const d = pctChange(priVal, curVal);
     return `<tr><td>${m.label}</td><td>${fmt(priVal)}</td><td>${fmt(curVal)}</td><td class="${deltaClass(d)}">${deltaArrow(d)}${pct(d)}</td></tr>`;
   }).join("");
