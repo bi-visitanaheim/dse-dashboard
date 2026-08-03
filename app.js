@@ -529,7 +529,9 @@ function renderReferrals(year) {
   makeChart("ref-chart1", {
     type: "bar",
     data: { labels: staffTotals.map(s => s.staff), datasets: [{ label: "Referrals", data: staffTotals.map(s => s.total), backgroundColor: COLORS.teal, borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    // Extra top padding so the tallest bar's data label doesn't get clipped
+    // by the chart area's edge (same fix used on other bar charts).
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
 
   // Continuous-timeline structure (same as the Team KPIs charts): one bar per
@@ -554,10 +556,16 @@ function renderReferrals(year) {
           label: s.staff,
           data: chronoMonths.map(m => sum((byChronoMonth.get(m) || []).filter(r => r.staff === s.staff), r => r.count)),
           backgroundColor: bg,
-          datalabels: { color: labelContrast(bg), anchor: "center", align: "center" }
+          // Zero-value segments have no height to anchor a label against, so
+          // they were rendering right on top of the segment next to them --
+          // suppressing the "0" labels (the segment simply isn't there, so
+          // there's nothing useful to label) removes that crowding.
+          datalabels: { color: labelContrast(bg), anchor: "center", align: "center", formatter: (v) => v ? numberLabel(v) : "" }
         };
       })
     },
+    // Taller chart box gives each stacked segment more vertical room, further
+    // reducing label crowding when several staff each have small monthly counts.
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
   });
 
