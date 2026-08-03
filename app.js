@@ -215,10 +215,8 @@ function renderOverview() {
   const referrals = DATA.partnerReferrals.raw;
   const repeat = DATA.repeatingClients.raw;
   const survey = DATA.accSurvey.raw;
-  const q2Text = DATA.accSurvey.q2q7.q2Text;
   const evSurveys = DATA.eventSurveys.raw;
   const booked = DATA.bookedBusiness.raw;
-  const events = DATA.events.raw;
 
   // ---- KPI cards: year-to-date only, each with a YoY delta vs the same
   // year-to-date window in the prior year (cutoff month is whatever's latest
@@ -336,38 +334,20 @@ function renderOverview() {
     return `<tr><td>${c.label}</td><td>${endOfMonthLabel(c.curYear, c.cutoff)}</td><td>${c.fmtFn(c.month)}</td><td>${c.fmtFn(c.cur)}</td><td class="${deltaClass(d)}">${d === null ? "&mdash;" : deltaArrow(d) + pct(d)}</td></tr>`;
   }).join("");
 
-  // ---- narrative insight (So What / Why / Now What, in plain prose) ----
-  // Uses the most recent year with substantial (5+ months) data, compared to
-  // the year before it -- independent of the fixed 2026-YTD cards above.
-  const years = getYears(pv);
-  const monthsWithData = y => pv.filter(r => r.year === y && r.planningVisits !== null).length;
-  const candidates = years.filter(y => monthsWithData(y) >= 5);
-  const currentYear = candidates.length ? candidates[candidates.length - 1] : years[years.length - 1];
-  const priorYear = currentYear - 1;
-  const partialYear = monthsWithData(currentYear) < 11;
-
-  const pvCur = pv.filter(r => r.year === currentYear), pvPri = pv.filter(r => r.year === priorYear);
-  const nVisitsCur = sum(pvCur, r => r.planningVisits), nVisitsPri = sum(pvPri, r => r.planningVisits);
-  const nClientsCur = sum(pvCur, r => r.clientsServiced), nClientsPri = sum(pvPri, r => r.clientsServiced);
-  const nConvCur = sum(pvCur, r => r.conventionGroupsServiced), nConvPri = sum(pvPri, r => r.conventionGroupsServiced);
-  const nRefCur = sum(byYear(referrals, currentYear), r => r.count), nRefPri = sum(byYear(referrals, priorYear), r => r.count);
-  const nRepCur = byYear(repeat, currentYear), nRepPri = byYear(repeat, priorYear);
-  const nRateCur = nRepCur.length ? nRepCur.filter(r => r.repeat === "Yes").length / nRepCur.length : null;
-  const nRatePri = nRepPri.length ? nRepPri.filter(r => r.repeat === "Yes").length / nRepPri.length : null;
-  const nEventsCur = events.filter(r => r.year === currentYear).length, nEventsPri = events.filter(r => r.year === priorYear).length;
-  const nQ2Cur = mean(byYear(survey, currentYear).filter(r => r.question === q2Text), r => r.rating);
-  const nQ2Pri = mean(byYear(survey, priorYear).filter(r => r.question === q2Text), r => r.rating);
-  const nEsCur = mean(byYear(evSurveys, currentYear), r => r.overall), nEsPri = mean(byYear(evSurveys, priorYear), r => r.overall);
-  const nLeadsCur = distinctCount(byYear(booked, currentYear), r => r.leadId), nLeadsPri = distinctCount(byYear(booked, priorYear), r => r.leadId);
-
-  const dVisits = pctChange(nVisitsPri, nVisitsCur), dClients = pctChange(nClientsPri, nClientsCur), dConv = pctChange(nConvPri, nConvCur);
-  const dRef = pctChange(nRefPri, nRefCur), dRate = pctChange(nRatePri, nRateCur), dEvents = pctChange(nEventsPri, nEventsCur);
-  const dQ2 = pctChange(nQ2Pri, nQ2Cur), dEs = pctChange(nEsPri, nEsCur), dLeads = pctChange(nLeadsPri, nLeadsCur);
+  // ---- narrative insight: summarizes all 12 KPI categories in prose,
+  // reusing the exact same YTD cur/pri figures computed above for the cards
+  // and the Department at a Glance table -- so the numbers here always match
+  // what's shown above them (no separate/independent year logic). ----
+  const dVisits = pctChange(visitsPri, visitsCur), dClients = pctChange(clientsPri, clientsCur), dPartners = pctChange(partnersPri, partnersCur);
+  const dConv = pctChange(convPri, convCur), dInHouse = pctChange(inHousePri, inHouseCur);
+  const dRef = pctChange(totalReferralsPri, totalReferralsCur), dRate = pctChange(ratePri, rateCur), dTeamScore = pctChange(teamScorePri, teamScoreCur);
+  const dHostedEvents = pctChange(hostedEventsPri, hostedEventsCur), dEventSat = pctChange(eventSatPri, eventSatCur);
+  const dLeads = pctChange(leadsPriYtd, leadsCurYtd), dConvWin = pctChange(convWinPri, convWinCur);
 
   const paras = [];
-  paras.push(`<p>In ${currentYear}${partialYear ? " so far" : ""}, the team logged <strong>${fmt(nVisitsCur)}</strong> planning visits${deltaSpan(dVisits)} vs ${priorYear}, servicing <strong>${fmt(nClientsCur)}</strong> clients${deltaSpan(dClients)} and <strong>${fmt(nConvCur)}</strong> convention groups${deltaSpan(dConv)}. ${dVisits !== null && dVisits < 0 && dClients !== null && dClients > 0 ? "Fewer visits but more clients served points to the team converting outreach more efficiently &mdash; worth understanding what's driving that lift so it can be repeated." : "Read these together with staffing levels for the period to judge whether the team is stretched or has room to take on more."}</p>`);
-  paras.push(`<p>Partner referrals reached <strong>${fmt(nRefCur)}</strong>${deltaSpan(dRef)}, and client loyalty stands at <strong>${pct(nRateCur)}</strong> repeat business${deltaSpan(dRate)}. ${dRate !== null && dRate > 0 ? "A rising repeat rate is a strong signal that recent client experience investments are paying off in retention, not just acquisition." : "If repeat business is flat or declining, it's worth pairing this with the Client Survey tab to see whether satisfaction scores explain it."}</p>`);
-  paras.push(`<p>The DS&amp;E Manager experience rating is <strong>${fmt(nQ2Cur, 2)}/10</strong>${deltaSpan(dQ2)}, and hosted-event satisfaction is <strong>${fmt(nEsCur, 2)}/5</strong>${deltaSpan(dEs)}, while the team supported <strong>${fmt(nEventsCur)}</strong> events${deltaSpan(dEvents)} and generated <strong>${fmt(nLeadsCur)}</strong> distinct leads${deltaSpan(dLeads)}. ${dQ2 !== null && dQ2 < 0 ? "The manager-experience dip is worth a closer read &mdash; see the Q2/Q7 spotlight below for the client testimonials behind the number." : "Sustained or improving manager ratings alongside steady lead generation suggest the client-facing motion is healthy; the next step is tying these scores to specific renewal/booking outcomes."}</p>`);
+  paras.push(`<p>Year to date through ${endOfMonthLabel(CUR, pvCutoff)}, the team logged <strong>${fmt(visitsCur)}</strong> planning visits${deltaSpan(dVisits)}, servicing <strong>${fmt(clientsCur)}</strong> clients${deltaSpan(dClients)} across <strong>${fmt(partnersCur)}</strong> partner visits${deltaSpan(dPartners)}, <strong>${fmt(convCur)}</strong> convention groups${deltaSpan(dConv)}, and <strong>${fmt(inHouseCur)}</strong> in-house groups${deltaSpan(dInHouse)}. ${dVisits !== null && dVisits < 0 && dClients !== null && dClients > 0 ? "Fewer visits but more clients served points to the team converting outreach more efficiently &mdash; worth understanding what's driving that lift so it can be repeated." : "Read these together with staffing levels for the period to judge whether the team is stretched or has room to take on more."}</p>`);
+  paras.push(`<p>Partner referrals reached <strong>${fmt(totalReferralsCur)}</strong>${deltaSpan(dRef)}, repeat business stands at <strong>${pct(rateCur)}</strong> of accounts${deltaSpan(dRate)}, and the Visit Anaheim team experience rating is <strong>${fmt(teamScoreCur, 2)}/10</strong>${deltaSpan(dTeamScore)}. ${dRate !== null && dRate > 0 ? "A rising repeat rate is a strong signal that recent client experience investments are paying off in retention, not just acquisition." : "If repeat business is flat or declining, it's worth pairing this with the Client Survey tab to see whether satisfaction scores explain it."} See the Q2/Q7 spotlight below for the client testimonials behind the experience rating.</p>`);
+  paras.push(`<p>The team hosted <strong>${fmt(hostedEventsCur)}</strong> surveyed events${deltaSpan(dHostedEvents)} at an average <strong>${pct(eventSatCur)}</strong> satisfaction score${deltaSpan(dEventSat)}, generating <strong>${fmt(leadsCurYtd)}</strong> distinct leads${deltaSpan(dLeads)} from ${BB_CUR} VA events with an average <strong>${fmt(convWinCur)}-day</strong> lead conversion window${deltaSpan(dConvWin)}. ${dEventSat !== null && dEventSat < 0 ? "The satisfaction dip is worth a closer read on the Hosted Events tab to see whether it's concentrated in a particular event category." : "Steady or improving satisfaction alongside consistent lead generation suggests the events-to-business pipeline is healthy."}</p>`);
   document.getElementById("ov-insights").innerHTML = paras.join("");
 }
 
