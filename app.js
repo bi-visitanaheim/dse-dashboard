@@ -154,6 +154,73 @@ function applyMonthHighlight(charts, selected) {
     chart.update();
   });
 }
+// Partner Referrals tab: a two-dimension version of the month-link above.
+// "By Staff" (ref-chart1) has staff on its x-axis with no month dimension;
+// "by Month" (ref-chart2) has month on its x-axis with no staff dimension;
+// "Monthly Referrals by Staff" (ref-chart3) has month on its x-axis with one
+// dataset per staff member, so it's the only chart that can show either kind
+// of selection. Clicking a bar in ref-chart1 selects a staff member (fades
+// non-matching bars there, and fades non-matching *datasets* in ref-chart3).
+// Clicking a bar in ref-chart2 or ref-chart3 selects a month (fades
+// non-matching bars/segments there). The two selections are independent and
+// can be combined.
+const REF_LINK_STATE = { month: null, staff: null };
+function bindReferralsLink() {
+  const c1 = CHARTS["ref-chart1"], c2 = CHARTS["ref-chart2"], c3 = CHARTS["ref-chart3"];
+  if (!c1 || !c2 || !c3) return;
+  REF_LINK_STATE.month = null;
+  REF_LINK_STATE.staff = null;
+
+  function apply() {
+    const ds1 = c1.data.datasets[0];
+    if (!ds1._baseColor) ds1._baseColor = ds1.backgroundColor;
+    ds1.backgroundColor = REF_LINK_STATE.staff
+      ? c1.data.labels.map(l => l === REF_LINK_STATE.staff ? ds1._baseColor : fadeColor(ds1._baseColor))
+      : ds1._baseColor;
+    c1.update();
+
+    const ds2 = c2.data.datasets[0];
+    if (!ds2._baseColor) ds2._baseColor = ds2.backgroundColor;
+    ds2.backgroundColor = REF_LINK_STATE.month
+      ? c2.data.labels.map(l => l === REF_LINK_STATE.month ? ds2._baseColor : fadeColor(ds2._baseColor))
+      : ds2._baseColor;
+    c2.update();
+
+    c3.data.datasets.forEach(ds => {
+      if (!ds._baseColor) ds._baseColor = ds.backgroundColor;
+      const staffMatches = !REF_LINK_STATE.staff || ds.label === REF_LINK_STATE.staff;
+      if (!staffMatches) {
+        ds.backgroundColor = fadeColor(ds._baseColor);
+      } else if (REF_LINK_STATE.month) {
+        ds.backgroundColor = c3.data.labels.map(l => l === REF_LINK_STATE.month ? ds._baseColor : fadeColor(ds._baseColor));
+      } else {
+        ds.backgroundColor = ds._baseColor;
+      }
+    });
+    c3.update();
+  }
+
+  c1.canvas.style.cursor = "pointer";
+  c1.canvas.onclick = (evt) => {
+    const points = c1.getElementsAtEventForMode(evt, "index", { intersect: false }, true);
+    if (!points.length) return;
+    const label = c1.data.labels[points[0].index];
+    REF_LINK_STATE.staff = REF_LINK_STATE.staff === label ? null : label;
+    apply();
+  };
+  [c2, c3].forEach(chart => {
+    chart.canvas.style.cursor = "pointer";
+    chart.canvas.onclick = (evt) => {
+      const points = chart.getElementsAtEventForMode(evt, "index", { intersect: false }, true);
+      if (!points.length) return;
+      const label = chart.data.labels[points[0].index];
+      REF_LINK_STATE.month = REF_LINK_STATE.month === label ? null : label;
+      apply();
+    };
+  });
+
+  apply();
+}
 
 // =====================================================================
 // Bootstrap
@@ -439,8 +506,12 @@ function renderYoyTable(tableId, rows, metrics, selectedYear) {
 // =====================================================================
 function initReferrals() {
   const sel = document.getElementById("ref-year");
-  populateYearSelect(sel, getYears(DATA.partnerReferrals.raw), () => renderReferrals(sel.value));
-  renderReferrals("All");
+  const years = getYears(DATA.partnerReferrals.raw);
+  populateYearSelect(sel, years, () => renderReferrals(sel.value));
+  // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
+  const defaultYear = years.includes(2026) ? "2026" : "All";
+  sel.value = defaultYear;
+  renderReferrals(defaultYear);
 }
 function renderReferrals(year) {
   const all = DATA.partnerReferrals.raw;
@@ -491,7 +562,7 @@ function renderReferrals(year) {
   });
 
   renderYoyTable("ref-yoyTable", all, [{ label: "Partner Referrals", fn: r => r.count }], year);
-  bindMonthLink("referrals", ["ref-chart2", "ref-chart3"]);
+  bindReferralsLink();
 }
 
 // =====================================================================

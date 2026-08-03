@@ -80,13 +80,31 @@ Confirmed against the actual workbook headers, same as the Overview mapping abov
 | "Partners Visited & Planning Visits" chart | Partners Visited, Planning Visits (y-axis); Date (x-axis) | Monthly values |
 | "Groups Serviced" chart | Convention Groups Serviced, In House Groups Serviced (y-axis); Date (x-axis) | Monthly values |
 | "Clients Serviced" chart | Clients Serviced (y-axis); Date (x-axis) | Monthly values |
-| Year-over-Year KPIs table (row order: Planning Visits, Partners Visited, Convention Groups Serviced, In House Groups Serviced, Clients Serviced) | Same five columns | Sum per year, Selected Year vs. the year immediately before it |
+| Year-over-Year KPIs table (row order: Partners Visited, Planning Visits, Convention Groups Serviced, In House Groups Serviced, Clients Serviced) | Same five columns | Sum per year, Selected Year vs. the year immediately before it |
 
 Notes:
 
 - The **Year filter defaults to 2026** on page load (falls back to "All" automatically if a future data refresh ever removes 2026 from the sheet).
-- The KPI card order and the Year-over-Year table's row order are **intentionally different** from each other (cards: Partners Visited first; table: Planning Visits first) &mdash; this matches the explicit request, not an inconsistency.
+- The KPI card order and the Year-over-Year table's row order match (Partners Visited first in both).
 - The Year-over-Year table always shows all five rows even if a metric has no prior-year data at all. As of this build, the source sheet's 2025 rows have "Partners Visited" and "In House Groups Serviced" blank for every month (only Planning Visits, Convention Groups Serviced, and Clients Serviced were tracked in 2025) &mdash; those two rows show "&mdash;" for the % change instead of a misleading number or disappearing from the table. Once 2025 data is backfilled for those columns, the % change will populate automatically on the next `build_data.py` run.
+
+## Data source mapping (Partner Referrals tab)
+
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "Partner Referrals" sheet, and every one of them responds live to the Year filter (which reads from that sheet's "Date" column):
+
+| Visual | Column(s) | Aggregation |
+|---|---|---|
+| Partner Referrals card | Partner Referrals | Sum, for the selected Year |
+| Avg. Referrals per Entry card | Partner Referrals | Average, for the selected Year |
+| "Partner Referrals by Staff" chart | Staff (x-axis); Partner Referrals (y-axis) | Sum per staff member, for the selected Year |
+| "Partner Referrals by Month" chart | Date (x-axis); Partner Referrals (y-axis) | Sum per month, for the selected Year |
+| "Monthly Referrals by Staff" chart | Date (x-axis); Partner Referrals (y-axis); Staff (legend/series) | Sum per staff member per month, for the selected Year |
+| Year-over-Year table | Partner Referrals | Sum per year, Selected Year vs. the year immediately before it |
+
+Notes:
+
+- The **Year filter defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), same as Team KPIs.
+- Click-to-highlight on this tab works across all three charts, but along two different, independent dimensions: clicking a bar in "Partner Referrals by Staff" selects a **staff member** (fades that person's non-matching bar there, and fades every other staff member's stacked segments in "Monthly Referrals by Staff"); clicking a bar in "Partner Referrals by Month" or "Monthly Referrals by Staff" selects a **month** (fades non-matching months in both of those charts). The two selections are independent and can be combined (e.g., a specific staff member in a specific month). "Partner Referrals by Staff" has no month dimension and "Partner Referrals by Month" has no staff dimension, so each selection only visibly affects the two charts that share that dimension.
 
 ## How the KPI formulas were verified
 
@@ -115,6 +133,8 @@ Every chart dashboard-wide shows data labels (via the `chartjs-plugin-datalabels
 ## Click-to-highlight a month across charts
 
 On tabs where more than one chart shares the same actual-calendar-month x-axis, clicking a bar highlights that month in every other chart sharing that axis (and fades the rest); clicking it again clears the highlight. This currently links Team KPIs' three charts together, and Partner Referrals' "by Month" and "Monthly Referrals by Staff" charts together (the latter was changed from a calendar-month-of-year view to the same continuous month timeline specifically so the two could link). Charts that are the only monthly chart on their tab (Client Survey's "Avg. Score by Month", Hosted Events' "Events by Month") don't have anything to cross-highlight against, so clicking them has no visible effect.
+
+Partner Referrals also has a second, independent selection dimension: clicking a bar in "Partner Referrals by Staff" (which has no month axis) selects a staff member instead, fading everyone else's stacked segments in "Monthly Referrals by Staff" (the only other chart on that tab with a staff dimension). See "Data source mapping (Partner Referrals tab)" above for the full breakdown of which chart responds to which kind of click.
 
 ## Overview tab: year-to-date only
 
