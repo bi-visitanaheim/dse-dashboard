@@ -376,29 +376,32 @@ function renderTeam(year) {
   ].join("");
 
   const labels = rows.map(r => monthLabel(r.date.slice(0, 7)));
+  // Extra top padding on all three charts so a bar's data label never gets
+  // clipped by the chart area's edge when that bar is near the tallest on
+  // the chart (same fix as the Client Survey "Avg. Rating by DS&E Manager" chart).
   makeChart("team-chart1", {
     data: { labels, datasets: [
       { type: "bar", label: "Partners Visited", data: rows.map(r => r.partnersVisited), backgroundColor: COLORS.seriesA, borderRadius: 4 },
       { type: "bar", label: "Planning Visits", data: rows.map(r => r.planningVisits), backgroundColor: COLORS.seriesB, borderRadius: 4 }
     ] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } }
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } }
   });
   makeChart("team-chart2", {
     data: { labels, datasets: [
       { type: "bar", label: "Convention Groups Serviced", data: rows.map(r => r.conventionGroupsServiced), backgroundColor: COLORS.seriesB, borderRadius: 4 },
       { type: "bar", label: "In House Groups Serviced", data: rows.map(r => r.inHouseGroupsServiced), backgroundColor: COLORS.seriesA, borderRadius: 4 }
     ] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } }
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } }
   });
   makeChart("team-chart3", {
     type: "bar",
     data: { labels, datasets: [{ label: "Clients Serviced", data: rows.map(r => r.clientsServiced), backgroundColor: COLORS.teal, borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
 
   renderYoyTable("team-yoyTable", all, [
-    { label: "Planning Visits", fn: r => r.planningVisits },
     { label: "Partners Visited", fn: r => r.partnersVisited },
+    { label: "Planning Visits", fn: r => r.planningVisits },
     { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
     { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced },
     { label: "Clients Serviced", fn: r => r.clientsServiced }
