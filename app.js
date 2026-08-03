@@ -243,9 +243,22 @@ async function main() {
   initBooked();
 }
 
+// Each tab pulls from a different mix of source systems, so the footer's
+// "Source:" line updates to match whichever tab is currently active.
+const TAB_SOURCES = {
+  overview: "Granicus, Association Insights, and Internal Tracking",
+  team: "Granicus and Internal Tracking",
+  referrals: "Granicus",
+  repeat: "Granicus",
+  survey: "Association Insights",
+  events: "Internal Tracking",
+  booked: "Granicus"
+};
 function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${name}`));
+  const footSource = document.getElementById("footSource");
+  if (footSource && TAB_SOURCES[name]) footSource.textContent = TAB_SOURCES[name];
 }
 
 // =====================================================================
@@ -580,25 +593,36 @@ function initRepeat() {
   const yearSel = document.getElementById("rep-year");
   const acctSel = document.getElementById("rep-account");
   function applyFilters() { renderRepeat(yearSel.value, acctSel.value); }
-  populateYearSelect(yearSel, getYears(DATA.repeatingClients.raw), applyFilters);
+  const years = getYears(DATA.repeatingClients.raw);
+  populateYearSelect(yearSel, years, applyFilters);
   const accounts = [...new Set(DATA.repeatingClients.raw.map(r => r.accountName).filter(Boolean))].sort();
   acctSel.innerHTML = `<option value="All">All</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
   acctSel.value = "All";
   acctSel.onchange = applyFilters;
-  applyFilters();
+  // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
+  const defaultYear = years.includes(2026) ? "2026" : "All";
+  yearSel.value = defaultYear;
+  renderRepeat(defaultYear, "All");
 }
 function renderRepeat(year, accountName) {
   let rows = byYear(DATA.repeatingClients.raw, year);
   if (accountName && accountName !== "All") rows = rows.filter(r => r.accountName === accountName);
-  const total = rows.length;
+  // "Total Clients Serviced" = distinct count of Lead ID (not raw row count) --
+  // matches the sheet's grain 1:1 today (no duplicate Lead IDs), but this is
+  // the correct, future-proof formula per spec.
+  const totalRows = rows.length;
+  const totalClientsServiced = distinctCount(rows, r => r.leadId);
+  // Repeat Clients Count = CALCULATE(COUNTROWS('RepeatingBusiness'), KEEPFILTERS('RepeatingBusiness'[Repeat Business] = "Yes"))
   const repeatYes = rows.filter(r => r.repeat === "Yes").length;
-  const rate = total ? repeatYes / total : null;
+  // Repeat Client % = DIVIDE(Repeat Clients Count, COUNTROWS('RepeatingBusiness'), 0)
+  const rate = totalRows ? repeatYes / totalRows : null;
   const accountsServiced = distinctCount(rows, r => r.accountId);
   const acctCounts = groupBy(rows, r => r.accountId);
+  // Repeat Accounts Count = COUNTROWS(FILTER(VALUES('RepeatingBusiness'[Account ID]), CALCULATE(COUNTROWS('RepeatingBusiness')) > 1))
   const accountsWithRepeatBookings = [...acctCounts.values()].filter(v => v.length > 1).length;
 
   document.getElementById("rep-kpiGrid").innerHTML = [
-    kpiCard("Total Clients Serviced", fmt(total)),
+    kpiCard("Total Clients Serviced", fmt(totalClientsServiced)),
     kpiCard("Total Accounts Serviced", fmt(accountsServiced)),
     kpiCard("Repeat Accounts", fmt(repeatYes)),
     kpiCard("Repeat Account Percentage", pct(rate)),
@@ -612,21 +636,28 @@ function renderRepeat(year, accountName) {
     data: {
       labels: mgrs,
       datasets: [
-        { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat === "Yes").length), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center" } },
-        { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat !== "Yes").length), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center" } }
+        // Zero-count segments are suppressed (formatter) so a "0" label
+        // never floats on top of a zero-width bar next to a real segment.
+        { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat === "Yes").length), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } },
+        { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => r.repeat !== "Yes").length), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } }
       ]
     },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true } } }
   });
   const repeatAccountIds = new Set(rows.filter(r => r.repeat === "Yes").map(r => r.accountId));
   const repeatAccountsCount = repeatAccountIds.size;
+  // "Clients" ring = distinct Lead ID split by Repeat Business Yes/No (not
+  // raw row counts) -- matches today's data 1:1 since Lead ID is already
+  // unique per row, but this is the correct formula per spec.
+  const repeatClientLeadIds = new Set(rows.filter(r => r.repeat === "Yes").map(r => r.leadId));
+  const repeatClientsCount = repeatClientLeadIds.size;
   makeChart("rep-chart2", {
     type: "doughnut",
     data: {
       labels: ["Repeat", "New"],
       datasets: [
         { label: "Accounts", data: [repeatAccountsCount, accountsServiced - repeatAccountsCount], backgroundColor: [COLORS.navy, COLORS.pale], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } },
-        { label: "Clients", data: [repeatYes, total - repeatYes], backgroundColor: [COLORS.teal, COLORS.tealLight], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }
+        { label: "Clients", data: [repeatClientsCount, totalClientsServiced - repeatClientsCount], backgroundColor: [COLORS.teal, COLORS.tealLight], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }
       ]
     },
     options: {

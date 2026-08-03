@@ -106,6 +106,27 @@ Notes:
 - The **Year filter defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), same as Team KPIs.
 - Click-to-highlight on this tab works across all three charts, but along two different, independent dimensions: clicking a bar in "Partner Referrals by Staff" selects a **staff member** (fades that person's non-matching bar there, and fades every other staff member's stacked segments in "Monthly Referrals by Staff"); clicking a bar in "Partner Referrals by Month" or "Monthly Referrals by Staff" selects a **month** (fades non-matching months in both of those charts). The two selections are independent and can be combined (e.g., a specific staff member in a specific month). "Partner Referrals by Staff" has no month dimension and "Partner Referrals by Month" has no staff dimension, so each selection only visibly affects the two charts that share that dimension.
 
+## Data source mapping (Repeat Clients tab)
+
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "Repeating ACC Clients Services" sheet, filtered by its "Meeting Dates (Preferred Start)" column ("Meeting Start Date") for the Year filter and by "Account Name" for the Account Name filter -- both filters drive every card/chart/table on the tab dynamically.
+
+| Visual | Column(s) | Formula |
+|---|---|---|
+| Total Clients Serviced card | Lead ID | Distinct count |
+| Total Accounts Serviced card | Account ID | Distinct count |
+| Repeat Accounts card | Repeat Business | `Repeat Clients Count = CALCULATE(COUNTROWS('RepeatingBusiness'), KEEPFILTERS('RepeatingBusiness'[Repeat Business] = "Yes"))` |
+| Repeat Account Percentage card | Repeat Business | `Repeat Client % = DIVIDE(CALCULATE(COUNTROWS('RepeatingBusiness'), KEEPFILTERS('RepeatingBusiness'[Repeat Business] = "Yes")), COUNTROWS('RepeatingBusiness'), 0)` |
+| Accounts w/ Repeat Bookings card | Account ID | `Repeat Accounts Count = COUNTROWS(FILTER(VALUES('RepeatingBusiness'[Account ID]), CALCULATE(COUNTROWS('RepeatingBusiness')) > 1))` |
+| "Repeat vs. New Services Manager" chart | Services Manager (y-axis); Repeat Business (x-axis, as count); Repeat Business (legend) | Row count per manager, split Repeat/New |
+| "Repeat vs. New: Clients & Accounts" chart | Lead ID (Clients ring), Account ID (Accounts ring); both split by Repeat Business (legend) | Distinct count, split Repeat/New |
+| Accounts table | Account = Account Name; Attendance = Original Total Attendance; Peak Room = Requested Peak Room; Repeat = Repeat Business; Services Manager = Services Manager | Row-level detail, top 30 by number of bookings |
+
+Notes:
+
+- The **Year filter defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), same as the other tabs.
+- "Total Clients Serviced" and the "Clients" ring's Repeat/New split now use **distinct count of Lead ID** rather than raw row counts, per the measures above. As of this build the sheet's grain is already one row per Lead ID (no duplicates), so the numbers are identical to a plain row count today -- but the distinct-count formula is what's now implemented, so it stays correct if a Lead ID ever appears on more than one row.
+- Data labels on "Repeat vs. New Services Manager" suppress the "0" label for any manager with zero Repeat or zero New bookings, so a stray "0" never overlaps the real segment next to it.
+
 ## How the KPI formulas were verified
 
 Every KPI on this dashboard was checked against the numbers shown live in the Power BI report (viewed via browser on 2026-07-29) rather than assumed from column names. Some notable, non-obvious formulas this uncovered:
@@ -121,6 +142,20 @@ Every KPI on this dashboard was checked against the numbers shown live in the Po
 One number I could **not** reproduce: the source report's Booked Business "Total Events" (35) and "Event Conversion Rate" (28.6%). The Booked Business sheet only contains events that already generated at least one lead, so a "total events" and "conversion rate" computed from it alone are tautological (always 100%). The live report's 35 almost certainly comes from a join to the broader Events calendar filtered to the same window — I didn't have enough visibility into that relationship to replicate it with confidence, so this dashboard shows "Distinct Events with Leads" instead and omits the conversion-rate card rather than presenting a number I couldn't verify.
 
 **Hosted Events ↔ Booked Business relationship** (bottom of the Hosted Events tab): `eventSurveys` and `bookedBusiness` share the same `eventId` values even though the two sheets label events differently (e.g. "Ducks vs. Stars" in Event Surveys is "2025 March Ducks vs. Dallas Stars" in Booked Business). 6 of the 35 hosted events match a Booked Business `eventId`; the cross-reference table/chart shows 5 of those 6, because it counts unique leads the same way the rest of the tab does (`dedupeBy` on Lead ID), and a few leads in the source data span more than one event, so they get attributed to whichever event lists them first.
+
+## Footer source line (per tab)
+
+The "Source: ..." line in the footer changes depending on which tab is active, since each tab draws from a different mix of the department's underlying systems (not all of which are represented in `Department KPIs.xlsx` itself -- this reflects where the sheet's own data ultimately comes from). The mapping (`TAB_SOURCES` in `app.js`, applied in `switchTab()`):
+
+| Tab | Source |
+|---|---|
+| Overview | Granicus, Association Insights, and Internal Tracking |
+| Team KPIs | Granicus and Internal Tracking |
+| Partner Referrals | Granicus |
+| Repeat Clients | Granicus |
+| Client Survey | Association Insights |
+| Hosted Events | Internal Tracking |
+| Booked Business | Granicus |
 
 ## Filters implemented vs. the source report
 
