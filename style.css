@@ -253,6 +253,14 @@ table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; fo
   white-space: normal;
   min-width: 160px;
 }
+/* "Ratings by Event Category" has 6 columns, several with long headers
+   ("Avg. Satisfaction Score", "Arrival and Registration", "Recommend Future
+   Events") -- wrap the header text onto 2 lines instead of letting it get
+   cut off at the panel edge. */
+#hev-byCategoryTable th {
+  white-space: normal;
+  line-height: 1.3;
+}
 
 /* ---------- Insight narrative ---------- */
 .insight-panel { border-left: 4px solid var(--navy); }
