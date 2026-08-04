@@ -860,7 +860,9 @@ function renderEvents(year, category, eventName) {
   makeChart("hev-chart1", {
     type: "bar",
     data: { labels: months.map(monthLabel), datasets: [{ label: "Events", data: months.map(m => distinctCount(byMonth.get(m), r => r.eventId)), backgroundColor: COLORS.navy, borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    // Extra top padding so a bar hitting the top of the scale still has room
+    // for its data label instead of getting clipped by the chart edge.
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
 
   // Question Ratings: x-axis is Event Date by month (same grain as "Events

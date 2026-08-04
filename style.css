@@ -217,6 +217,12 @@ section.panel p.desc {
   max-width: 900px;
 }
 .grid-2 { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; }
+/* Grid items default to min-width: auto, so a wide table (e.g. a table with
+   several nowrap columns) can force its whole panel wider than its column
+   and out of alignment with the panel next to it. min-width: 0 lets the
+   panel shrink to its column's actual width; the table itself still scrolls
+   horizontally inside .table-scroll below if it doesn't fit. */
+.grid-2 > * { min-width: 0; }
 @media (max-width: 900px) {
   .grid-2 { grid-template-columns: 1fr; }
 }
@@ -226,7 +232,7 @@ section.panel p.desc {
 .chart-box.clickable canvas { cursor: pointer; }
 
 /* ---------- Tables ---------- */
-.table-scroll { max-height: 320px; overflow-y: auto; }
+.table-scroll { max-height: 320px; overflow-y: auto; overflow-x: auto; }
 table.mini { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 table.mini th, table.mini td {
   text-align: left;
