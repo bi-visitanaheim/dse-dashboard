@@ -142,7 +142,7 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | "Avg. Rating by DS&E Manager" chart | Visit Anaheim Destination Service Manager (x-axis); Rating (y-axis) | Average per manager |
 | "Ratings by Year" table | Question (rows); Rating (values) | Average per question per year, one column per year present in the data (2023 through the latest year) |
 | "Year-over-Year % Change" table | Question (rows); Rating (values) | YoY % change between each consecutive pair of years present in the data |
-| "Feedback" section testimonials | Feedback | Up to 4 responses per year, each card titled with its year |
+| "Feedback" section testimonials | Feedback | Up to 20 responses per year, each card titled with its year |
 
 Notes:
 
@@ -206,7 +206,7 @@ The three paragraphs below the Department at a Glance table are generated (not h
 
 ## Feedback section (Client Survey tab)
 
-Titled "Feedback," this section surfaces Question 7 (open-ended client testimonials). It originally paired a Question 2 line chart with the testimonials, but per later direction it's now feedback-cards only: each card is headed by its year and shows up to 4 testimonial quotes from Question 7 for that year. It now respects both filters on the tab — the Year filter (showing just the selected year's card, or every year present in the data when "All" is selected) and the Services Manager filter — same as every other card/chart on this tab (recomputed client-side from the raw survey rows).
+Titled "Feedback," this section surfaces Question 7 (open-ended client testimonials). It originally paired a Question 2 line chart with the testimonials, but per later direction it's now feedback-cards only: each card is headed by its year and shows up to 20 testimonial quotes from Question 7 for that year (fewer if that year has less feedback than that). It now respects both filters on the tab — the Year filter (showing just the selected year's card, or every year present in the data when "All" is selected) and the Services Manager filter — same as every other card/chart on this tab (recomputed client-side from the raw survey rows).
 
 ## Known data-quality issue
 

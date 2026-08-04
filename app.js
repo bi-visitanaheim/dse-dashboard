@@ -796,10 +796,11 @@ function renderQ2Q7(year, manager) {
   // shows just that one card.
   const YEARS = (year && year !== "All") ? [Number(year)] : getYears(DATA.accSurvey.raw);
 
-  // Each testimonial card is titled with its year, 4 comments per year.
+  // Each testimonial card is titled with its year, up to 20 comments per year
+  // (fewer if that year doesn't have 20 feedback responses).
   const testimonialsByYear = {};
   YEARS.forEach(y => {
-    testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 4);
+    testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 20);
   });
   const cols = document.getElementById("testimonialCols");
   cols.innerHTML = YEARS.map(y => {
