@@ -255,17 +255,11 @@ table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; fo
 }
 /* "Ratings by Event Category" has 6 columns, several with long headers
    ("Avg. Satisfaction Score", "Arrival and Registration", "Recommend Future
-   Events"). table-layout: fixed forces all 6 columns to share the panel's
-   actual width instead of growing to fit their content (which pushed the
-   table wider than the panel and triggered horizontal scrolling) -- header
-   and cell text wraps onto multiple lines instead. */
-#hev-byCategoryTable {
-  table-layout: fixed;
-  width: 100%;
-}
-#hev-byCategoryTable th, #hev-byCategoryTable td {
+   Events") -- wrap the header text onto whole words (not mid-word breaks)
+   instead of letting it get cut off at the panel edge. The table itself
+   still scrolls horizontally inside .table-scroll if it doesn't fully fit. */
+#hev-byCategoryTable th {
   white-space: normal;
-  word-wrap: break-word;
   line-height: 1.3;
 }
 
