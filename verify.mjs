@@ -106,11 +106,22 @@ assert([...doc.querySelectorAll("#tab-events .desc")].every(el => !el.textConten
 assert(doc.querySelectorAll("#hev-bbTable tbody tr").length === 5, "Hosted Events: 5 events cross-referenced to Booked Business");
 
 // Booked Business
-assert(doc.getElementById("bb-kpiGrid").children.length === 5, "Booked Business: 5 KPI cards (Unique Attendees removed)");
+assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 KPI cards (Total Events card added)");
+assert(doc.getElementById("bb-kpiGrid").textContent.includes("Total Events"), "Booked Business: 'Total Events' card present");
+assert(doc.getElementById("bb-kpiGrid").textContent.includes("Events That Generated Leads"), "Booked Business: card renamed to 'Events That Generated Leads'");
+assert(doc.getElementById("bb-kpiGrid").textContent.includes("Definite Leads Rate"), "Booked Business: card renamed to 'Definite Leads Rate'");
+// Booked Business's sheet only has 2025 data so far (no 2026 rows yet), so
+// the 2026-default falls back to "All" -- same fallback logic as every other
+// tab's Year filter, just currently landing on a different value here.
+assert(doc.getElementById("bb-year").value === "All", "Booked Business: Year filter defaults to 2026 (falls back to All, since the sheet has no 2026 rows yet)");
+assert(!doc.getElementById("bb-chart3"), "Booked Business: 'Conversion Window - % of Leads' chart removed");
+assert(doc.querySelector("#bb-conversionTable thead").textContent.includes("2-3 Months"), "Booked Business: conversion table columns renamed to month brackets");
 assert(doc.querySelectorAll("#bb-conversionTable tbody tr").length > 0, "Booked Business: conversion table has rows");
 assert(doc.querySelectorAll("#bb-conversionTable tfoot tr").length === 1, "Booked Business: conversion table has a totals row");
 assert(doc.getElementById("bb-event").children.length > 1, "Booked Business: event name filter populated");
 assert(doc.querySelectorAll("#bb-detailTable tbody tr").length > 0, "Booked Business: detail table has rows");
+assert(doc.querySelector("#bb-detailTable thead").textContent.trim() === "EventAccountLeadEvent Start DateLead Created Date", "Booked Business: detail table has a Lead column");
+assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#bb-detailTable tbody tr td:nth-child(4)").textContent), "Booked Business: dates formatted MM/DD/YYYY");
 
 // Spot-check the corrected KPI math against values verified live in the Power BI report
 const overview = doc.getElementById("ov-kpiGrid").innerHTML;

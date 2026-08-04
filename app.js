@@ -284,6 +284,12 @@ function endOfMonthLabel(year, month) {
   const d = new Date(year, month, 0); // day 0 of next month = last day of `month`
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
+// "YYYY-MM-DD" -> "MM/DD/YYYY", for the Booked Business detail table.
+function mdy(iso) {
+  if (!iso) return null;
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return `${m}/${d}/${y}`;
+}
 function ytdRows(rows, dateField, year, cutoff) {
   return rows.filter(r => yearOf(r[dateField]) === year && monthOf(r[dateField]) !== null && monthOf(r[dateField]) <= cutoff);
 }
@@ -966,7 +972,8 @@ function initBooked() {
   const statusSel = document.getElementById("bb-status");
   const evtSel = document.getElementById("bb-event");
   function applyFilters() { renderBooked(yearSel.value, statusSel.value, evtSel.value); }
-  populateYearSelect(yearSel, getYears(DATA.bookedBusiness.raw), applyFilters);
+  const years = getYears(DATA.bookedBusiness.raw);
+  populateYearSelect(yearSel, years, applyFilters);
   const statuses = [...new Set(DATA.bookedBusiness.raw.map(r => r.leadStatus).filter(Boolean))].sort();
   statusSel.innerHTML = `<option value="All">All</option>` + statuses.map(s => `<option value="${s}">${s}</option>`).join("");
   statusSel.value = "All";
@@ -975,12 +982,25 @@ function initBooked() {
   evtSel.innerHTML = `<option value="All">All</option>` + evts.map(e => `<option value="${e}">${e}</option>`).join("");
   evtSel.value = "All";
   evtSel.onchange = applyFilters;
+  // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
+  const defaultYear = years.includes(2026) ? "2026" : "All";
+  yearSel.value = defaultYear;
   applyFilters();
 }
 function renderBooked(year, status, eventName) {
   let rows = byYear(DATA.bookedBusiness.raw, year);
   if (status !== "All") rows = rows.filter(r => r.leadStatus === status);
   if (eventName && eventName !== "All") rows = rows.filter(r => r.eventName === eventName);
+
+  // "Total Events" is brought over from the Hosted Events tab's card of the
+  // same name -- it reads the separate "Event Surveys" sheet, so it only
+  // follows this tab's Year filter (matched on that sheet's own Event Date
+  // year) and not Lead Status or Event Name, since those are Booked
+  // Business-specific and the two sheets don't share an event-name
+  // vocabulary (see the Hosted Events <-> Booked Business cross-reference
+  // notes in the README for why event names differ between the two sheets).
+  const esRows = year === "All" ? DATA.eventSurveys.raw : DATA.eventSurveys.raw.filter(r => r.year === Number(year));
+  const totalEvents = distinctCount(esRows, r => r.eventId);
 
   const distinctEvents = distinctCount(rows, r => r.eventId);
   const leadsGenerated = distinctCount(rows, r => r.leadId);
@@ -990,13 +1010,19 @@ function renderBooked(year, status, eventName) {
   // Averaged at the same grain as the source report (per lead-attendee row,
   // not deduped by lead) -- confirmed by matching the live Power BI value.
   const avgConversionWindow = mean(rows, r => r.daysFromLeadCreatedToEvent);
+  // Once the average window passes 90 days, showing it in months reads more
+  // naturally than a large day count (e.g. "4.2 months" vs. "127 days").
+  const convWindowText = avgConversionWindow === null ? "&mdash;"
+    : avgConversionWindow > 90 ? fmt(avgConversionWindow / 30, 1) + " months"
+    : fmt(avgConversionWindow) + " days";
 
   document.getElementById("bb-kpiGrid").innerHTML = [
-    kpiCard("Distinct Events with Leads", fmt(distinctEvents)),
+    kpiCard("Total Events", fmt(totalEvents)),
+    kpiCard("Events That Generated Leads", fmt(distinctEvents)),
     kpiCard("Leads Generated", fmt(leadsGenerated)),
     kpiCard("Definite Leads", fmt(definiteLeads)),
-    kpiCard("Definite Rate", pct(definiteRate)),
-    kpiCard("Avg. Conversion Window", fmt(avgConversionWindow) + " days")
+    kpiCard("Definite Leads Rate", pct(definiteRate)),
+    kpiCard("Avg. Conversion Window", convWindowText)
   ].join("");
 
   const byEvent = groupBy(uniqueLeadRows, r => r.eventName);
@@ -1015,8 +1041,20 @@ function renderBooked(year, status, eventName) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
   });
 
+  // Conversion-window brackets, per this DAX measure (repeated for each
+  // bracket, only the day range and label change):
+  //   NewLeads30 = CALCULATE(
+  //     DISTINCTCOUNT(Master[Lead ID]),
+  //     FILTER(
+  //       VALUES(Master[Lead ID]),
+  //       VAR dmin = CALCULATE(MIN(Master[Days of Lead Created from Event]))
+  //       RETURN NOT ISBLANK(dmin) && dmin >= 0 && dmin <= 30
+  //     )
+  //   )
+  // "1 Month" = 0-30 days (the measure above); "2-3 Months" = 31-90 days;
+  // "4-6 Months" = 91-180 days; "7-12 Months" = 181-365 days; "Over 12+
+  // Months" = 366+ days.
   const buckets = [[0, 30], [31, 90], [91, 180], [181, 365], [366, Infinity]];
-  const bucketNames = ["0–30d", "31–90d", "91–180d", "181–365d", "365d+"];
   const perEventCounts = [...byEvent.entries()].map(([name, rs]) => ({
     name,
     counts: buckets.map(([lo, hi]) => rs.filter(r => r.daysFromLeadCreatedToEvent !== null && r.daysFromLeadCreatedToEvent >= lo && r.daysFromLeadCreatedToEvent <= hi).length)
@@ -1028,37 +1066,9 @@ function renderBooked(year, status, eventName) {
   document.querySelector("#bb-conversionTable tfoot").innerHTML =
     `<tr><td>Total</td>${bucketTotals.map(t => `<td>${t || 0}</td>`).join("")}</tr>`;
 
-  // Same data as % of each event's leads -- easier for leadership to scan for
-  // "mostly fast" vs "mostly slow" converting events than the raw-count table.
-  const pctByEvent = perEventCounts
-    .map(e => ({ name: e.name, total: e.counts.reduce((a, b) => a + b, 0), counts: e.counts }))
-    .filter(e => e.total > 0)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 10);
-  makeChart("bb-chart3", {
-    type: "bar",
-    data: {
-      labels: pctByEvent.map(e => e.name),
-      datasets: buckets.map((_, i) => {
-        const bg = [COLORS.navy, COLORS.teal, COLORS.tealLight, COLORS.pale][i % 4];
-        return {
-          label: bucketNames[i],
-          data: pctByEvent.map(e => Math.round((e.counts[i] / e.total) * 1000) / 10),
-          backgroundColor: bg,
-          datalabels: { color: labelContrast(bg), anchor: "center", align: "center", formatter: (v) => v ? v + "%" : "" }
-        };
-      })
-    },
-    options: {
-      indexAxis: "y", responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { position: "bottom" } },
-      scales: { x: { stacked: true, max: 100, ticks: { callback: (v) => v + "%" } }, y: { stacked: true } }
-    }
-  });
-
   document.querySelector("#bb-detailTable tbody").innerHTML = [...uniqueLeadRows]
     .sort((a, b) => (b.eventStartDate || "").localeCompare(a.eventStartDate || ""))
-    .map(r => `<tr><td>${r.eventName}</td><td>${r.accountName}</td><td>${r.eventStartDate || "&mdash;"}</td><td>${r.leadCreatedDate || "&mdash;"}</td></tr>`)
+    .map(r => `<tr><td>${r.eventName}</td><td>${r.accountName}</td><td>${r.leadName}</td><td>${mdy(r.eventStartDate) || "&mdash;"}</td><td>${mdy(r.leadCreatedDate) || "&mdash;"}</td></tr>`)
     .join("");
 }
 
