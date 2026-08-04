@@ -255,10 +255,17 @@ table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; fo
 }
 /* "Ratings by Event Category" has 6 columns, several with long headers
    ("Avg. Satisfaction Score", "Arrival and Registration", "Recommend Future
-   Events") -- wrap the header text onto 2 lines instead of letting it get
-   cut off at the panel edge. */
-#hev-byCategoryTable th {
+   Events"). table-layout: fixed forces all 6 columns to share the panel's
+   actual width instead of growing to fit their content (which pushed the
+   table wider than the panel and triggered horizontal scrolling) -- header
+   and cell text wraps onto multiple lines instead. */
+#hev-byCategoryTable {
+  table-layout: fixed;
+  width: 100%;
+}
+#hev-byCategoryTable th, #hev-byCategoryTable td {
   white-space: normal;
+  word-wrap: break-word;
   line-height: 1.3;
 }
 
