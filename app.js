@@ -689,7 +689,7 @@ function renderRepeat(year, accountName, manager) {
 function initSurvey() {
   const yearSel = document.getElementById("sur-year");
   const mgrSel = document.getElementById("sur-manager");
-  function applyFilters() { renderSurvey(yearSel.value, mgrSel.value); renderQ2Q7(mgrSel.value); }
+  function applyFilters() { renderSurvey(yearSel.value, mgrSel.value); renderQ2Q7(yearSel.value, mgrSel.value); }
   const years = getYears(DATA.accSurvey.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const managers = [...new Set(DATA.accSurvey.raw.map(r => r.manager).filter(Boolean))].sort();
@@ -700,7 +700,7 @@ function initSurvey() {
   const defaultYear = years.includes(2026) ? "2026" : "All";
   yearSel.value = defaultYear;
   renderSurvey(defaultYear, "All");
-  renderQ2Q7("All");
+  renderQ2Q7(defaultYear, "All");
 }
 function renderSurvey(year, manager) {
   let all = DATA.accSurvey.raw;
@@ -782,18 +782,19 @@ function renderSurvey(year, manager) {
     return `<tr><td>${q}</td>${cells.join("")}</tr>`;
   }).join("");
 }
-function renderQ2Q7(manager) {
+function renderQ2Q7(year, manager) {
   const spot = DATA.accSurvey.q2q7;
   let raw = DATA.accSurvey.raw;
   if (manager && manager !== "All") raw = raw.filter(r => r.manager === manager);
 
   document.getElementById("q2q7Desc").innerHTML =
-    `Client feedback from Question 7 (&ldquo;${spot.q7Text}&rdquo;), grouped by year. This section isn't in the source Power BI report ` +
-    `&mdash; it's added here per the DS&amp;E dashboard brief to surface client comments alongside the ratings above.` +
+    `Client feedback from Question 7 (&ldquo;${spot.q7Text}&rdquo;), grouped by year.` +
     (manager && manager !== "All" ? ` Filtered to responses naming <strong>${manager}</strong> as the Services Manager.` : "");
 
-  // Years come from whatever's actually in the sheet (not a hardcoded range).
-  const YEARS = getYears(DATA.accSurvey.raw);
+  // Years respect the page's Year filter, same as every other card/chart on
+  // this tab -- "All" shows every year present in the sheet, a specific year
+  // shows just that one card.
+  const YEARS = (year && year !== "All") ? [Number(year)] : getYears(DATA.accSurvey.raw);
 
   // Each testimonial card is titled with its year, 4 comments per year.
   const testimonialsByYear = {};

@@ -206,7 +206,7 @@ The three paragraphs below the Department at a Glance table are generated (not h
 
 ## Feedback section (Client Survey tab)
 
-This section is **not** in the source Power BI report — it's included because the DS&E dashboard brief specifically asked to surface Question 7 (open-ended client testimonials) alongside the numeric ratings above. It originally paired a Question 2 line chart with the testimonials, but per later direction it's now feedback-cards only, titled "Feedback": each card is headed by its year (2023 through the latest year present in the data) and shows up to 4 testimonial quotes from Question 7 for that year. It always shows the full multi-year set of years regardless of the Year filter, but does respect the Services Manager filter (the testimonial samples are recomputed client-side from the raw survey rows).
+Titled "Feedback," this section surfaces Question 7 (open-ended client testimonials). It originally paired a Question 2 line chart with the testimonials, but per later direction it's now feedback-cards only: each card is headed by its year and shows up to 4 testimonial quotes from Question 7 for that year. It now respects both filters on the tab — the Year filter (showing just the selected year's card, or every year present in the data when "All" is selected) and the Services Manager filter — same as every other card/chart on this tab (recomputed client-side from the raw survey rows).
 
 ## Known data-quality issue
 
