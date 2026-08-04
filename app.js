@@ -690,29 +690,35 @@ function initSurvey() {
   const yearSel = document.getElementById("sur-year");
   const mgrSel = document.getElementById("sur-manager");
   function applyFilters() { renderSurvey(yearSel.value, mgrSel.value); renderQ2Q7(mgrSel.value); }
-  populateYearSelect(yearSel, getYears(DATA.accSurvey.raw), applyFilters);
+  const years = getYears(DATA.accSurvey.raw);
+  populateYearSelect(yearSel, years, applyFilters);
   const managers = [...new Set(DATA.accSurvey.raw.map(r => r.manager).filter(Boolean))].sort();
   mgrSel.innerHTML = `<option value="All">All</option>` + managers.map(m => `<option value="${m}">${m}</option>`).join("");
   mgrSel.value = "All";
   mgrSel.onchange = applyFilters;
-  applyFilters();
+  // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
+  const defaultYear = years.includes(2026) ? "2026" : "All";
+  yearSel.value = defaultYear;
+  renderSurvey(defaultYear, "All");
+  renderQ2Q7("All");
 }
 function renderSurvey(year, manager) {
   let all = DATA.accSurvey.raw;
   if (manager && manager !== "All") all = all.filter(r => r.manager === manager);
   const rows = byYear(all, year);
   const q2Text = DATA.accSurvey.q2q7.q2Text;
-  const q5Text = DATA.accSurvey.questions[4];
+  // New 8th question added to the ACC Survey sheet -- exact match required.
+  const overallText = "The Overall Anaheim Experience";
   const ratedRows = rows.filter(r => r.rating !== null);
 
   const teamScore = mean(ratedRows, r => r.rating);
-  const metObjectivesScore = mean(ratedRows.filter(r => r.question === q5Text), r => r.rating);
+  const overallScore = mean(ratedRows.filter(r => r.question === overallText), r => r.rating);
   const managerScore = mean(ratedRows.filter(r => r.question === q2Text), r => r.rating);
   const respondents = distinctCount(rows, r => r.leadId);
 
   document.getElementById("sur-kpiGrid").innerHTML = [
+    kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2)),
     kpiCard("Visit Anaheim Team Experience Score", fmt(teamScore, 2)),
-    kpiCard("Visit Anaheim Met Event Objectives Score", fmt(metObjectivesScore, 2)),
     kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2)),
     kpiCard("Survey Respondents", fmt(respondents))
   ].join("");
@@ -721,7 +727,11 @@ function renderSurvey(year, manager) {
   const qLabels = [...byQ.keys()];
   makeChart("sur-chart1", {
     type: "bar",
-    data: { labels: qLabels.map(q => wrapLabel(q)), datasets: [{ label: "Avg Rating", data: qLabels.map(q => mean(byQ.get(q), r => r.rating)), backgroundColor: COLORS.navy, borderRadius: 4 }] },
+    data: { labels: qLabels.map(q => wrapLabel(q)), datasets: [{
+      label: "Avg Rating", data: qLabels.map(q => mean(byQ.get(q), r => r.rating)), backgroundColor: COLORS.navy, borderRadius: 4,
+      // Bold, larger data labels so they're easy to read at a glance.
+      datalabels: { font: { size: 13, weight: "700" }, color: COLORS.text }
+    }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 10 } } }
   });
 
@@ -745,16 +755,23 @@ function renderSurvey(year, manager) {
 
   // Both YoY tables always show the full multi-year view regardless of the
   // Year filter (but do respect the Services Manager filter via `all` above).
-  const YEARS = [2023, 2024, 2025, 2026];
+  // Years come from whatever's actually in the sheet (2023 through the
+  // latest year present), not a hardcoded range, so this keeps working as
+  // new years of data get added.
+  const YEARS = getYears(DATA.accSurvey.raw);
   const questions = DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
   const yearlyByQ = questions.map(q => {
     const yearly = {};
     YEARS.forEach(y => { yearly[y] = mean(all.filter(r => r.question === q && r.year === y), r => r.rating); });
     return { q, yearly };
   });
+  document.querySelector("#sur-yoyValuesTable thead tr").innerHTML =
+    `<th>Question</th>` + YEARS.map(y => `<th>${y}</th>`).join("");
   document.querySelector("#sur-yoyValuesTable tbody").innerHTML = yearlyByQ.map(({ q, yearly }) =>
     `<tr><td>${q}</td>${YEARS.map(y => `<td>${fmt(yearly[y], 2)}</td>`).join("")}</tr>`
   ).join("");
+  document.querySelector("#sur-yoyPctTable thead tr").innerHTML =
+    `<th>Question</th>` + YEARS.slice(0, -1).map((y, i) => `<th>${String(y).slice(2)}&rarr;${String(YEARS[i + 1]).slice(2)}</th>`).join("");
   document.querySelector("#sur-yoyPctTable tbody").innerHTML = yearlyByQ.map(({ q, yearly }) => {
     const cells = YEARS.slice(0, -1).map((y, i) => {
       const d = pctChange(yearly[y], yearly[YEARS[i + 1]]);
@@ -774,7 +791,8 @@ function renderQ2Q7(manager) {
     `&mdash; it's added here per the DS&amp;E dashboard brief to read the rating trend alongside <em>why</em> it moved.` +
     (manager && manager !== "All" ? ` Filtered to responses naming <strong>${manager}</strong> as the Services Manager.` : "");
 
-  const YEARS = [2023, 2024, 2025, 2026];
+  // Years come from whatever's actually in the sheet (not a hardcoded range).
+  const YEARS = getYears(DATA.accSurvey.raw);
   const q2Yearly = {};
   YEARS.forEach(y => { q2Yearly[y] = mean(raw.filter(r => r.question === spot.q2Text && r.year === y), r => r.rating); });
   makeChart("chartQ2", {
@@ -783,14 +801,16 @@ function renderQ2Q7(manager) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { color: "#ffffff" } }, scales: { y: { min: 0, max: 10, ticks: { color: "#cfe6e6" }, grid: { color: "rgba(255,255,255,.08)" } }, x: { ticks: { color: "#cfe6e6" }, grid: { display: false } } } }
   });
 
+  // Only the Feedback text is shown per testimonial (no year badge -- each
+  // column is already grouped by year), 4 comments per year.
   const testimonialsByYear = {};
   YEARS.forEach(y => {
-    testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 3);
+    testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 4);
   });
   const cols = document.getElementById("testimonialCols");
   cols.innerHTML = YEARS.map(y => {
     const items = testimonialsByYear[y] || [];
-    return items.map(it => `<div class="testimonial"><span class="yr">${y}</span><br/>&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`).join("");
+    return items.map(it => `<div class="testimonial">&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`).join("");
   }).join("");
 }
 

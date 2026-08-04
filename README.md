@@ -127,6 +127,31 @@ Notes:
 - "Total Clients Serviced" and the "Clients" ring's Repeat/New split now use **distinct count of Lead ID** rather than raw row counts, per the measures above. As of this build the sheet's grain is already one row per Lead ID (no duplicates), so the numbers are identical to a plain row count today -- but the distinct-count formula is what's now implemented, so it stays correct if a Lead ID ever appears on more than one row.
 - Data labels on "Repeat vs. New Services Manager" suppress the "0" label for any manager with zero Repeat or zero New bookings, so a stray "0" never overlaps the real segment next to it.
 
+## Data source mapping (Client Survey tab)
+
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "ACC Survey" sheet, filtered by its "Start Date" column for the Year filter and by "Visit Anaheim Destination Service Manager" for the Services Manager filter -- both drive every card/chart on the tab dynamically.
+
+| Visual | Column(s) | Formula |
+|---|---|---|
+| The Overall Anaheim Experience Score card | Rating | Average, filtered to Question = "The Overall Anaheim Experience" |
+| Visit Anaheim Team Experience Score card | Rating | Average across all questions (grand mean) |
+| DS&E Manager Experience Score card | Rating | Average, filtered to Question = "The Experience With Your Visit Anaheim Destination Service and Events Manager" |
+| Survey Respondents card | Lead ID | Distinct count |
+| "Category Rating" chart | Question (y-axis); Rating (x-axis) | Average per question |
+| "Avg. Score by Month" chart | Start Date, by month (x-axis); Rating (y-axis) | Average per month |
+| "Avg. Rating by DS&E Manager" chart | Visit Anaheim Destination Service Manager (x-axis); Rating (y-axis) | Average per manager |
+| "Ratings by Year" table | Question (rows); Rating (values) | Average per question per year, one column per year present in the data (2023 through the latest year) |
+| "Year-over-Year % Change" table | Question (rows); Rating (values) | YoY % change between each consecutive pair of years present in the data |
+| Q2/Q7 spotlight testimonials | Feedback | Up to 4 responses per year, feedback text only |
+
+Notes:
+
+- The **Year filter defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), same as the other tabs.
+- **"The Overall Anaheim Experience Score"** replaces the former "Visit Anaheim Met Event Objectives Score" card and sits to the left of "Visit Anaheim Team Experience Score" -- it reads the new 8th ACC Survey question ("The Overall Anaheim Experience"), which the workbook started tracking retroactively across all 122 existing respondents (not from new respondents).
+- **"Category Rating"** data labels are now bold and larger (font size bumped up, explicit bold weight) so they're easy to read at a glance.
+- **"Ratings by Year" and "Year-over-Year % Change"** now build their year columns dynamically from whatever years are actually present in the ACC Survey sheet (2023 through the latest year), instead of a hardcoded 2023-2026 range -- both the table headers and the Q2/Q7 spotlight's line chart/testimonial years update automatically as new years of data get added.
+- **Spotlight testimonials** now show only the feedback quote (no year badge inside the card, since testimonials are already grouped into year-specific columns) -- and show up to 4 per year (previously 3).
+
 ## How the KPI formulas were verified
 
 Every KPI on this dashboard was checked against the numbers shown live in the Power BI report (viewed via browser on 2026-07-29) rather than assumed from column names. Some notable, non-obvious formulas this uncovered:
