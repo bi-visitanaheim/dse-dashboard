@@ -817,7 +817,8 @@ function initEvents() {
   const catSel = document.getElementById("hev-category");
   const evtSel = document.getElementById("hev-event");
   function applyFilters() { renderEvents(yearSel.value, catSel.value, evtSel.value); }
-  populateYearSelect(yearSel, getYears(DATA.eventSurveys.raw), applyFilters);
+  const years = getYears(DATA.eventSurveys.raw);
+  populateYearSelect(yearSel, years, applyFilters);
   const cats = [...new Set(DATA.eventSurveys.raw.map(r => r.category).filter(Boolean))].sort();
   catSel.innerHTML = `<option value="All">All</option>` + cats.map(c => `<option value="${c}">${c}</option>`).join("");
   catSel.value = "All";
@@ -826,6 +827,9 @@ function initEvents() {
   evtSel.innerHTML = `<option value="All">All</option>` + evts.map(e => `<option value="${e}">${e}</option>`).join("");
   evtSel.value = "All";
   evtSel.onchange = applyFilters;
+  // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
+  const defaultYear = years.includes(2026) ? "2026" : "All";
+  yearSel.value = defaultYear;
   applyFilters();
   renderHevBookedLink(); // fixed cross-reference, independent of the filters above
 }
@@ -837,7 +841,10 @@ function renderEvents(year, category, eventName) {
   const totalEvents = distinctCount(rows, r => r.eventId);
   const attendeeRows = rows.filter(r => r.surveyType === "Attendee");
   const partnerRows = rows.filter(r => r.surveyType === "Partner");
-  const respondents = rows.length;
+  // "Survey Respondents" is a plain COUNT of the Event ID column (every row
+  // is one response, so this is the same as counting rows) -- not a distinct
+  // count, unlike "Total Events" above.
+  const respondents = rows.filter(r => r.eventId !== null && r.eventId !== undefined).length;
   const avgSatisfaction = mean(rows, r => r.satisfaction);
 
   document.getElementById("hev-kpiGrid").innerHTML = [
@@ -856,28 +863,33 @@ function renderEvents(year, category, eventName) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
 
-  const years = year === "All" ? getYears(DATA.eventSurveys.raw) : [Number(year)];
+  // Question Ratings: x-axis is Event Date by month (same grain as "Events
+  // by Month"), one series per question, each averaged within that month.
+  const byMonthQ = groupBy(rows, r => monthKey(r.date));
+  const monthsQ = [...byMonthQ.keys()].sort();
   makeChart("hev-chart2", {
     type: "bar",
     data: {
-      labels: years.map(String),
+      labels: monthsQ.map(monthLabel),
       datasets: [
-        { label: "Overall Experience", data: years.map(y => mean(rows.filter(r => r.year === y), r => r.overall)), backgroundColor: COLORS.seriesA },
-        { label: "Recommend Future Events", data: years.map(y => mean(rows.filter(r => r.year === y), r => r.recommend)), backgroundColor: COLORS.seriesB },
-        { label: "Registration Experience", data: years.map(y => mean(rows.filter(r => r.year === y), r => r.registration)), backgroundColor: COLORS.seriesC },
+        { label: "Overall Experience", data: monthsQ.map(m => mean(byMonthQ.get(m), r => r.overall)), backgroundColor: COLORS.seriesA },
+        { label: "Recommend Future Events", data: monthsQ.map(m => mean(byMonthQ.get(m), r => r.recommend)), backgroundColor: COLORS.seriesB },
+        { label: "Arrival and Registration", data: monthsQ.map(m => mean(byMonthQ.get(m), r => r.registration)), backgroundColor: COLORS.seriesC },
         // satisfaction is stored 0-1 (e.g. 0.8 = 4/5); *5 puts it on the same
         // 0-5 scale as the other three so it's directly comparable here.
-        { label: "Satisfaction", data: years.map(y => { const v = mean(rows.filter(r => r.year === y), r => r.satisfaction); return v === null ? null : v * 5; }), backgroundColor: COLORS.seriesD }
+        { label: "Satisfaction Score", data: monthsQ.map(m => { const v = mean(byMonthQ.get(m), r => r.satisfaction); return v === null ? null : v * 5; }), backgroundColor: COLORS.seriesD }
       ]
     },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 5 } } }
+    // Extra top padding so a bar hitting the max (5) still has room for its
+    // data label instead of getting clipped by the chart edge.
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { position: "bottom" } }, scales: { y: { min: 0, max: 5 } } }
   });
 
   const qDef = [
     { label: "Overall Experience", fn: r => r.overall, format: (v) => fmt(v, 2) },
     { label: "Recommend Future Events", fn: r => r.recommend, format: (v) => fmt(v, 2) },
-    { label: "Registration and Arrival Process", fn: r => r.registration, format: (v) => fmt(v, 2) },
-    { label: "Satisfaction", fn: r => r.satisfaction, format: (v) => pct(v) }
+    { label: "Arrival and Registration", fn: r => r.registration, format: (v) => fmt(v, 2) },
+    { label: "Satisfaction Score", fn: r => r.satisfaction, format: (v) => pct(v) }
   ];
   document.querySelector("#hev-byQuestionTable tbody").innerHTML = qDef.map(q =>
     `<tr><td>${q.label}</td><td>${q.format(mean(attendeeRows, q.fn))}</td><td>${q.format(mean(partnerRows, q.fn))}</td><td><strong>${q.format(mean(rows, q.fn))}</strong></td></tr>`
@@ -898,7 +910,7 @@ function renderEvents(year, category, eventName) {
   });
   document.querySelector("#hev-detailTable tbody").innerHTML = detailRows
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
-    .map(r => `<tr><td>${r.event}</td><td>${r.surveyType}</td><td>${r.date || "&mdash;"}</td><td>${r.category || "&mdash;"}</td></tr>`)
+    .map(r => `<tr><td>${r.event}</td><td>${r.surveyType}</td><td>${r.category || "&mdash;"}</td><td>${r.date || "&mdash;"}</td></tr>`)
     .join("");
 }
 

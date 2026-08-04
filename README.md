@@ -152,6 +152,32 @@ Notes:
 - **"Ratings by Year" and "Year-over-Year % Change"** now build their year columns dynamically from whatever years are actually present in the ACC Survey sheet (2023 through the latest year), instead of a hardcoded 2023-2026 range -- both the table headers and the "Feedback" section's testimonial years update automatically as new years of data get added.
 - **The Q2/Q7 spotlight is now just "Feedback"** -- the Q2 line chart was removed entirely (per direction to keep only the feedback cards); each testimonial card is titled with its year in bold, and shows up to 4 comments per year.
 
+## Data source mapping (Hosted Events tab)
+
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab (other than the fixed Booked Business cross-reference at the bottom) reads from the single "Event Surveys" sheet, filtered by its "Event Date" column for the Year filter, "Event Category" for the Event Category filter, and "Event" for the Event Name filter -- all three drive every card/chart on the tab dynamically.
+
+| Visual | Column(s) | Formula |
+|---|---|---|
+| Total Events card | Event ID | Distinct count |
+| Attendee Events card | Event ID | Distinct count, filtered to Event Survey Type = "Attendee" |
+| Partner Events card | Event ID | Distinct count, filtered to Event Survey Type = "Partner" |
+| Survey Respondents card | Event ID | Count (one row per response) |
+| Avg. Satisfaction Score card | Satisfaction Score | Average |
+| "Events by Month" chart | Event Date, by month (x-axis); Event ID (y-axis) | Distinct count per month |
+| "Question Ratings" chart | Event Date, by month (x-axis); 4 rated questions (y-axis) | Average per month, one series each for Overall Experience, Recommend Future Events, Arrival and Registration, and Satisfaction Score (the latter scaled ×5 for display so all four sit on the same 0–5 axis) |
+| "Avg. Rating by Question" table | Overall Experience, Recommend Future Events, Arrival and Registration, Satisfaction Score (rows); Event Survey Type (Attendee/Partner columns) | Average per question, split by Attendee vs. Partner, plus an unfiltered "Avg. Total" column |
+| "Ratings by Event Category" table | Event Category (rows); Event ID, Satisfaction Score, Overall Experience, Arrival and Registration, Recommend Future Events (columns) | Respondents = count of Event ID; the four rating columns are averages |
+| "Event Survey Detail" table | Event, Event Survey Type, Event Category, Event Date | One row per event/survey-type combination |
+| "Hosted Events & Booked Business" cross-reference | Event (chart/table); Event ID (Survey Respondents); Satisfaction Score (Avg. Satisfaction Score); Booked Business's Lead ID (Leads Generated) | Only shows events that have a matching Booked Business record; Leads Generated is a distinct count of Lead ID |
+
+Notes:
+
+- The **Year filter now defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), matching every other tab.
+- **"Question Ratings"** was switched from a by-year chart to a **by-month** chart (same x-axis grain as "Events by Month"), per direction, with the underlying questions renamed to their card/table labels: "Overall Experience," "Recommend Future Events," "Arrival and Registration" (was "Registration Experience" in the chart / "Registration and Arrival Process" in the table), and "Satisfaction Score" (was "Satisfaction").
+- **"Avg. Rating by Question"** table's 4th column is now labeled **"Avg. Total"** (was "Total").
+- **"Ratings by Event Category"** table's columns are now labeled with the full question names ("Avg. Satisfaction Score," "Overall Experience," "Arrival and Registration," "Recommend Future Events") instead of the earlier shortened labels.
+- **"Event Survey Detail"** table's column order is now **Event, Event Type, Category, Date** (previously Event, Type, Date, Category), and its subtitle sentence ("One row per event / survey type...") was removed.
+
 ## How the KPI formulas were verified
 
 Every KPI on this dashboard was checked against the numbers shown live in the Power BI report (viewed via browser on 2026-07-29) rather than assumed from column names. Some notable, non-obvious formulas this uncovered:

@@ -94,10 +94,15 @@ assert(doc.querySelector(".spotlight h2").textContent.trim() === "Feedback", "Cl
 
 // Hosted Events
 assert(doc.getElementById("hev-kpiGrid").children.length === 5, "Hosted Events: 5 KPI cards");
+assert(doc.getElementById("hev-year").value === "2026", "Hosted Events: Year filter defaults to 2026");
 assert(doc.querySelectorAll("#hev-byQuestionTable tbody tr").length === 4, "Hosted Events: 4 question rows (incl. Satisfaction)");
+assert(doc.querySelector("#hev-byQuestionTable thead").textContent.includes("Avg. Total"), "Hosted Events: question table last column renamed to Avg. Total");
 assert(doc.querySelectorAll("#hev-byCategoryTable tbody tr").length > 0, "Hosted Events: category table has rows");
+assert(doc.querySelector("#hev-byCategoryTable thead").textContent.includes("Arrival and Registration"), "Hosted Events: category table columns use full question names");
 assert(doc.getElementById("hev-event").children.length > 1, "Hosted Events: event name filter populated");
 assert(doc.querySelectorAll("#hev-detailTable tbody tr").length > 0, "Hosted Events: event survey detail table has rows");
+assert(doc.querySelector("#hev-detailTable thead").textContent.trim().startsWith("EventEvent TypeCategoryDate"), "Hosted Events: detail table column order is Event/Event Type/Category/Date");
+assert([...doc.querySelectorAll("#tab-events .desc")].every(el => !el.textContent.includes("One row per event")), "Hosted Events: old detail-table subtitle removed");
 assert(doc.querySelectorAll("#hev-bbTable tbody tr").length === 5, "Hosted Events: 5 events cross-referenced to Booked Business");
 
 // Booked Business
