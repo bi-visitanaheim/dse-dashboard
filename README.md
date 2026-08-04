@@ -108,7 +108,7 @@ Notes:
 
 ## Data source mapping (Repeat Clients tab)
 
-Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "Repeating ACC Clients Services" sheet, filtered by its "Meeting Dates (Preferred Start)" column ("Meeting Start Date") for the Year filter and by "Account Name" for the Account Name filter -- both filters drive every card/chart/table on the tab dynamically.
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "Repeating ACC Clients Services" sheet, filtered by its "Meeting Dates (Preferred Start)" column ("Meeting Start Date") for the Year filter, by "Account Name" for the Account Name filter, and by "Services Manager" for the Services Manager filter -- all three filters drive every card/chart/table on the tab dynamically, and can be combined.
 
 | Visual | Column(s) | Formula |
 |---|---|---|
@@ -159,7 +159,7 @@ The "Source: ..." line in the footer changes depending on which tab is active, s
 
 ## Filters implemented vs. the source report
 
-Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** on Client Survey (drives the KPI grid, all three charts, the YoY table, and the Q2/Q7 spotlight), and **Account Name** on Repeat Clients. The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
+Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** on Client Survey (drives the KPI grid, all three charts, the YoY table, and the Q2/Q7 spotlight), and **Account Name** plus **Services Manager** on Repeat Clients (both drive the KPI grid, both charts, and the Accounts table). The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
 
 The Team KPIs YoY table now follows the Year filter: pick a year and the table compares it against the year before; "All" falls back to the two most recent years with data. The Partner Referrals and Client Survey YoY tables still always show the latest two (or full 2023–2026) years regardless of the Year filter, matching the source report's behavior — the Client Survey one does respect the Services Manager filter, though.
 

@@ -592,21 +592,27 @@ function renderReferrals(year) {
 function initRepeat() {
   const yearSel = document.getElementById("rep-year");
   const acctSel = document.getElementById("rep-account");
-  function applyFilters() { renderRepeat(yearSel.value, acctSel.value); }
+  const mgrSel = document.getElementById("rep-manager");
+  function applyFilters() { renderRepeat(yearSel.value, acctSel.value, mgrSel.value); }
   const years = getYears(DATA.repeatingClients.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const accounts = [...new Set(DATA.repeatingClients.raw.map(r => r.accountName).filter(Boolean))].sort();
   acctSel.innerHTML = `<option value="All">All</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
   acctSel.value = "All";
   acctSel.onchange = applyFilters;
+  const managers = [...new Set(DATA.repeatingClients.raw.map(r => r.servicesManager).filter(Boolean))].sort();
+  mgrSel.innerHTML = `<option value="All">All</option>` + managers.map(m => `<option value="${m}">${m}</option>`).join("");
+  mgrSel.value = "All";
+  mgrSel.onchange = applyFilters;
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
   const defaultYear = years.includes(2026) ? "2026" : "All";
   yearSel.value = defaultYear;
-  renderRepeat(defaultYear, "All");
+  renderRepeat(defaultYear, "All", "All");
 }
-function renderRepeat(year, accountName) {
+function renderRepeat(year, accountName, manager) {
   let rows = byYear(DATA.repeatingClients.raw, year);
   if (accountName && accountName !== "All") rows = rows.filter(r => r.accountName === accountName);
+  if (manager && manager !== "All") rows = rows.filter(r => r.servicesManager === manager);
   // "Total Clients Serviced" = distinct count of Lead ID (not raw row count) --
   // matches the sheet's grain 1:1 today (no duplicate Lead IDs), but this is
   // the correct, future-proof formula per spec.
