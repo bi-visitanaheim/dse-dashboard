@@ -740,7 +740,9 @@ function renderSurvey(year, manager) {
   makeChart("sur-chart2", {
     type: "bar",
     data: { labels: months.map(monthLabel), datasets: [{ label: "Avg Score", data: months.map(m => mean(byMonth.get(m), r => r.rating)), backgroundColor: COLORS.tealLight, borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
+    // Extra top padding so a bar hitting the max (10) still has room to show
+    // its data label above it instead of getting clipped by the chart edge.
+    options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
   });
 
   const byMgr = groupBy(ratedRows.filter(r => r.manager), r => r.manager);
@@ -786,23 +788,14 @@ function renderQ2Q7(manager) {
   if (manager && manager !== "All") raw = raw.filter(r => r.manager === manager);
 
   document.getElementById("q2q7Desc").innerHTML =
-    `Question 2 (&ldquo;${spot.q2Text}&rdquo;) is the numeric rating clients give their Destination Service &amp; Events Manager. ` +
-    `Question 7 (&ldquo;${spot.q7Text}&rdquo;) is open-ended feedback from the same respondents. This section isn't in the source Power BI report ` +
-    `&mdash; it's added here per the DS&amp;E dashboard brief to read the rating trend alongside <em>why</em> it moved.` +
+    `Client feedback from Question 7 (&ldquo;${spot.q7Text}&rdquo;), grouped by year. This section isn't in the source Power BI report ` +
+    `&mdash; it's added here per the DS&amp;E dashboard brief to surface client comments alongside the ratings above.` +
     (manager && manager !== "All" ? ` Filtered to responses naming <strong>${manager}</strong> as the Services Manager.` : "");
 
   // Years come from whatever's actually in the sheet (not a hardcoded range).
   const YEARS = getYears(DATA.accSurvey.raw);
-  const q2Yearly = {};
-  YEARS.forEach(y => { q2Yearly[y] = mean(raw.filter(r => r.question === spot.q2Text && r.year === y), r => r.rating); });
-  makeChart("chartQ2", {
-    type: "line",
-    data: { labels: YEARS, datasets: [{ label: "Q2 Rating", data: YEARS.map(y => q2Yearly[y]), borderColor: COLORS.tealLight, backgroundColor: "rgba(119,199,201,.22)", fill: true, tension: 0.3, pointRadius: 4, pointBackgroundColor: COLORS.tealLight }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { color: "#ffffff" } }, scales: { y: { min: 0, max: 10, ticks: { color: "#cfe6e6" }, grid: { color: "rgba(255,255,255,.08)" } }, x: { ticks: { color: "#cfe6e6" }, grid: { display: false } } } }
-  });
 
-  // Only the Feedback text is shown per testimonial (no year badge -- each
-  // column is already grouped by year), 4 comments per year.
+  // Each testimonial card is titled with its year, 4 comments per year.
   const testimonialsByYear = {};
   YEARS.forEach(y => {
     testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 4);
@@ -810,7 +803,7 @@ function renderQ2Q7(manager) {
   const cols = document.getElementById("testimonialCols");
   cols.innerHTML = YEARS.map(y => {
     const items = testimonialsByYear[y] || [];
-    return items.map(it => `<div class="testimonial">&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`).join("");
+    return items.map(it => `<div class="testimonial"><div class="yr">${y}</div>&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`).join("");
   }).join("");
 }
 

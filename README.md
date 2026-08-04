@@ -142,15 +142,15 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | "Avg. Rating by DS&E Manager" chart | Visit Anaheim Destination Service Manager (x-axis); Rating (y-axis) | Average per manager |
 | "Ratings by Year" table | Question (rows); Rating (values) | Average per question per year, one column per year present in the data (2023 through the latest year) |
 | "Year-over-Year % Change" table | Question (rows); Rating (values) | YoY % change between each consecutive pair of years present in the data |
-| Q2/Q7 spotlight testimonials | Feedback | Up to 4 responses per year, feedback text only |
+| "Feedback" section testimonials | Feedback | Up to 4 responses per year, each card titled with its year |
 
 Notes:
 
 - The **Year filter defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), same as the other tabs.
 - **"The Overall Anaheim Experience Score"** replaces the former "Visit Anaheim Met Event Objectives Score" card and sits to the left of "Visit Anaheim Team Experience Score" -- it reads the new 8th ACC Survey question ("The Overall Anaheim Experience"), which the workbook started tracking retroactively across all 122 existing respondents (not from new respondents).
 - **"Category Rating"** data labels are now bold and larger (font size bumped up, explicit bold weight) so they're easy to read at a glance.
-- **"Ratings by Year" and "Year-over-Year % Change"** now build their year columns dynamically from whatever years are actually present in the ACC Survey sheet (2023 through the latest year), instead of a hardcoded 2023-2026 range -- both the table headers and the Q2/Q7 spotlight's line chart/testimonial years update automatically as new years of data get added.
-- **Spotlight testimonials** now show only the feedback quote (no year badge inside the card, since testimonials are already grouped into year-specific columns) -- and show up to 4 per year (previously 3).
+- **"Ratings by Year" and "Year-over-Year % Change"** now build their year columns dynamically from whatever years are actually present in the ACC Survey sheet (2023 through the latest year), instead of a hardcoded 2023-2026 range -- both the table headers and the "Feedback" section's testimonial years update automatically as new years of data get added.
+- **The Q2/Q7 spotlight is now just "Feedback"** -- the Q2 line chart was removed entirely (per direction to keep only the feedback cards); each testimonial card is titled with its year in bold, and shows up to 4 comments per year.
 
 ## How the KPI formulas were verified
 
@@ -204,9 +204,9 @@ The Overview KPI cards show year-to-date totals only (not all-time), each with a
 
 The three paragraphs below the Department at a Glance table are generated (not hand-written) and summarize all 12 KPI categories — the same categories, the same year-to-date figures, and the same YoY deltas already shown in the 12 cards and the summary table above, just written in prose grouped by theme (planning/servicing volume; referrals, repeat business, and team experience; events and lead generation) rather than repeated as another table. Each paragraph follows a light "So what → why → now what" structure: state the finding, suggest a likely explanation, and point to a next step or where to look for more context (e.g., pointing to the Q2/Q7 spotlight when the team experience score moves). Because the narrative pulls from the exact same `cur`/`pri` values used for the cards and table (not a separately-computed year comparison), the three will never disagree with each other. Re-run `build_data.py` and refresh the page and the narrative updates itself from the new numbers. Inline percentage deltas in both the KPI cards and this narrative are bold and colored (teal for up, navy for down) via the `.delta` / `.delta-inline` CSS classes.
 
-## Q2 & Q7 spotlight (Client Survey tab)
+## Feedback section (Client Survey tab)
 
-This section is **not** in the source Power BI report — it's included because the DS&E dashboard brief specifically asked to relate Question 2 ("The Experience With Your Visit Anaheim Destination Service and Events Manager" — numeric, 0–10) with Question 7 (open-ended client testimonials) so the rating trend can be read alongside the qualitative feedback behind it. It always shows the full multi-year trend regardless of the Year filter, but does respect the Services Manager filter (both the Q2 line chart and the testimonial samples are recomputed client-side from the raw survey rows).
+This section is **not** in the source Power BI report — it's included because the DS&E dashboard brief specifically asked to surface Question 7 (open-ended client testimonials) alongside the numeric ratings above. It originally paired a Question 2 line chart with the testimonials, but per later direction it's now feedback-cards only, titled "Feedback": each card is headed by its year (2023 through the latest year present in the data) and shows up to 4 testimonial quotes from Question 7 for that year. It always shows the full multi-year set of years regardless of the Year filter, but does respect the Services Manager filter (the testimonial samples are recomputed client-side from the raw survey rows).
 
 ## Known data-quality issue
 

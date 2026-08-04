@@ -85,11 +85,12 @@ assert(doc.querySelectorAll("#sur-yoyValuesTable tbody tr").length === 7, "Clien
 assert(doc.querySelectorAll("#sur-yoyPctTable tbody tr").length === 7, "Client Survey: 7 rows in % change table");
 assert(doc.querySelectorAll("#sur-yoyValuesTable thead th").length >= 2, "Client Survey: values table header built dynamically from data years");
 assert(doc.querySelectorAll("#testimonialCols .testimonial").length > 0, "Client Survey: Q7 testimonial cards rendered");
-assert(!doc.querySelector("#testimonialCols .testimonial .yr"), "Client Survey: testimonial cards show only feedback text, no year badge");
-assert(doc.getElementById("q2q7Desc").textContent.includes("Question 2"), "Client Survey: Q2/Q7 spotlight description rendered");
+assert(doc.querySelector("#testimonialCols .testimonial .yr"), "Client Survey: testimonial cards show a year title");
+assert(!doc.getElementById("chartQ2"), "Client Survey: Q2 line chart removed from spotlight");
+assert(doc.getElementById("q2q7Desc").textContent.includes("Question 7"), "Client Survey: feedback section description rendered");
 assert(doc.getElementById("sur-manager").children.length > 1, "Client Survey: services manager filter populated");
 assert(!doc.querySelector(".spotlight .tag"), "Client Survey: spotlight 'Beyond source report' tag removed");
-assert(doc.querySelector(".spotlight h2").textContent.includes("Question 2"), "Client Survey: spotlight title updated");
+assert(doc.querySelector(".spotlight h2").textContent.trim() === "Feedback", "Client Survey: spotlight title renamed to 'Feedback'");
 
 // Hosted Events
 assert(doc.getElementById("hev-kpiGrid").children.length === 5, "Hosted Events: 5 KPI cards");
