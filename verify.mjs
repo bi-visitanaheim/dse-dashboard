@@ -54,7 +54,7 @@ assert(doc.getElementById("ov-kpiGrid").children.length === 12, "Overview: 12 KP
 assert(doc.getElementById("ov-insights").querySelectorAll("p").length === 3, "Overview: 3 narrative paragraphs");
 assert(doc.querySelectorAll("#ov-kpiGrid .delta").length > 0, "Overview: cards show YoY deltas");
 assert(doc.querySelectorAll("#ov-insights .delta-inline").length > 0, "Overview: narrative has bold/colored inline deltas");
-assert(doc.getElementById("ov-desc").textContent.includes("January 1, 2026"), "Overview: subtitle reflects YTD wording");
+assert(doc.getElementById("ov-desc").textContent.trim() === "", "Overview: stale 'above data cards reflect...' subtitle sentence removed (each card shows its own date range now)");
 assert(doc.getElementById("ov-kpiGrid").textContent.includes("Repeat Account %"), "Overview: card renamed to Repeat Account % (was Repeat Client %)");
 assert(doc.querySelectorAll("#ov-summaryTable tbody tr").length === 12, "Overview: Department at a Glance summary table has all 12 categories");
 assert(doc.querySelector("#ov-summaryTable tbody tr").children.length === 5, "Overview: summary table rows have Category/Month/Previous Month/YTD/YoY% columns");
@@ -86,10 +86,25 @@ assert(doc.getElementById("team-kpiGrid").textContent.includes("In House Groups 
 assert(doc.getElementById("team-analysis1").textContent.trim().length > 0, "Team KPIs: auto-analysis sentence for Partners Visited & Planning Visits chart");
 assert(doc.getElementById("team-analysis2").textContent.trim().length > 0, "Team KPIs: auto-analysis sentence for Groups Serviced chart");
 assert(doc.getElementById("team-analysis3").textContent.trim().length > 0, "Team KPIs: auto-analysis sentence for Clients Serviced chart");
+// Regression check: a trailing placeholder month with null values used to
+// render as the literal text "&mdash;" (textContent doesn't decode HTML
+// entities) instead of a real number or an actual em dash character.
+assert(!doc.getElementById("team-analysis1").textContent.includes("&mdash;"), "Team KPIs: analysis 1 has no literal '&mdash;' text (innerHTML decodes the entity)");
+assert(!doc.getElementById("team-analysis2").textContent.includes("&mdash;"), "Team KPIs: analysis 2 has no literal '&mdash;' text");
+assert(!doc.getElementById("team-analysis3").textContent.includes("&mdash;"), "Team KPIs: analysis 3 has no literal '&mdash;' text");
+assert(/\d/.test(doc.getElementById("team-analysis1").textContent), "Team KPIs: analysis 1 reports an actual numeric value, not a placeholder");
+assert(doc.querySelectorAll("#team-kpiGrid .daterange").length === 5, "Team KPIs: every KPI card shows a dynamic date-range subtitle");
 
 // Partner Referrals
 assert(doc.getElementById("ref-kpiGrid").children.length === 2, "Partner Referrals: 2 KPI cards (Top Referrer removed)");
 assert(doc.querySelectorAll("#ref-yoyTable tbody tr").length > 0, "Partner Referrals: YoY table has rows");
+assert(doc.querySelectorAll("#ref-kpiGrid .daterange").length === 2, "Partner Referrals: every KPI card shows a dynamic date-range subtitle");
+{
+  const refSel = doc.getElementById("ref-year");
+  refSel.value = "2026";
+  refSel.dispatchEvent(new window.Event("change"));
+  assert(doc.getElementById("ref-kpiGrid").textContent.includes("3.45"), "Partner Referrals: 'Avg. Referrals Per Month' shows 3.45 for 2026 (plain row-level AVERAGE())");
+}
 
 // Repeat Clients
 assert(doc.getElementById("rep-kpiGrid").children.length === 5, "Repeat Clients: 5 KPI cards (reordered, avg attendance removed)");
@@ -99,6 +114,7 @@ assert(doc.getElementById("rep-manager").children.length > 1, "Repeat Clients: s
 assert(doc.querySelectorAll("#rep-yoyTable tbody tr").length === 2, "Repeat Clients: Year over Year table has Clients + Accounts rows");
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Clients"), "Repeat Clients: YoY table has a Clients row");
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Accounts"), "Repeat Clients: YoY table has an Accounts row");
+assert(doc.querySelectorAll("#rep-kpiGrid .daterange").length === 5, "Repeat Clients: every KPI card shows a dynamic date-range subtitle");
 
 // Client Survey
 assert(doc.getElementById("sur-kpiGrid").children.length === 4, "Client Survey: 4 KPI cards");
@@ -114,7 +130,9 @@ assert(doc.querySelectorAll("#sur-yoyValuesTable thead th").length >= 2, "Client
 assert(doc.querySelectorAll("#testimonialCols .testimonial").length > 0, "Client Survey: Q7 testimonial cards rendered");
 assert(doc.querySelector("#testimonialCols .testimonial .yr"), "Client Survey: testimonial cards show a year title");
 assert(!doc.getElementById("chartQ2"), "Client Survey: Q2 line chart removed from spotlight");
-assert(doc.getElementById("q2q7Desc").textContent.includes("Question 7"), "Client Survey: feedback section description rendered");
+assert(doc.getElementById("q2q7Desc").textContent.trim().startsWith("Visit Anaheim Team Experience Feedback"), "Client Survey: feedback section subtitle renamed to 'Visit Anaheim Team Experience Feedback'");
+assert(doc.querySelectorAll("#sur-kpiGrid .daterange").length >= 4, "Client Survey: every KPI card shows a dynamic date-range subtitle");
+assert(doc.querySelectorAll("#sur-kpiGrid").length && [...doc.querySelectorAll("#sur-kpiGrid .kpi-card")][1].textContent.includes("Consists of 6 Questions"), "Client Survey: Team Experience Score card shows 'Consists of 6 Questions' subtext");
 assert(doc.getElementById("sur-manager").children.length > 1, "Client Survey: services manager filter populated");
 assert(!doc.querySelector(".spotlight .tag"), "Client Survey: spotlight 'Beyond source report' tag removed");
 assert(doc.querySelector(".spotlight h2").textContent.trim() === "Feedback", "Client Survey: spotlight title renamed to 'Feedback'");
@@ -150,6 +168,8 @@ assert([...doc.querySelectorAll("#tab-events h2")].some(h => h.textContent.inclu
 assert([...doc.querySelectorAll("#tab-events .desc")].some(el => el.textContent.includes("0") && el.textContent.includes("5")), "Hosted Events: 'Survey Questions Ratings' has a 0-5 scale subtitle");
 assert(!doc.querySelector("#tab-events #hev-bbTable"), "Hosted Events: cross-reference table moved out of this tab");
 assert(![...doc.querySelectorAll("#tab-events h2")].some(h => h.textContent.includes("Hosted Events & Booked Business")), "Hosted Events: cross-reference section moved out of this tab");
+assert(doc.querySelectorAll("#hev-kpiGrid .kpi-card.events-team").length === 5, "Hosted Events: all 5 KPI cards get the blue events-team accent");
+assert(doc.querySelectorAll("#hev-kpiGrid .daterange").length === 5, "Hosted Events: every KPI card shows a dynamic date-range subtitle");
 
 // Booked Business
 assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 KPI cards (Total Events card added)");
@@ -182,6 +202,8 @@ assert(doc.getElementById("bb-event").children.length > 1, "Booked Business: eve
 assert(doc.querySelectorAll("#bb-detailTable tbody tr").length > 0, "Booked Business: detail table has rows");
 assert(doc.querySelector("#bb-detailTable thead").textContent.trim() === "EventAccountLeadEvent Start DateLead Created Date", "Booked Business: detail table has a Lead column");
 assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#bb-detailTable tbody tr td:nth-child(4)").textContent), "Booked Business: dates formatted MM/DD/YYYY");
+assert(doc.querySelectorAll("#bb-kpiGrid .kpi-card.events-team").length === 6, "Booked Business: all 6 KPI cards get the blue events-team accent");
+assert(doc.querySelectorAll("#bb-kpiGrid .daterange").length === 6, "Booked Business: every KPI card shows a dynamic date-range subtitle");
 
 // Spot-check the corrected KPI math against values verified live in the Power BI report
 const overview = doc.getElementById("ov-kpiGrid").innerHTML;

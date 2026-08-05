@@ -87,6 +87,7 @@ Notes:
 - The **Year filter defaults to 2026** on page load (falls back to "All" automatically if a future data refresh ever removes 2026 from the sheet).
 - The KPI card order and the Year-over-Year table's row order match (Partners Visited first in both).
 - The Year-over-Year table always shows all five rows even if a metric has no prior-year data at all. As of this build, the source sheet's 2025 rows have "Partners Visited" and "In House Groups Serviced" blank for every month (only Planning Visits, Convention Groups Serviced, and Clients Serviced were tracked in 2025) &mdash; those two rows show "&mdash;" for the % change instead of a misleading number or disappearing from the table. Once 2025 data is backfilled for those columns, the % change will populate automatically on the next `build_data.py` run.
+- **Fixed a bug** in the 1-sentence auto-analysis under each chart: it previously always used the chronologically last row in the selected Year, which could be a pre-created placeholder row for an upcoming month with every metric still null (rendering as the literal text "&mdash;" instead of a real number, since the code used `textContent` rather than `innerHTML`). It now uses a `latestRowWithData(rows, fields)` helper that walks backward to the latest row where every field that sentence needs is actually populated, and writes via `innerHTML` so the `&mdash;` HTML entity (used elsewhere as a "no data" placeholder) renders as an actual em dash if it's ever needed rather than as literal text.
 
 ## Data source mapping (Partner Referrals tab)
 
@@ -95,7 +96,7 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | Visual | Column(s) | Aggregation |
 |---|---|---|
 | Partner Referrals card | Partner Referrals | Sum, for the selected Year |
-| Avg. Referrals Per Month card | Partner Referrals | Total referrals ÷ distinct calendar months present in the selected Year (renamed from "Avg. Referrals per Entry," which had divided by row count instead) |
+| Avg. Referrals Per Month card | Partner Referrals | Plain AVERAGE() of the Partner Referrals count column for the selected Year (a row-level average, not summed-by-month first) -- confirmed against the live value (3.45 for 2026). Renamed from "Avg. Referrals per Entry" |
 | "Partner Referrals by Staff" chart | Staff (x-axis); Partner Referrals (y-axis) | Sum per staff member, for the selected Year |
 | "Partner Referrals by Month" chart | Date (x-axis); Partner Referrals (y-axis) | Sum per month, for the selected Year |
 | "Monthly Referrals by Staff" chart | Date (x-axis); Partner Referrals (y-axis); Staff (legend/series) | Sum per staff member per month, for the selected Year |
@@ -152,6 +153,8 @@ Notes:
 - **A new Question filter** was added, listing all 7 rated questions (everything except the open-ended Q7 feedback question). When a specific question is selected: the 3 chart titles and the 2 YoY table titles get an " — [Question]" suffix; "VA Survey Questions Rating" narrows to that question's single bar; "VA Team Experience Avg. Score by Month" and "Avg. Rating by DS&E Manager" recompute using only that question's ratings; both YoY tables narrow to a single row. The "Overall Anaheim Experience Score" and "DS&E Manager Experience Score" cards keep their own fixed meaning regardless of this filter, since their titles already name a specific question -- only "Visit Anaheim Team Experience Score" (normally the grand mean across all questions) is the one that recomputes and relabels itself to match the selected question.
 - **"Ratings by Year" and "Year-over-Year % Change"** now build their year columns dynamically from whatever years are actually present in the ACC Survey sheet (2023 through the latest year), instead of a hardcoded 2023-2026 range -- both the table headers and the "Feedback" section's testimonial years update automatically as new years of data get added.
 - **The Q2/Q7 spotlight is now just "Feedback"** -- the Q2 line chart was removed entirely (per direction to keep only the feedback cards); each testimonial card is titled with its year in bold, and shows up to 20 comments per year, respecting the Year and Services Manager filters (but not the new Question filter).
+- **The "Feedback" section's subtitle** was changed from "Client feedback from Question 7 ("...")‚ grouped by year." to **"Visit Anaheim Team Experience Feedback"** (still appends "Filtered to responses naming [Manager] as the Services Manager" when the Services Manager filter is active).
+- **"Visit Anaheim Team Experience Score"** now shows a **"Consists of 6 Questions"** subtext under its value, since it's the grand mean across the survey's 6 rated questions. That subtext only shows when the card is displaying the grand mean (Question filter = "All") -- it disappears once a specific Question is selected, since the card is then showing just that one question's average, not 6.
 
 ## Data source mapping (Hosted Events tab)
 
@@ -257,7 +260,20 @@ Partner Referrals also has a second, independent selection dimension: clicking a
 
 ## Overview tab: year-to-date only
 
-The Overview KPI cards show year-to-date totals only (not all-time), each with a YoY delta against the same year-to-date window one year earlier — the cutoff month is whichever month is latest in each underlying sheet's own current-year data (so, e.g., if Booked Business has data through a different month than Planning Visits, each card's comparison stays apples-to-apples rather than using one fixed month for everything). See "Data source mapping" above for the exact sheet/column/date-field each card pulls from. The subtitle above the narrative panel states the cutoff month dynamically. The narrative paragraphs below are unchanged — they still use the "most recent year with 5+ months of data vs. the year before it" logic, which independently resolves to the same current-vs-prior-year comparison.
+The Overview KPI cards show year-to-date totals only (not all-time), each with a YoY delta against the same year-to-date window one year earlier — the cutoff month is whichever month is latest in each underlying sheet's own current-year data (so, e.g., if Booked Business has data through a different month than Planning Visits, each card's comparison stays apples-to-apples rather than using one fixed month for everything). See "Data source mapping" above for the exact sheet/column/date-field each card pulls from. Each card shows its own exact YTD window directly on the card (via `ytdRangeLabel`), so the "Department at a Glance" section no longer needs a separate sentence stating the same date range — `ov-desc` is intentionally left empty. The narrative paragraphs below are unchanged — they still use the "most recent year with 5+ months of data vs. the year before it" logic, which independently resolves to the same current-vs-prior-year comparison.
+
+## Dynamic per-card date-range subtitle (every tab except Overview)
+
+Every KPI card on Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, and Booked Business now shows a small date-range line under its value/delta, the same way Overview's cards do — but unlike Overview's fixed year-to-date window, this range is fully dynamic: it's the earliest-to-latest date actually present in whatever rows are feeding that tab right now, so it moves automatically with the tab's own Year (and, where present, Category/Status/Manager/Question) filters. Implemented via two small helpers in `app.js`:
+
+- `rangeLabel(rows, dateField)` — the plain earliest/latest date across the given rows.
+- `rangeLabelFiltered(rows, dateField, checkFields)` — same, but first drops any row where none of `checkFields` has a real value, so a sheet's placeholder row for an upcoming month (all metric columns still null) doesn't stretch the range a month past the actual data. Used on Team KPIs, whose Planning Visits sheet pre-creates that kind of placeholder row.
+
+Each tab computes one range from its own currently-filtered rows and passes it to every `kpiCard()` call on that tab (Team KPIs: Date; Partner Referrals: Date; Repeat Clients: Meeting Dates/Start Date; Client Survey: Start Date; Hosted Events: Event Date; Booked Business: Event Start Date).
+
+## Events-team card accent (Hosted Events & Booked Business tabs)
+
+All KPI cards on the Hosted Events and Booked Business tabs now use the same pale-blue `.kpi-card.events-team` accent (border + light gradient background) that the 4 events-team cards on the Overview tab already used, since both tabs represent the events team's own data end to end. Overview's card color-coding (blue for events-team categories, navy for services-team categories) is unchanged — this just extends the same visual treatment tab-wide on the two tabs that are 100% events-team data.
 
 ## Insight narrative (Overview tab)
 

@@ -84,8 +84,8 @@ function dedupeBy(arr, keyFn) {
 }
 function monthKey(iso) { return iso.slice(0, 7); }
 function monthLabel(m) { const [y, mo] = m.split("-"); return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" }); }
-function kpiCard(label, value, deltaText, deltaCls, dateRange, cardClass) {
-  return `<div class="kpi-card${cardClass ? " " + cardClass : ""}"><div class="label">${label}</div><div class="value">${value}</div>${deltaText ? `<div class="delta ${deltaCls || ""}">${deltaText}</div>` : ""}${dateRange ? `<div class="daterange">${dateRange}</div>` : ""}</div>`;
+function kpiCard(label, value, deltaText, deltaCls, dateRange, cardClass, note) {
+  return `<div class="kpi-card${cardClass ? " " + cardClass : ""}"><div class="label">${label}</div><div class="value">${value}</div>${deltaText ? `<div class="delta ${deltaCls || ""}">${deltaText}</div>` : ""}${note ? `<div class="daterange">${note}</div>` : ""}${dateRange ? `<div class="daterange">${dateRange}</div>` : ""}</div>`;
 }
 // "Jan 1, 2026 – May 31, 2026" -- the exact YTD window a card's number covers.
 function ytdRangeLabel(year, cutoffMonth) {
@@ -93,6 +93,30 @@ function ytdRangeLabel(year, cutoffMonth) {
   const start = new Date(year, 0, 1).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   const end = new Date(year, cutoffMonth, 0).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   return `${start} &ndash; ${end}`;
+}
+// "Jan 3, 2023 – Jun 12, 2026" -- for tabs other than Overview, whose KPI
+// cards aren't a fixed YTD window: shows the actual earliest-to-latest date
+// covered by the rows feeding the card, dynamic with whatever filters
+// (Year/Manager/etc.) are currently applied on that tab.
+function isoRangeToLabel(startIso, endIso) {
+  function f(iso) {
+    const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+  return `${f(startIso)} &ndash; ${f(endIso)}`;
+}
+function rangeLabel(rows, dateField) {
+  const dates = rows.map(r => r[dateField]).filter(Boolean).sort();
+  if (!dates.length) return "";
+  return isoRangeToLabel(dates[0], dates[dates.length - 1]);
+}
+// Same as rangeLabel, but first excludes rows where none of `checkFields`
+// have a real value -- e.g. Planning Visits pre-creates a placeholder row
+// for the upcoming month before it has real numbers, which would otherwise
+// stretch the range a month past the actual data.
+function rangeLabelFiltered(rows, dateField, checkFields) {
+  const valid = rows.filter(r => checkFields.some(f => r[f] !== null && r[f] !== undefined));
+  return rangeLabel(valid, dateField);
 }
 function getYears(arr) { return [...new Set(arr.map(r => r.year).filter(Boolean))].sort(); }
 function populateYearSelect(sel, years, onChange) {
@@ -424,7 +448,10 @@ function renderOverview() {
   document.getElementById("ov-kpiGrid").innerHTML =
     categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear, c.fmtFn(c.pri), ytdRangeLabel(c.curYear, c.cutoff), c.team === "events" ? "events-team" : "")).join("");
 
-  document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${endOfMonthLabel(CUR, pvCutoff)}.`;
+  // The per-card date range (see ytdRangeLabel above) now shows each card's
+  // own YTD window directly on the card, so this section no longer needs a
+  // separate summary sentence stating the same thing.
+  document.getElementById("ov-desc").innerHTML = "";
 
   // ---- Department at a Glance: automated monthly summary table covering
   // all 12 categories (previous month, year-to-date, YoY %). Regenerates
@@ -471,12 +498,17 @@ function renderTeam(year) {
   const all = DATA.planningVisits;
   const rows = byYear(all, year);
 
+  // Dynamic date-range subtitle (see rangeLabelFiltered) -- reflects the
+  // actual earliest-to-latest populated month for the selected Year filter,
+  // skipping the placeholder future-month row that has no real data yet.
+  const teamRange = rangeLabelFiltered(rows, "date", ["partnersVisited", "planningVisits", "conventionGroupsServiced", "inHouseGroupsServiced", "clientsServiced"]);
+
   document.getElementById("team-kpiGrid").innerHTML = [
-    kpiCard("Partners Visited*", fmt(sum(rows, r => r.partnersVisited))),
-    kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits))),
-    kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced))),
-    kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced))),
-    kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)))
+    kpiCard("Partners Visited*", fmt(sum(rows, r => r.partnersVisited)), null, null, teamRange),
+    kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits)), null, null, teamRange),
+    kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced)), null, null, teamRange),
+    kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), null, null, teamRange),
+    kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)), null, null, teamRange)
   ].join("");
 
   const labels = rows.map(r => monthLabel(r.date.slice(0, 7)));
@@ -513,20 +545,32 @@ function renderTeam(year) {
 
   bindMonthLink("team", ["team-chart1", "team-chart2", "team-chart3"]);
 
-  // Automated 1-sentence analysis per chart -- just states the latest
-  // available month's figures, so it updates on its own every time the
-  // workbook is refreshed and rebuilt (no manual editing needed).
-  const latest = rows.length ? rows[rows.length - 1] : null;
-  const latestMonthTxt = latest ? monthLabel(latest.date.slice(0, 7)) : null;
-  document.getElementById("team-analysis1").textContent = latest
-    ? `In ${latestMonthTxt}, the team logged ${fmt(latest.partnersVisited)} partner visits and ${fmt(latest.planningVisits)} planning visits.`
+  // Automated 1-sentence analysis per chart -- states the latest *populated*
+  // month's figures for that chart's own metrics (the sheet pre-creates a
+  // placeholder row for the upcoming month before it has real numbers, so
+  // this skips back past any trailing null row instead of reporting blanks).
+  // Updates on its own every time the workbook is refreshed and rebuilt.
+  const latest1 = latestRowWithData(rows, ["partnersVisited", "planningVisits"]);
+  const latest2 = latestRowWithData(rows, ["conventionGroupsServiced", "inHouseGroupsServiced"]);
+  const latest3 = latestRowWithData(rows, ["clientsServiced"]);
+  document.getElementById("team-analysis1").innerHTML = latest1
+    ? `In ${monthLabel(latest1.date.slice(0, 7))}, the team logged ${fmt(latest1.partnersVisited)} partner visits and ${fmt(latest1.planningVisits)} planning visits.`
     : "No data available for this period yet.";
-  document.getElementById("team-analysis2").textContent = latest
-    ? `In ${latestMonthTxt}, the team serviced ${fmt(latest.conventionGroupsServiced)} convention groups and ${fmt(latest.inHouseGroupsServiced)} in-house groups.`
+  document.getElementById("team-analysis2").innerHTML = latest2
+    ? `In ${monthLabel(latest2.date.slice(0, 7))}, the team serviced ${fmt(latest2.conventionGroupsServiced)} convention groups and ${fmt(latest2.inHouseGroupsServiced)} in-house groups.`
     : "No data available for this period yet.";
-  document.getElementById("team-analysis3").textContent = latest
-    ? `In ${latestMonthTxt}, the team serviced ${fmt(latest.clientsServiced)} clients.`
+  document.getElementById("team-analysis3").innerHTML = latest3
+    ? `In ${monthLabel(latest3.date.slice(0, 7))}, the team serviced ${fmt(latest3.clientsServiced)} clients.`
     : "No data available for this period yet.";
+}
+// Walks a chronologically-ordered row list backward to find the latest row
+// where every one of the given fields has a real (non-null) value.
+function latestRowWithData(rows, fields) {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const r = rows[i];
+    if (fields.every(f => r[f] !== null && r[f] !== undefined)) return r;
+  }
+  return null;
 }
 function renderYoyTable(tableId, rows, metrics, selectedYear) {
   const years = getYears(rows);
@@ -575,16 +619,18 @@ function renderReferrals(year) {
   const total = sum(rows, r => r.count);
   const byStaff = groupBy(rows, r => r.staff);
   const staffTotals = [...byStaff.entries()].map(([staff, rs]) => ({ staff, total: sum(rs, r => r.count) })).sort((a, b) => b.total - a.total);
-  // Renamed from "Avg. Referrals per Entry" to "Avg. Referrals Per Month" --
-  // recalculated to match: total referrals divided by the number of distinct
-  // calendar months present in the selected data (not the row count, which
-  // is one row per staff/date/count entry, not one row per month).
-  const monthsPresent = new Set(rows.map(r => monthKey(r.date))).size;
-  const avgPerMonth = monthsPresent ? total / monthsPresent : null;
+  // "Avg. Referrals Per Month" (renamed from "Avg. Referrals per Entry") is a
+  // plain AVERAGE() of the "Partner Referrals" count column for the selected
+  // year, matching the live value (3.45 for 2026) -- confirmed this is a
+  // straight row-level average, not first summed-by-month. Dynamic with the
+  // Year filter via `rows` above.
+  const avgPerMonth = rows.length ? total / rows.length : null;
+  // Dynamic date-range subtitle -- dynamic with the Year filter via `rows`.
+  const refRange = rangeLabel(rows, "date");
 
   document.getElementById("ref-kpiGrid").innerHTML = [
-    kpiCard("Partner Referrals", fmt(total)),
-    kpiCard("Avg. Referrals Per Month", fmt(avgPerMonth, 1))
+    kpiCard("Partner Referrals", fmt(total), null, null, refRange),
+    kpiCard("Avg. Referrals Per Month", fmt(avgPerMonth, 2), null, null, refRange)
   ].join("");
 
   makeChart("ref-chart1", {
@@ -675,12 +721,15 @@ function renderRepeat(year, accountName, manager) {
   // Repeat Accounts Count = COUNTROWS(FILTER(VALUES('RepeatingBusiness'[Account ID]), CALCULATE(COUNTROWS('RepeatingBusiness')) > 1))
   const accountsWithRepeatBookings = [...acctCounts.values()].filter(v => v.length > 1).length;
 
+  // Dynamic date-range subtitle -- dynamic with the Year/Account/Manager filters via `rows`.
+  const repRange = rangeLabel(rows, "startDate");
+
   document.getElementById("rep-kpiGrid").innerHTML = [
-    kpiCard("Total Clients Serviced", fmt(totalClientsServiced)),
-    kpiCard("Total Accounts Serviced", fmt(accountsServiced)),
-    kpiCard("Repeat Accounts", fmt(repeatYes)),
-    kpiCard("Repeat Account Percentage", pct(rate)),
-    kpiCard("Accounts w/ Repeat Bookings", fmt(accountsWithRepeatBookings))
+    kpiCard("Total Clients Serviced", fmt(totalClientsServiced), null, null, repRange),
+    kpiCard("Total Accounts Serviced", fmt(accountsServiced), null, null, repRange),
+    kpiCard("Repeat Accounts", fmt(repeatYes), null, null, repRange),
+    kpiCard("Repeat Account Percentage", pct(rate), null, null, repRange),
+    kpiCard("Accounts w/ Repeat Bookings", fmt(accountsWithRepeatBookings), null, null, repRange)
   ].join("");
 
   const byMgr = groupBy(rows, r => r.servicesManager);
@@ -795,12 +844,18 @@ function renderSurvey(year, manager, question) {
   const overallScore = mean(ratedRows.filter(r => r.question === overallText), r => r.rating);
   const managerScore = mean(ratedRows.filter(r => r.question === q2Text), r => r.rating);
   const respondents = distinctCount(rows, r => r.leadId);
+  // Dynamic date-range subtitle -- dynamic with the Year/Manager filters via `rows`.
+  const surRange = rangeLabel(rows, "date");
+  // "Consists of 6 Questions" only applies while the card is showing the
+  // grand mean across all 6 rated questions -- once the Question filter
+  // narrows it to a single question, that note no longer applies.
+  const teamScoreNote = hasQ ? null : "Consists of 6 Questions";
 
   document.getElementById("sur-kpiGrid").innerHTML = [
-    kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2)),
-    kpiCard(teamScoreLabel, fmt(teamScore, 2)),
-    kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2)),
-    kpiCard("Survey Respondents", fmt(respondents))
+    kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2), null, null, surRange),
+    kpiCard(teamScoreLabel, fmt(teamScore, 2), null, null, surRange, "", teamScoreNote),
+    kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2), null, null, surRange),
+    kpiCard("Survey Respondents", fmt(respondents), null, null, surRange)
   ].join("");
 
   document.getElementById("sur-chart1-title").innerHTML = "VA Survey Questions Rating" + titleSuffix;
@@ -882,7 +937,7 @@ function renderQ2Q7(year, manager) {
   if (manager && manager !== "All") raw = raw.filter(r => r.manager === manager);
 
   document.getElementById("q2q7Desc").innerHTML =
-    `Client feedback from Question 7 (&ldquo;${spot.q7Text}&rdquo;), grouped by year.` +
+    `Visit Anaheim Team Experience Feedback` +
     (manager && manager !== "All" ? ` Filtered to responses naming <strong>${manager}</strong> as the Services Manager.` : "");
 
   // Years respect the page's Year filter, same as every other card/chart on
@@ -939,13 +994,18 @@ function renderEvents(year, category, eventName) {
   // count, unlike "Total Events" above.
   const respondents = rows.filter(r => r.eventId !== null && r.eventId !== undefined).length;
   const avgSatisfaction = mean(rows, r => r.satisfaction);
+  // Dynamic date-range subtitle -- dynamic with the Year/Category/Event filters via `rows`.
+  const hevRange = rangeLabel(rows, "date");
 
+  // Hosted Events and Booked Business both represent the events team's own
+  // data, so every card on these two tabs gets the same pale-blue
+  // "events-team" accent used for the 4 events-team cards on the Overview tab.
   document.getElementById("hev-kpiGrid").innerHTML = [
-    kpiCard("Total Events", fmt(totalEvents)),
-    kpiCard("Attendee Events", fmt(distinctCount(attendeeRows, r => r.eventId))),
-    kpiCard("Partner Events", fmt(distinctCount(partnerRows, r => r.eventId))),
-    kpiCard("Survey Respondents", fmt(respondents)),
-    kpiCard("Avg. Satisfaction Score", pct(avgSatisfaction))
+    kpiCard("Total Events", fmt(totalEvents), null, null, hevRange, "events-team"),
+    kpiCard("Attendee Events", fmt(distinctCount(attendeeRows, r => r.eventId)), null, null, hevRange, "events-team"),
+    kpiCard("Partner Events", fmt(distinctCount(partnerRows, r => r.eventId)), null, null, hevRange, "events-team"),
+    kpiCard("Survey Respondents", fmt(respondents), null, null, hevRange, "events-team"),
+    kpiCard("Avg. Satisfaction Score", pct(avgSatisfaction), null, null, hevRange, "events-team")
   ].join("");
 
   const byMonth = groupBy(rows, r => monthKey(r.date));
@@ -1110,13 +1170,19 @@ function renderBooked(year, status, eventName) {
     : avgConversionWindow > 90 ? fmt(avgConversionWindow / 30, 1) + " months"
     : fmt(avgConversionWindow) + " days";
 
+  // Dynamic date-range subtitle -- dynamic with the Year/Status/Event filters via `rows`.
+  const bbRange = rangeLabel(rows, "eventStartDate");
+
+  // Hosted Events and Booked Business both represent the events team's own
+  // data, so every card on these two tabs gets the same pale-blue
+  // "events-team" accent used for the 4 events-team cards on the Overview tab.
   document.getElementById("bb-kpiGrid").innerHTML = [
-    kpiCard("Total Events", fmt(totalEvents)),
-    kpiCard("Events That Generated Leads", fmt(distinctEvents)),
-    kpiCard("Leads Generated", fmt(leadsGenerated)),
-    kpiCard("Definite Leads", fmt(definiteLeads)),
-    kpiCard("Definite Leads Percentage", pct(definiteRate)),
-    kpiCard("Avg. Conversion Window", convWindowText)
+    kpiCard("Total Events", fmt(totalEvents), null, null, bbRange, "events-team"),
+    kpiCard("Events That Generated Leads", fmt(distinctEvents), null, null, bbRange, "events-team"),
+    kpiCard("Leads Generated", fmt(leadsGenerated), null, null, bbRange, "events-team"),
+    kpiCard("Definite Leads", fmt(definiteLeads), null, null, bbRange, "events-team"),
+    kpiCard("Definite Leads Percentage", pct(definiteRate), null, null, bbRange, "events-team"),
+    kpiCard("Avg. Conversion Window", convWindowText, null, null, bbRange, "events-team")
   ].join("");
 
   // Grouped from the full (non-deduped) rows, not uniqueLeadRows -- a lead
