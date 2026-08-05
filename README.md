@@ -95,7 +95,7 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | Visual | Column(s) | Aggregation |
 |---|---|---|
 | Partner Referrals card | Partner Referrals | Sum, for the selected Year |
-| Avg. Referrals per Entry card | Partner Referrals | Average, for the selected Year |
+| Avg. Referrals Per Month card | Partner Referrals | Total referrals ÷ distinct calendar months present in the selected Year (renamed from "Avg. Referrals per Entry," which had divided by row count instead) |
 | "Partner Referrals by Staff" chart | Staff (x-axis); Partner Referrals (y-axis) | Sum per staff member, for the selected Year |
 | "Partner Referrals by Month" chart | Date (x-axis); Partner Referrals (y-axis) | Sum per month, for the selected Year |
 | "Monthly Referrals by Staff" chart | Date (x-axis); Partner Referrals (y-axis); Staff (legend/series) | Sum per staff member per month, for the selected Year |
@@ -129,32 +129,33 @@ Notes:
 
 ## Data source mapping (Client Survey tab)
 
-Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "ACC Survey" sheet, filtered by its "Start Date" column for the Year filter and by "Visit Anaheim Destination Service Manager" for the Services Manager filter -- both drive every card/chart on the tab dynamically.
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "ACC Survey" sheet, filtered by its "Start Date" column for the Year filter, "Visit Anaheim Destination Service Manager" for the Services Manager filter, and "Question" for the Question filter -- all three drive every card/chart/table on the tab dynamically.
 
 | Visual | Column(s) | Formula |
 |---|---|---|
-| The Overall Anaheim Experience Score card | Rating | Average, filtered to Question = "The Overall Anaheim Experience" |
-| Visit Anaheim Team Experience Score card | Rating | Average across all questions (grand mean) |
-| DS&E Manager Experience Score card | Rating | Average, filtered to Question = "The Experience With Your Visit Anaheim Destination Service and Events Manager" |
-| Survey Respondents card | Lead ID | Distinct count |
-| "Category Rating" chart | Question (y-axis); Rating (x-axis) | Average per question |
-| "Avg. Score by Month" chart | Start Date, by month (x-axis); Rating (y-axis) | Average per month |
-| "Avg. Rating by DS&E Manager" chart | Visit Anaheim Destination Service Manager (x-axis); Rating (y-axis) | Average per manager |
-| "Ratings by Year" table | Question (rows); Rating (values) | Average per question per year, one column per year present in the data (2023 through the latest year) |
-| "Year-over-Year % Change" table | Question (rows); Rating (values) | YoY % change between each consecutive pair of years present in the data |
-| "Feedback" section testimonials | Feedback | Up to 20 responses per year, each card titled with its year |
+| The Overall Anaheim Experience Score card | Rating | Average, filtered to Question = "The Overall Anaheim Experience" (fixed regardless of the Question filter) |
+| Visit Anaheim Team Experience Score card | Rating | Average across all questions (grand mean) when Question = "All"; when a specific Question is selected, this card recomputes to that question's own average and its label changes to "[Question] Score" |
+| DS&E Manager Experience Score card | Rating | Average, filtered to Question = "The Experience With Your Visit Anaheim Destination Service and Events Manager" (fixed regardless of the Question filter) |
+| Survey Respondents card | Lead ID | Distinct count (not question-specific) |
+| "VA Survey Questions Rating" chart | Question (y-axis); Rating (x-axis) | Average per question; narrows to a single bar when a specific Question is selected. The Overall Anaheim Experience and DS&E Manager questions are highlighted with a lighter fill, since they're also their own KPI cards |
+| "VA Team Experience Avg. Score by Month" chart | Start Date, by month (x-axis); Rating (y-axis) | Average per month, across all questions or just the selected Question |
+| "Avg. Rating by DS&E Manager" chart | Visit Anaheim Destination Service Manager (x-axis); Rating (y-axis) | Average per manager, across all questions or just the selected Question |
+| "Ratings by Year" table | Question (rows); Rating (values) | Average per question per year, one column per year present in the data (2023 through the latest year); narrows to 1 row when a Question is selected |
+| "Year-over-Year % Change" table | Question (rows); Rating (values) | YoY % change between each consecutive pair of years present in the data; narrows to 1 row when a Question is selected |
+| "Feedback" section testimonials | Feedback | Up to 20 responses per year, each card titled with its year (not affected by the Question filter -- Q7 is an open-ended question, not one of the rated questions in that dropdown) |
 
 Notes:
 
 - The **Year filter defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), same as the other tabs.
 - **"The Overall Anaheim Experience Score"** replaces the former "Visit Anaheim Met Event Objectives Score" card and sits to the left of "Visit Anaheim Team Experience Score" -- it reads the new 8th ACC Survey question ("The Overall Anaheim Experience"), which the workbook started tracking retroactively across all 122 existing respondents (not from new respondents).
-- **"Category Rating"** data labels are now bold and larger (font size bumped up, explicit bold weight) so they're easy to read at a glance.
+- **"Category Rating" was renamed "VA Survey Questions Rating"**, and **"Avg. Score by Month" was renamed "VA Team Experience Avg. Score by Month."** Data labels on the former are bold and larger (font size bumped up, explicit bold weight) so they're easy to read at a glance.
+- **A new Question filter** was added, listing all 7 rated questions (everything except the open-ended Q7 feedback question). When a specific question is selected: the 3 chart titles and the 2 YoY table titles get an " — [Question]" suffix; "VA Survey Questions Rating" narrows to that question's single bar; "VA Team Experience Avg. Score by Month" and "Avg. Rating by DS&E Manager" recompute using only that question's ratings; both YoY tables narrow to a single row. The "Overall Anaheim Experience Score" and "DS&E Manager Experience Score" cards keep their own fixed meaning regardless of this filter, since their titles already name a specific question -- only "Visit Anaheim Team Experience Score" (normally the grand mean across all questions) is the one that recomputes and relabels itself to match the selected question.
 - **"Ratings by Year" and "Year-over-Year % Change"** now build their year columns dynamically from whatever years are actually present in the ACC Survey sheet (2023 through the latest year), instead of a hardcoded 2023-2026 range -- both the table headers and the "Feedback" section's testimonial years update automatically as new years of data get added.
-- **The Q2/Q7 spotlight is now just "Feedback"** -- the Q2 line chart was removed entirely (per direction to keep only the feedback cards); each testimonial card is titled with its year in bold, and shows up to 4 comments per year.
+- **The Q2/Q7 spotlight is now just "Feedback"** -- the Q2 line chart was removed entirely (per direction to keep only the feedback cards); each testimonial card is titled with its year in bold, and shows up to 20 comments per year, respecting the Year and Services Manager filters (but not the new Question filter).
 
 ## Data source mapping (Hosted Events tab)
 
-Confirmed against the actual workbook headers. Every card, chart, and table on this tab (other than the fixed Booked Business cross-reference at the bottom) reads from the single "Event Surveys" sheet, filtered by its "Event Date" column for the Year filter, "Event Category" for the Event Category filter, and "Event" for the Event Name filter -- all three drive every card/chart on the tab dynamically.
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "Event Surveys" sheet, filtered by its "Event Date" column for the Year filter, "Event Category" for the Event Category filter, and "Event" for the Event Name filter -- all three drive every card/chart on the tab dynamically. (The former "Hosted Events & Booked Business" cross-reference has moved to the Booked Business tab -- see that section below.)
 
 | Visual | Column(s) | Formula |
 |---|---|---|
@@ -164,23 +165,23 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | Survey Respondents card | Event ID | Count (one row per response) |
 | Avg. Satisfaction Score card | Satisfaction Score | Average |
 | "Events by Month" chart | Event Date, by month (x-axis); Event ID (y-axis) | Distinct count per month |
-| "Question Ratings" chart | Event Date, by month (x-axis); 4 rated questions (y-axis) | Average per month, one series each for Overall Experience, Recommend Future Events, Arrival and Registration, and Satisfaction Score (the latter scaled ×5 for display so all four sit on the same 0–5 axis) |
+| "Survey Questions Ratings" chart | Event Date, by month (x-axis); 4 rated questions (y-axis) | Average per month, one series each for Overall Experience, Recommend Future Events, Arrival and Registration, and Satisfaction Score (the latter scaled ×5 for display so all four sit on the same 0–5 axis) |
 | "Avg. Rating by Question" table | Overall Experience, Recommend Future Events, Arrival and Registration, Satisfaction Score (rows); Event Survey Type (Attendee/Partner columns) | Average per question, split by Attendee vs. Partner, plus an unfiltered "Avg. Total" column |
 | "Ratings by Event Category" table | Event Category (rows); Event ID, Satisfaction Score, Overall Experience, Arrival and Registration, Recommend Future Events (columns) | Respondents = count of Event ID; the four rating columns are averages |
 | "Event Survey Detail" table | Event, Event Survey Type, Event Category, Event Date | One row per event/survey-type combination |
-| "Hosted Events & Booked Business" cross-reference | Event (chart/table); Event ID (Survey Respondents); Satisfaction Score (Avg. Satisfaction Score); Booked Business's Lead ID (Leads Generated) | Only shows events that have a matching Booked Business record; Leads Generated is a distinct count of Lead ID |
 
 Notes:
 
 - The **Year filter now defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), matching every other tab.
-- **"Question Ratings"** was switched from a by-year chart to a **by-month** chart (same x-axis grain as "Events by Month"), per direction, with the underlying questions renamed to their card/table labels: "Overall Experience," "Recommend Future Events," "Arrival and Registration" (was "Registration Experience" in the chart / "Registration and Arrival Process" in the table), and "Satisfaction Score" (was "Satisfaction").
+- **"Question Ratings" is now "Survey Questions Ratings"**, and was switched from a by-year chart to a **by-month** chart (same x-axis grain as "Events by Month"), per direction, with the underlying questions renamed to their card/table labels: "Overall Experience," "Recommend Future Events," "Arrival and Registration" (was "Registration Experience" in the chart / "Registration and Arrival Process" in the table), and "Satisfaction Score" (was "Satisfaction"). It now also has a subtitle noting the 0–5 scale.
 - **"Avg. Rating by Question"** table's 4th column is now labeled **"Avg. Total"** (was "Total").
 - **"Ratings by Event Category"** table's columns are now labeled with the full question names ("Avg. Satisfaction Score," "Overall Experience," "Arrival and Registration," "Recommend Future Events") instead of the earlier shortened labels.
 - **"Event Survey Detail"** table's column order is now **Event, Event Type, Category, Date** (previously Event, Type, Date, Category), and its subtitle sentence ("One row per event / survey type...") was removed.
+- **The "Hosted Events & Booked Business" cross-reference section moved to the Booked Business tab** (directly beneath its KPI cards), per direction -- see the Booked Business mapping section below for its formulas, including its new totals row.
 
 ## Data source mapping (Booked Business tab)
 
-Confirmed against the actual workbook headers. Every card, chart, and table on this tab (other than "Total Events," see below) reads from the single "Booked Business" sheet, filtered by its "Event Start Date" column for the Year filter, "Lead Status" for the Lead Status filter, and "Event Name" for the Event Name filter -- all three drive every card/chart/table on the tab dynamically.
+Confirmed against the actual workbook headers. Every card, chart, and table on this tab (other than "Total Events" and the "Hosted Events & Booked Business" cross-reference, see below) reads from the single "Booked Business" sheet, filtered by its "Event Start Date" column for the Year filter, "Lead Status" for the Lead Status filter, and "Event Name" for the Event Name filter -- all three drive every card/chart/table on the tab dynamically.
 
 | Visual | Column(s) | Formula |
 |---|---|---|
@@ -188,8 +189,9 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | Events That Generated Leads card | Event ID | Distinct count |
 | Leads Generated card | Lead ID | Distinct count |
 | Definite Leads card | Lead ID | Distinct count, filtered to Lead Status = "Definite" |
-| Definite Leads Rate card | Lead ID | Definite Leads ÷ Leads Generated, shown as a percentage |
+| Definite Leads Percentage card | Lead ID | Definite Leads ÷ Leads Generated, shown as a percentage |
 | Avg. Conversion Window card | Days of Lead Created from Event | Average; displayed in days, or in months (÷30) once the average passes 90 days |
+| "Hosted Events & Booked Business" cross-reference | Event (chart/table); Event ID (Survey Respondents); Satisfaction Score (Avg. Satisfaction Score); Booked Business's Lead ID (Leads Generated) | Only shows events that have a matching Booked Business record; Leads Generated is a distinct count of Lead ID. Totals row: Event = count of events, Survey Respondents/Leads Generated = sum, Avg. Satisfaction Score = average |
 | "Leads Generated by Event" chart | Event Name (x-axis); Lead ID (y-axis) | Distinct count per event, top 10 |
 | "Leads Generated by Lead Status" chart | Lead ID (values); Lead Status (legend) | Distinct count per status |
 | "Conversion Window by Event — Detail" table | Event (rows); Days of Lead Created from Event (bucketed) | Distinct count of Lead ID per bracket, per the DAX measure in the code comment above this table's render logic |
@@ -197,11 +199,16 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 
 Notes:
 
-- The **Year filter now defaults to 2026** on page load, same as every other tab -- but the Booked Business sheet only has 2025 data as of this build, so it currently falls back to "All" (the same fallback every other 2026-default filter already uses when a year isn't in the data yet). It'll start landing on 2026 automatically once 2026 rows are added to the sheet.
-- **"Total Events"** is carried over from the Hosted Events tab and reads the separate "Event Surveys" sheet (distinct count of Event ID). It only follows this tab's **Year** filter (matched against that sheet's own Event Date year) -- it does **not** follow the Lead Status or Event Name filters, since Lead Status doesn't exist on the Event Surveys sheet, and the two sheets label events differently (e.g. "Ducks vs. Stars" vs. "2025 March Ducks vs. Dallas Stars" -- see the Hosted Events ↔ Booked Business cross-reference note below), so an Event Name selected here wouldn't reliably match a name on the other sheet.
-- **"Leads Generated by Event"** is a distinct count of **Lead ID** per event (matching the chart's own name and the existing "Leads Generated" KPI card), not a distinct count of Event ID -- an Event ID count would always be 1 per event bar, which wouldn't be a meaningful chart. Flagging this since the column was given as "Event ID" but the behavior implemented matches "Leads Generated."
+- The **Year filter now defaults to the latest year of data actually present in the Booked Business sheet** (currently 2025, since 2026 rows haven't been added yet) -- previously this was hardcoded to "2026, falling back to All," which meant it landed on "All" instead of a single year. Defaulting to the latest year present means it'll show 2025 specifically today, and will move to 2026 on its own once 2026 rows are added.
+- **"Total Events"** is carried over from the Hosted Events tab and reads the separate "Event Surveys" sheet (distinct count of Event ID). It only follows this tab's **Year** filter (matched against that sheet's own Event Date year) -- it does **not** follow the Lead Status or Event Name filters, since Lead Status doesn't exist on the Event Surveys sheet, and the two sheets label events differently (e.g. "Ducks vs. Stars" vs. "2025 March Ducks vs. Dallas Stars" -- see the cross-reference row above), so an Event Name selected here wouldn't reliably match a name on the other sheet.
+- **The "Hosted Events & Booked Business" cross-reference section moved here from the Hosted Events tab**, directly beneath the KPI cards, per direction. It gained a **totals row** at the bottom of its table.
+- **"Definite Rate" is now "Definite Leads Percentage."**
+- **"Leads Generated by Event"** is a distinct count of **Lead ID** per event (matching the chart's own name and the existing "Leads Generated" KPI card), not a distinct count of Event ID -- an Event ID count would always be 1 per event bar, which wouldn't be a meaningful chart. Flagging this since the column was given as "Event ID" but the behavior implemented matches "Leads Generated." It's also grouped from the un-deduped rows now (see next note) so every event with leads shows up.
+- **Fixed a bug**: "Leads Generated by Event" and "Conversion Window by Event — Detail" were silently dropping any event whose leads were *all* shared with another event, because they grouped from a Lead-ID-deduped-across-all-events list -- a lead touching 2 events only "belonged" to whichever one listed it first. Both now group from the full rows and take a distinct Lead ID count *within* each event's own rows, so every event that generated leads is now included (this can make an event's count add up to more than the tab-wide "Leads Generated" total, which is deduped globally on purpose).
+- **"Events That Generated Leads Detail"** wraps its Event/Account/Lead column text instead of forcing horizontal scroll.
 - **"Avg. Conversion Window"** auto-switches from days to months once the average exceeds 90 days (divided by 30 days/month), so a large day count reads as e.g. "4.2 months" instead of "127 days."
 - **"Conversion Window by Event"** dropped its "% of Leads" chart (removed per direction) and kept only the "Detail" table, whose 5 columns are renamed to month-based brackets ("1 Month," "2-3 Months," "4-6 Months," "7-12 Months," "Over 12+ Months") -- the underlying day ranges are unchanged (0–30, 31–90, 91–180, 181–365, 366+), confirmed against the provided DAX measure for the "1 Month" bracket.
+- **"Leads Generated by Lead Status"** and **"Repeat vs. New" (Repeat Clients tab)** doughnuts now anchor their data labels to the center of each arc instead of the outer edge, which was clipping or hiding labels on larger slices.
 - **"Booked Business Detail"** is renamed **"Events That Generated Leads Detail"** and gains a **Lead** column (Lead Name) between Account and Event Start Date; both date columns are now formatted **MM/DD/YYYY** instead of the raw YYYY-MM-DD.
 
 ## How the KPI formulas were verified
@@ -216,9 +223,9 @@ Every KPI on this dashboard was checked against the numbers shown live in the Po
 - **Booked Business "Avg. Conversion Window"** is averaged at the attendee-row grain (not deduplicated by lead) — this is what matches the live report's 262.6-day figure exactly.
 - **Repeat Clients "Accounts with Repeat Bookings"** counts accounts that appear more than once in the sheet at all (19), not accounts with a "Yes" repeat flag (which is a larger, different set).
 
-One number I could **not** reproduce: the source report's Booked Business "Total Events" (35) and "Event Conversion Rate" (28.6%). The Booked Business sheet only contains events that already generated at least one lead, so a "total events" and "conversion rate" computed from it alone are tautological (always 100%). The live report's 35 almost certainly comes from a join to the broader Events calendar filtered to the same window — I didn't have enough visibility into that relationship to replicate it with confidence, so this dashboard shows "Distinct Events with Leads" instead and omits the conversion-rate card rather than presenting a number I couldn't verify.
+One number I could **not** reproduce: the source report's Booked Business "Total Events" (35) and "Event Conversion Rate" (28.6%). The Booked Business sheet only contains events that already generated at least one lead, so a "total events" and "conversion rate" computed from it alone are tautological (always 100%). The live report's 35 almost certainly comes from a join to the broader Events calendar filtered to the same window — I didn't have enough visibility into that relationship to replicate it with confidence, so this dashboard shows "Events That Generated Leads" instead (a distinct count of Event ID; a separate "Total Events" card, sourced from the Event Surveys sheet, was added later) and omits the conversion-rate card rather than presenting a number I couldn't verify.
 
-**Hosted Events ↔ Booked Business relationship** (bottom of the Hosted Events tab): `eventSurveys` and `bookedBusiness` share the same `eventId` values even though the two sheets label events differently (e.g. "Ducks vs. Stars" in Event Surveys is "2025 March Ducks vs. Dallas Stars" in Booked Business). 6 of the 35 hosted events match a Booked Business `eventId`; the cross-reference table/chart shows 5 of those 6, because it counts unique leads the same way the rest of the tab does (`dedupeBy` on Lead ID), and a few leads in the source data span more than one event, so they get attributed to whichever event lists them first.
+**Hosted Events ↔ Booked Business relationship** (Booked Business tab, directly beneath the KPI cards -- moved here from the bottom of the Hosted Events tab): `eventSurveys` and `bookedBusiness` share the same `eventId` values even though the two sheets label events differently (e.g. "Ducks vs. Stars" in Event Surveys is "2025 March Ducks vs. Dallas Stars" in Booked Business). 6 of the 35 hosted events match a Booked Business `eventId`; the cross-reference table/chart shows 5 of those 6, because it counts unique leads the same way this specific visual always has (`dedupeBy` on Lead ID), and a few leads in the source data span more than one event, so they get attributed to whichever event lists them first. (This dedup-across-events quirk is intentional here and only affects this one cross-reference visual -- it's a different, and separately fixed, issue from the one described in the Booked Business notes above for "Leads Generated by Event" and the conversion window table.)
 
 ## Footer source line (per tab)
 
@@ -236,7 +243,7 @@ The "Source: ..." line in the footer changes depending on which tab is active, s
 
 ## Filters implemented vs. the source report
 
-Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** on Client Survey (drives the KPI grid, all three charts, the YoY table, and the Q2/Q7 spotlight), and **Account Name** plus **Services Manager** on Repeat Clients (both drive the KPI grid, both charts, and the Accounts table). The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
+Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** and **Question** on Client Survey (drive the KPI grid, all three charts, the YoY tables, and the visual titles -- see the Client Survey mapping notes above for exactly how the Question filter recomputes/relabels things), and **Account Name** plus **Services Manager** on Repeat Clients (both drive the KPI grid, both charts, the Accounts table, and the new Year over Year table). The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
 
 The Team KPIs YoY table now follows the Year filter: pick a year and the table compares it against the year before; "All" falls back to the two most recent years with data. The Partner Referrals and Client Survey YoY tables still always show the latest two (or full 2023–2026) years regardless of the Year filter, matching the source report's behavior — the Client Survey one does respect the Services Manager filter, though.
 

@@ -45,13 +45,14 @@
     <section class="panel insight-panel">
       <h2>Department at a Glance</h2>
       <p class="desc" id="ov-desc">The above data cards reflect totals from January 1, 2026 through the last month of data.</p>
+      <div id="ov-insights" class="insight-text"></div>
+      <div class="glance-divider"></div>
       <div class="table-scroll">
         <table class="mini" id="ov-summaryTable">
           <thead><tr><th>Category</th><th>Data Through</th><th>Previous Month</th><th>Year-to-Date (2026)</th><th>YoY % (vs 2025 YTD)</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <div id="ov-insights" class="insight-text"></div>
     </section>
   </section>
 
@@ -64,13 +65,13 @@
     <div class="grid-2">
       <section class="panel">
         <h2>Partners Visited &amp; Planning Visits <span class="tag">Monthly</span></h2>
-        <p class="desc">Click a month to highlight it across all three charts on this tab. Partners Visited only began being tracked in 2026, so no 2025 comparison is available yet.</p>
         <div class="chart-box clickable"><canvas id="team-chart1"></canvas></div>
+        <p class="desc auto-analysis" id="team-analysis1"></p>
       </section>
       <section class="panel">
         <h2>Groups Serviced <span class="tag">Monthly</span></h2>
-        <p class="desc">In House Groups Serviced only began being tracked in 2026, so no 2025 comparison is available yet.</p>
         <div class="chart-box clickable"><canvas id="team-chart2"></canvas></div>
+        <p class="desc auto-analysis" id="team-analysis2"></p>
       </section>
     </div>
     <div class="grid-2">
@@ -81,8 +82,10 @@
       <section class="panel">
         <h2>Clients Serviced <span class="tag">Monthly</span></h2>
         <div class="chart-box clickable"><canvas id="team-chart3"></canvas></div>
+        <p class="desc auto-analysis" id="team-analysis3"></p>
       </section>
     </div>
+    <p class="footnote">*Partners Visited and In House Groups Serviced only began being tracked in 2026, so no prior-year comparison is available for them yet.</p>
   </section>
 
   <!-- ================= PARTNER REFERRALS ================= -->
@@ -135,6 +138,10 @@
       </section>
     </div>
     <section class="panel">
+      <h2>Year over Year</h2>
+      <table class="mini" id="rep-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+    </section>
+    <section class="panel">
       <h2>Accounts</h2>
       <p class="desc">"Bookings" = how many times this account appears in the dataset (a proxy for repeat-booking depth).</p>
       <div class="table-scroll">
@@ -148,32 +155,33 @@
     <div class="filter-row">
       <label>Year (start date) <select id="sur-year"></select></label>
       <label>Services Manager <select id="sur-manager"></select></label>
+      <label>Question <select id="sur-question"></select></label>
     </div>
     <div class="kpi-grid" id="sur-kpiGrid"></div>
     <div class="grid-2">
       <section class="panel">
-        <h2>Category Rating</h2>
+        <h2 id="sur-chart1-title">VA Survey Questions Rating</h2>
         <div class="chart-box tall"><canvas id="sur-chart1"></canvas></div>
       </section>
       <section class="panel">
-        <h2>Avg. Score by Month</h2>
+        <h2 id="sur-chart2-title">VA Team Experience Avg. Score by Month</h2>
         <div class="chart-box"><canvas id="sur-chart2"></canvas></div>
       </section>
     </div>
     <section class="panel">
-      <h2>Avg. Rating by DS&amp;E Manager</h2>
-      <p class="desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
+      <h2 id="sur-chart3-title">Avg. Rating by DS&amp;E Manager</h2>
+      <p class="desc" id="sur-chart3-desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
       <div class="chart-box"><canvas id="sur-chart3"></canvas></div>
     </section>
     <div class="grid-2">
       <section class="panel">
-        <h2>Ratings by Year</h2>
+        <h2 id="sur-yoyValues-title">Ratings by Year</h2>
         <div class="table-scroll">
           <table class="mini" id="sur-yoyValuesTable"><thead><tr><th>Question</th></tr></thead><tbody></tbody></table>
         </div>
       </section>
       <section class="panel">
-        <h2>Year-over-Year % Change</h2>
+        <h2 id="sur-yoyPct-title">Year-over-Year % Change</h2>
         <div class="table-scroll">
           <table class="mini" id="sur-yoyPctTable"><thead><tr><th>Question</th></tr></thead><tbody></tbody></table>
         </div>
@@ -202,7 +210,8 @@
         <div class="chart-box"><canvas id="hev-chart1"></canvas></div>
       </section>
       <section class="panel">
-        <h2>Question Ratings <span class="tag">Monthly</span></h2>
+        <h2>Survey Questions Ratings <span class="tag">Monthly</span></h2>
+        <p class="desc">Ranked on a scale of 0&ndash;5.</p>
         <div class="chart-box"><canvas id="hev-chart2"></canvas></div>
       </section>
     </div>
@@ -225,17 +234,6 @@
         <table class="mini" id="hev-detailTable"><thead><tr><th>Event</th><th>Event Type</th><th>Category</th><th>Date</th></tr></thead><tbody></tbody></table>
       </div>
     </section>
-
-    <section class="panel">
-      <h2>Hosted Events &amp; Booked Business</h2>
-      <p class="desc">Of the 35 hosted events tracked here, these are matched by Event ID to a Booked Business record, showing how survey engagement on an event relates to the leads it generated. Always shows all years, independent of the filters above.</p>
-      <div class="grid-2">
-        <div class="chart-box"><canvas id="hev-bbChart"></canvas></div>
-        <div class="table-scroll">
-          <table class="mini" id="hev-bbTable"><thead><tr><th>Event</th><th>Survey Respondents</th><th>Avg. Satisfaction Score</th><th>Leads Generated</th></tr></thead><tbody></tbody></table>
-        </div>
-      </div>
-    </section>
   </section>
 
   <!-- ================= BOOKED BUSINESS ================= -->
@@ -246,6 +244,16 @@
       <label>Event Name <select id="bb-event"></select></label>
     </div>
     <div class="kpi-grid" id="bb-kpiGrid"></div>
+    <section class="panel">
+      <h2>Hosted Events &amp; Booked Business</h2>
+      <p class="desc">Of the 35 hosted events tracked here, these are matched by Event ID to a Booked Business record, showing how survey engagement on an event relates to the leads it generated. Always shows all years, independent of the filters above.</p>
+      <div class="grid-2">
+        <div class="chart-box"><canvas id="hev-bbChart"></canvas></div>
+        <div class="table-scroll">
+          <table class="mini" id="hev-bbTable"><thead><tr><th>Event</th><th>Survey Respondents</th><th>Avg. Satisfaction Score</th><th>Leads Generated</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
+        </div>
+      </div>
+    </section>
     <div class="grid-2">
       <section class="panel">
         <h2>Leads Generated by Event</h2>

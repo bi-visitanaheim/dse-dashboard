@@ -84,8 +84,15 @@ function dedupeBy(arr, keyFn) {
 }
 function monthKey(iso) { return iso.slice(0, 7); }
 function monthLabel(m) { const [y, mo] = m.split("-"); return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" }); }
-function kpiCard(label, value, deltaText, deltaCls) {
-  return `<div class="kpi-card"><div class="label">${label}</div><div class="value">${value}</div>${deltaText ? `<div class="delta ${deltaCls || ""}">${deltaText}</div>` : ""}</div>`;
+function kpiCard(label, value, deltaText, deltaCls, dateRange, cardClass) {
+  return `<div class="kpi-card${cardClass ? " " + cardClass : ""}"><div class="label">${label}</div><div class="value">${value}</div>${deltaText ? `<div class="delta ${deltaCls || ""}">${deltaText}</div>` : ""}${dateRange ? `<div class="daterange">${dateRange}</div>` : ""}</div>`;
+}
+// "Jan 1, 2026 – May 31, 2026" -- the exact YTD window a card's number covers.
+function ytdRangeLabel(year, cutoffMonth) {
+  if (!cutoffMonth) return "";
+  const start = new Date(year, 0, 1).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const end = new Date(year, cutoffMonth, 0).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return `${start} &ndash; ${end}`;
 }
 function getYears(arr) { return [...new Set(arr.map(r => r.year).filter(Boolean))].sort(); }
 function populateYearSelect(sel, years, onChange) {
@@ -379,35 +386,43 @@ function renderOverview() {
   // priValueText is the same prior-year YTD figure shown in the "Year-to-Date"
   // column of the Department at a Glance table below, just surfaced inline
   // on the card too so the % change is never shown without the number behind it.
-  function cardWithDelta(label, valueText, cur, pri, priYear, priValueText) {
+  // dateRange/cardClass are optional -- dateRange shows the exact YTD window
+  // the card's number covers, cardClass adds the "events-team" blue accent
+  // for the 4 cards driven by the events team's data.
+  function cardWithDelta(label, valueText, cur, pri, priYear, priValueText, dateRange, cardClass) {
     const d = pctChange(pri, cur);
     const text = d === null ? null : `${deltaArrow(d)}${pct(d)} (${priValueText} in ${priYear}) vs ${priYear} YTD`;
-    return kpiCard(label, valueText, text, deltaClass(d));
+    return kpiCard(label, valueText, text, deltaClass(d), dateRange, cardClass);
   }
+  // Once the average lead conversion window passes 90 days, months reads
+  // more naturally than a large day count (matches the Booked Business tab).
+  const convWinFmt = v => (v === null ? "&mdash;" : v > 90 ? fmt(v / 30, 1) + " months" : fmt(v) + " days");
 
   // Single source of truth for both the 12 KPI cards above and the
   // Department at a Glance summary table below -- see README.md
   // "Data source mapping" for the exact table/column/date-field each of
   // these pulls from. curYear/priYear default to 2026/2025 except the two
   // Booked-Business-driven categories, which track BB_CUR/BB_PRI (see note
-  // above -- that sheet doesn't have 2026 event dates yet).
+  // above -- that sheet doesn't have 2026 event dates yet). "team" marks the
+  // 4 categories driven by the events team's own data (vs. the services
+  // team's data for everything else), used for the card color-coding below.
   const categories = [
-    { label: "Planning Visits", cur: visitsCur, pri: visitsPri, month: visitsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
-    { label: "Clients Serviced", cur: clientsCur, pri: clientsPri, month: clientsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
-    { label: "Partners Visited", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
-    { label: "Convention Groups Serviced", cur: convCur, pri: convPri, month: convMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
-    { label: "In House Groups Serviced", cur: inHouseCur, pri: inHousePri, month: inHouseMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
-    { label: "Partner Referrals", cur: totalReferralsCur, pri: totalReferralsPri, month: totalReferralsMonth, cutoff: refCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
-    { label: "Repeat Account %", cur: rateCur, pri: ratePri, month: rateMonth, cutoff: repCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v) },
-    { label: "VA Team Experience Rating", cur: teamScoreCur, pri: teamScorePri, month: teamScoreMonth, cutoff: surCutoff, curYear: CUR, priYear: PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v, 2) + " / 10") },
-    { label: "VA Hosted Events", cur: hostedEventsCur, pri: hostedEventsPri, month: hostedEventsMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v) },
-    { label: "VA Event Satisfaction Score", cur: eventSatCur, pri: eventSatPri, month: eventSatMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v) },
-    { label: `${BB_CUR} Leads Generated From VA Events`, cur: leadsCurYtd, pri: leadsPriYtd, month: leadsMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v) },
-    { label: `${BB_CUR} Avg. Lead Conversion Window`, cur: convWinCur, pri: convWinPri, month: convWinMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v) + " days") }
+    { label: "Partners Visited", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "Planning Visits", cur: visitsCur, pri: visitsPri, month: visitsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "Convention Groups Serviced", cur: convCur, pri: convPri, month: convMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "In House Groups Serviced", cur: inHouseCur, pri: inHousePri, month: inHouseMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "Clients Serviced", cur: clientsCur, pri: clientsPri, month: clientsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "Partner Referrals", cur: totalReferralsCur, pri: totalReferralsPri, month: totalReferralsMonth, cutoff: refCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "Repeat Account %", cur: rateCur, pri: ratePri, month: rateMonth, cutoff: repCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "services" },
+    { label: "VA Team Experience Rating", cur: teamScoreCur, pri: teamScorePri, month: teamScoreMonth, cutoff: surCutoff, curYear: CUR, priYear: PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v, 2) + " / 10"), team: "services" },
+    { label: "VA Hosted Events", cur: hostedEventsCur, pri: hostedEventsPri, month: hostedEventsMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "events" },
+    { label: "VA Event Satisfaction Score", cur: eventSatCur, pri: eventSatPri, month: eventSatMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "events" },
+    { label: `${BB_CUR} Leads Generated From VA Events`, cur: leadsCurYtd, pri: leadsPriYtd, month: leadsMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v), team: "events" },
+    { label: `${BB_CUR} Avg. Lead Conversion Window`, cur: convWinCur, pri: convWinPri, month: convWinMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: convWinFmt, team: "events" }
   ];
 
   document.getElementById("ov-kpiGrid").innerHTML =
-    categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear, c.fmtFn(c.pri))).join("");
+    categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear, c.fmtFn(c.pri), ytdRangeLabel(c.curYear, c.cutoff), c.team === "events" ? "events-team" : "")).join("");
 
   document.getElementById("ov-desc").innerHTML = `The above data cards reflect totals from January 1, 2026 through ${endOfMonthLabel(CUR, pvCutoff)}.`;
 
@@ -430,10 +445,13 @@ function renderOverview() {
   const dHostedEvents = pctChange(hostedEventsPri, hostedEventsCur), dEventSat = pctChange(eventSatPri, eventSatCur);
   const dLeads = pctChange(leadsPriYtd, leadsCurYtd), dConvWin = pctChange(convWinPri, convWinCur);
 
+  // Strictly factual: states each of the 12 KPI categories' YTD figure and
+  // YoY delta, grouped by theme for readability. No interpretation,
+  // explanations, or suggested next steps -- just the numbers.
   const paras = [];
-  paras.push(`<p>Year to date through ${endOfMonthLabel(CUR, pvCutoff)}, the team logged <strong>${fmt(visitsCur)}</strong> planning visits${deltaSpan(dVisits)}, servicing <strong>${fmt(clientsCur)}</strong> clients${deltaSpan(dClients)} across <strong>${fmt(partnersCur)}</strong> partner visits${deltaSpan(dPartners)}, <strong>${fmt(convCur)}</strong> convention groups${deltaSpan(dConv)}, and <strong>${fmt(inHouseCur)}</strong> in-house groups${deltaSpan(dInHouse)}. ${dVisits !== null && dVisits < 0 && dClients !== null && dClients > 0 ? "Fewer visits but more clients served points to the team converting outreach more efficiently &mdash; worth understanding what's driving that lift so it can be repeated." : "Read these together with staffing levels for the period to judge whether the team is stretched or has room to take on more."}</p>`);
-  paras.push(`<p>Partner referrals reached <strong>${fmt(totalReferralsCur)}</strong>${deltaSpan(dRef)}, repeat business stands at <strong>${pct(rateCur)}</strong> of accounts${deltaSpan(dRate)}, and the Visit Anaheim team experience rating is <strong>${fmt(teamScoreCur, 2)}/10</strong>${deltaSpan(dTeamScore)}. ${dRate !== null && dRate > 0 ? "A rising repeat rate is a strong signal that recent client experience investments are paying off in retention, not just acquisition." : "If repeat business is flat or declining, it's worth pairing this with the Client Survey tab to see whether satisfaction scores explain it."} See the Q2/Q7 spotlight below for the client testimonials behind the experience rating.</p>`);
-  paras.push(`<p>The team hosted <strong>${fmt(hostedEventsCur)}</strong> surveyed events${deltaSpan(dHostedEvents)} at an average <strong>${pct(eventSatCur)}</strong> satisfaction score${deltaSpan(dEventSat)}, generating <strong>${fmt(leadsCurYtd)}</strong> distinct leads${deltaSpan(dLeads)} from ${BB_CUR} VA events with an average <strong>${fmt(convWinCur)}-day</strong> lead conversion window${deltaSpan(dConvWin)}. ${dEventSat !== null && dEventSat < 0 ? "The satisfaction dip is worth a closer read on the Hosted Events tab to see whether it's concentrated in a particular event category." : "Steady or improving satisfaction alongside consistent lead generation suggests the events-to-business pipeline is healthy."}</p>`);
+  paras.push(`<p>Year to date through ${endOfMonthLabel(CUR, pvCutoff)}, the team logged <strong>${fmt(partnersCur)}</strong> partner visits${deltaSpan(dPartners)}, <strong>${fmt(visitsCur)}</strong> planning visits${deltaSpan(dVisits)}, <strong>${fmt(convCur)}</strong> convention groups serviced${deltaSpan(dConv)}, <strong>${fmt(inHouseCur)}</strong> in-house groups serviced${deltaSpan(dInHouse)}, and <strong>${fmt(clientsCur)}</strong> clients serviced${deltaSpan(dClients)}.</p>`);
+  paras.push(`<p>Partner referrals reached <strong>${fmt(totalReferralsCur)}</strong>${deltaSpan(dRef)}, the repeat account rate is <strong>${pct(rateCur)}</strong>${deltaSpan(dRate)}, and the Visit Anaheim team experience rating is <strong>${fmt(teamScoreCur, 2)}/10</strong>${deltaSpan(dTeamScore)}.</p>`);
+  paras.push(`<p>The team hosted <strong>${fmt(hostedEventsCur)}</strong> surveyed VA events${deltaSpan(dHostedEvents)} at an average <strong>${pct(eventSatCur)}</strong> satisfaction score${deltaSpan(dEventSat)}, generating <strong>${fmt(leadsCurYtd)}</strong> leads${deltaSpan(dLeads)} with an average lead conversion window of <strong>${convWinFmt(convWinCur)}</strong>${deltaSpan(dConvWin)}.</p>`);
   document.getElementById("ov-insights").innerHTML = paras.join("");
 }
 
@@ -454,10 +472,10 @@ function renderTeam(year) {
   const rows = byYear(all, year);
 
   document.getElementById("team-kpiGrid").innerHTML = [
-    kpiCard("Partners Visited", fmt(sum(rows, r => r.partnersVisited))),
+    kpiCard("Partners Visited*", fmt(sum(rows, r => r.partnersVisited))),
     kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits))),
     kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced))),
-    kpiCard("In House Groups Serviced", fmt(sum(rows, r => r.inHouseGroupsServiced))),
+    kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced))),
     kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)))
   ].join("");
 
@@ -467,7 +485,7 @@ function renderTeam(year) {
   // the chart (same fix as the Client Survey "Avg. Rating by DS&E Manager" chart).
   makeChart("team-chart1", {
     data: { labels, datasets: [
-      { type: "bar", label: "Partners Visited", data: rows.map(r => r.partnersVisited), backgroundColor: COLORS.seriesA, borderRadius: 4 },
+      { type: "bar", label: "Partners Visited*", data: rows.map(r => r.partnersVisited), backgroundColor: COLORS.seriesA, borderRadius: 4 },
       { type: "bar", label: "Planning Visits", data: rows.map(r => r.planningVisits), backgroundColor: COLORS.seriesB, borderRadius: 4 }
     ] },
     options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } }
@@ -475,7 +493,7 @@ function renderTeam(year) {
   makeChart("team-chart2", {
     data: { labels, datasets: [
       { type: "bar", label: "Convention Groups Serviced", data: rows.map(r => r.conventionGroupsServiced), backgroundColor: COLORS.seriesB, borderRadius: 4 },
-      { type: "bar", label: "In House Groups Serviced", data: rows.map(r => r.inHouseGroupsServiced), backgroundColor: COLORS.seriesA, borderRadius: 4 }
+      { type: "bar", label: "In House Groups Serviced*", data: rows.map(r => r.inHouseGroupsServiced), backgroundColor: COLORS.seriesA, borderRadius: 4 }
     ] },
     options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } }
   });
@@ -486,14 +504,29 @@ function renderTeam(year) {
   });
 
   renderYoyTable("team-yoyTable", all, [
-    { label: "Partners Visited", fn: r => r.partnersVisited },
+    { label: "Partners Visited*", fn: r => r.partnersVisited },
     { label: "Planning Visits", fn: r => r.planningVisits },
     { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
-    { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced },
+    { label: "In House Groups Serviced*", fn: r => r.inHouseGroupsServiced },
     { label: "Clients Serviced", fn: r => r.clientsServiced }
   ], year);
 
   bindMonthLink("team", ["team-chart1", "team-chart2", "team-chart3"]);
+
+  // Automated 1-sentence analysis per chart -- just states the latest
+  // available month's figures, so it updates on its own every time the
+  // workbook is refreshed and rebuilt (no manual editing needed).
+  const latest = rows.length ? rows[rows.length - 1] : null;
+  const latestMonthTxt = latest ? monthLabel(latest.date.slice(0, 7)) : null;
+  document.getElementById("team-analysis1").textContent = latest
+    ? `In ${latestMonthTxt}, the team logged ${fmt(latest.partnersVisited)} partner visits and ${fmt(latest.planningVisits)} planning visits.`
+    : "No data available for this period yet.";
+  document.getElementById("team-analysis2").textContent = latest
+    ? `In ${latestMonthTxt}, the team serviced ${fmt(latest.conventionGroupsServiced)} convention groups and ${fmt(latest.inHouseGroupsServiced)} in-house groups.`
+    : "No data available for this period yet.";
+  document.getElementById("team-analysis3").textContent = latest
+    ? `In ${latestMonthTxt}, the team serviced ${fmt(latest.clientsServiced)} clients.`
+    : "No data available for this period yet.";
 }
 function renderYoyTable(tableId, rows, metrics, selectedYear) {
   const years = getYears(rows);
@@ -510,10 +543,14 @@ function renderYoyTable(tableId, rows, metrics, selectedYear) {
   // Always shows every metric passed in, in the order given -- if a metric
   // has no prior-year data at all (e.g. a column the source sheet didn't
   // start tracking until a later year), its % change just shows as "--"
-  // rather than the whole row disappearing.
+  // rather than the whole row disappearing. Each metric is either a plain
+  // sum (m.fn, the original/default) or a custom aggregator (m.agg, for
+  // things like a distinct count that a simple sum can't express).
   const html = metrics.map(m => {
-    const priVal = sum(rows.filter(r => r.year === prior), m.fn);
-    const curVal = sum(rows.filter(r => r.year === latest), m.fn);
+    const priRows = rows.filter(r => r.year === prior);
+    const curRows = rows.filter(r => r.year === latest);
+    const priVal = m.agg ? m.agg(priRows) : sum(priRows, m.fn);
+    const curVal = m.agg ? m.agg(curRows) : sum(curRows, m.fn);
     const d = pctChange(priVal, curVal);
     return `<tr><td>${m.label}</td><td>${fmt(priVal)}</td><td>${fmt(curVal)}</td><td class="${deltaClass(d)}">${deltaArrow(d)}${pct(d)}</td></tr>`;
   }).join("");
@@ -538,11 +575,16 @@ function renderReferrals(year) {
   const total = sum(rows, r => r.count);
   const byStaff = groupBy(rows, r => r.staff);
   const staffTotals = [...byStaff.entries()].map(([staff, rs]) => ({ staff, total: sum(rs, r => r.count) })).sort((a, b) => b.total - a.total);
-  const avgPerEntry = rows.length ? total / rows.length : null;
+  // Renamed from "Avg. Referrals per Entry" to "Avg. Referrals Per Month" --
+  // recalculated to match: total referrals divided by the number of distinct
+  // calendar months present in the selected data (not the row count, which
+  // is one row per staff/date/count entry, not one row per month).
+  const monthsPresent = new Set(rows.map(r => monthKey(r.date))).size;
+  const avgPerMonth = monthsPresent ? total / monthsPresent : null;
 
   document.getElementById("ref-kpiGrid").innerHTML = [
     kpiCard("Partner Referrals", fmt(total)),
-    kpiCard("Avg. Referrals per Entry", fmt(avgPerEntry, 1))
+    kpiCard("Avg. Referrals Per Month", fmt(avgPerMonth, 1))
   ].join("");
 
   makeChart("ref-chart1", {
@@ -668,8 +710,8 @@ function renderRepeat(year, accountName, manager) {
     data: {
       labels: ["Repeat", "New"],
       datasets: [
-        { label: "Accounts", data: [repeatAccountsCount, accountsServiced - repeatAccountsCount], backgroundColor: [COLORS.navy, COLORS.pale], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } },
-        { label: "Clients", data: [repeatClientsCount, totalClientsServiced - repeatClientsCount], backgroundColor: [COLORS.teal, COLORS.tealLight], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }
+        { label: "Accounts", data: [repeatAccountsCount, accountsServiced - repeatAccountsCount], backgroundColor: [COLORS.navy, COLORS.pale], datalabels: { display: true, anchor: "center", align: "center", color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } },
+        { label: "Clients", data: [repeatClientsCount, totalClientsServiced - repeatClientsCount], backgroundColor: [COLORS.teal, COLORS.tealLight], datalabels: { display: true, anchor: "center", align: "center", color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }
       ]
     },
     options: {
@@ -687,6 +729,20 @@ function renderRepeat(year, accountName, manager) {
   document.querySelector("#rep-clientsTable tbody").innerHTML = withBookings.map(r =>
     `<tr><td>${r.accountName}</td><td>${fmt(r.attendance)}</td><td>${fmt(r.peakRoom)}</td><td>${r.repeat}</td><td>${r.bookings}</td><td>${r.servicesManager}</td></tr>`
   ).join("");
+
+  // Year over Year table (same pattern as Partner Referrals' YoY table):
+  // respects the Account Name / Services Manager filters above, but not the
+  // Year filter itself, since the table derives its own prior/selected-year
+  // comparison from `year`. "Clients" = a plain COUNT of Lead ID; "Accounts"
+  // = a DISTINCT COUNT of Account ID (both from the Repeating ACC Clients
+  // Services / "RepeatingBusiness" sheet).
+  let yoyRows = DATA.repeatingClients.raw;
+  if (accountName && accountName !== "All") yoyRows = yoyRows.filter(r => r.accountName === accountName);
+  if (manager && manager !== "All") yoyRows = yoyRows.filter(r => r.servicesManager === manager);
+  renderYoyTable("rep-yoyTable", yoyRows, [
+    { label: "Clients", agg: rs => rs.filter(r => r.leadId !== null && r.leadId !== undefined).length },
+    { label: "Accounts", agg: rs => distinctCount(rs, r => r.accountId) }
+  ], year);
 }
 
 // =====================================================================
@@ -695,20 +751,28 @@ function renderRepeat(year, accountName, manager) {
 function initSurvey() {
   const yearSel = document.getElementById("sur-year");
   const mgrSel = document.getElementById("sur-manager");
-  function applyFilters() { renderSurvey(yearSel.value, mgrSel.value); renderQ2Q7(yearSel.value, mgrSel.value); }
+  const qSel = document.getElementById("sur-question");
+  function applyFilters() { renderSurvey(yearSel.value, mgrSel.value, qSel.value); renderQ2Q7(yearSel.value, mgrSel.value); }
   const years = getYears(DATA.accSurvey.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const managers = [...new Set(DATA.accSurvey.raw.map(r => r.manager).filter(Boolean))].sort();
   mgrSel.innerHTML = `<option value="All">All</option>` + managers.map(m => `<option value="${m}">${m}</option>`).join("");
   mgrSel.value = "All";
   mgrSel.onchange = applyFilters;
+  // Question filter -- every rated question (excludes Q7, the open-ended
+  // feedback question, which isn't a rating and belongs to the separate
+  // "Feedback" section instead).
+  const questionOpts = DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
+  qSel.innerHTML = `<option value="All">All</option>` + questionOpts.map(q => `<option value="${q}">${q}</option>`).join("");
+  qSel.value = "All";
+  qSel.onchange = applyFilters;
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
   const defaultYear = years.includes(2026) ? "2026" : "All";
   yearSel.value = defaultYear;
-  renderSurvey(defaultYear, "All");
+  renderSurvey(defaultYear, "All", "All");
   renderQ2Q7(defaultYear, "All");
 }
-function renderSurvey(year, manager) {
+function renderSurvey(year, manager, question) {
   let all = DATA.accSurvey.raw;
   if (manager && manager !== "All") all = all.filter(r => r.manager === manager);
   const rows = byYear(all, year);
@@ -716,32 +780,56 @@ function renderSurvey(year, manager) {
   // New 8th question added to the ACC Survey sheet -- exact match required.
   const overallText = "The Overall Anaheim Experience";
   const ratedRows = rows.filter(r => r.rating !== null);
+  const hasQ = question && question !== "All";
+  // Every chart/table below narrows to just the selected question when the
+  // Question filter is active; the 2 fixed-question cards (Overall Anaheim
+  // Experience, DS&E Manager) keep their own meaning regardless, since their
+  // titles already name a specific question -- only "Team Experience Score"
+  // (normally the grand mean across all questions) recomputes to the
+  // selected question's own average, with its label updated to match.
+  const filteredRows = hasQ ? ratedRows.filter(r => r.question === question) : ratedRows;
+  const titleSuffix = hasQ ? ` &mdash; ${question}` : "";
 
-  const teamScore = mean(ratedRows, r => r.rating);
+  const teamScore = mean(filteredRows, r => r.rating);
+  const teamScoreLabel = hasQ ? `${question} Score` : "Visit Anaheim Team Experience Score";
   const overallScore = mean(ratedRows.filter(r => r.question === overallText), r => r.rating);
   const managerScore = mean(ratedRows.filter(r => r.question === q2Text), r => r.rating);
   const respondents = distinctCount(rows, r => r.leadId);
 
   document.getElementById("sur-kpiGrid").innerHTML = [
     kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2)),
-    kpiCard("Visit Anaheim Team Experience Score", fmt(teamScore, 2)),
+    kpiCard(teamScoreLabel, fmt(teamScore, 2)),
     kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2)),
     kpiCard("Survey Respondents", fmt(respondents))
   ].join("");
 
-  const byQ = groupBy(ratedRows, r => r.question);
+  document.getElementById("sur-chart1-title").innerHTML = "VA Survey Questions Rating" + titleSuffix;
+  document.getElementById("sur-chart2-title").innerHTML = "VA Team Experience Avg. Score by Month" + titleSuffix;
+  document.getElementById("sur-chart3-title").innerHTML = "Avg. Rating by DS&amp;E Manager" + titleSuffix;
+  document.getElementById("sur-yoyValues-title").innerHTML = "Ratings by Year" + titleSuffix;
+  document.getElementById("sur-yoyPct-title").innerHTML = "Year-over-Year % Change" + titleSuffix;
+  document.getElementById("sur-chart3-desc").textContent = hasQ
+    ? `Averaged for "${question}" only, grouped by the manager named on each response.`
+    : "Averaged across all six rated questions, grouped by the manager named on each response.";
+
+  const byQ = groupBy(filteredRows, r => r.question);
   const qLabels = [...byQ.keys()];
+  // The Overall Anaheim Experience and DS&E Manager questions are
+  // highlighted (a lighter fill) since they're also called out as their own
+  // KPI cards above.
+  const highlightQs = new Set([q2Text, overallText]);
   makeChart("sur-chart1", {
     type: "bar",
     data: { labels: qLabels.map(q => wrapLabel(q)), datasets: [{
-      label: "Avg Rating", data: qLabels.map(q => mean(byQ.get(q), r => r.rating)), backgroundColor: COLORS.navy, borderRadius: 4,
+      label: "Avg Rating", data: qLabels.map(q => mean(byQ.get(q), r => r.rating)),
+      backgroundColor: qLabels.map(q => highlightQs.has(q) ? COLORS.tealLight : COLORS.navy), borderRadius: 4,
       // Bold, larger data labels so they're easy to read at a glance.
       datalabels: { font: { size: 13, weight: "700" }, color: COLORS.text }
     }] },
     options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 10 } } }
   });
 
-  const byMonth = groupBy(ratedRows, r => monthKey(r.date));
+  const byMonth = groupBy(filteredRows, r => monthKey(r.date));
   const months = [...byMonth.keys()].sort();
   makeChart("sur-chart2", {
     type: "bar",
@@ -751,7 +839,7 @@ function renderSurvey(year, manager) {
     options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 10 } } }
   });
 
-  const byMgr = groupBy(ratedRows.filter(r => r.manager), r => r.manager);
+  const byMgr = groupBy(filteredRows.filter(r => r.manager), r => r.manager);
   const mgrList = [...byMgr.entries()].map(([m, rs]) => ({ m, avg: mean(rs, r => r.rating) })).sort((a, b) => b.avg - a.avg);
   makeChart("sur-chart3", {
     type: "bar",
@@ -762,12 +850,12 @@ function renderSurvey(year, manager) {
   });
 
   // Both YoY tables always show the full multi-year view regardless of the
-  // Year filter (but do respect the Services Manager filter via `all` above).
-  // Years come from whatever's actually in the sheet (2023 through the
-  // latest year present), not a hardcoded range, so this keeps working as
-  // new years of data get added.
+  // Year filter (but do respect the Services Manager and Question filters
+  // via `all`/`question` above). Years come from whatever's actually in the
+  // sheet (2023 through the latest year present), not a hardcoded range, so
+  // this keeps working as new years of data get added.
   const YEARS = getYears(DATA.accSurvey.raw);
-  const questions = DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
+  const questions = hasQ ? [question] : DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
   const yearlyByQ = questions.map(q => {
     const yearly = {};
     YEARS.forEach(y => { yearly[y] = mean(all.filter(r => r.question === q && r.year === y), r => r.rating); });
@@ -837,7 +925,6 @@ function initEvents() {
   const defaultYear = years.includes(2026) ? "2026" : "All";
   yearSel.value = defaultYear;
   applyFilters();
-  renderHevBookedLink(); // fixed cross-reference, independent of the filters above
 }
 function renderEvents(year, category, eventName) {
   let rows = byYear(DATA.eventSurveys.raw, year);
@@ -962,6 +1049,10 @@ function renderHevBookedLink() {
   document.querySelector("#hev-bbTable tbody").innerHTML = rows.map(r =>
     `<tr><td>${r.name}</td><td>${fmt(r.respondents)}</td><td>${pct(r.satisfaction)}</td><td>${fmt(r.leads)}</td></tr>`
   ).join("");
+  // Totals row: Event = count of events; Survey Respondents/Leads Generated
+  // = sum; Avg. Satisfaction Score = average.
+  document.querySelector("#hev-bbTable tfoot").innerHTML =
+    `<tr><td>Total (${fmt(rows.length)} events)</td><td>${fmt(sum(rows, r => r.respondents))}</td><td>${pct(mean(rows, r => r.satisfaction))}</td><td>${fmt(sum(rows, r => r.leads))}</td></tr>`;
 }
 
 // =====================================================================
@@ -982,10 +1073,13 @@ function initBooked() {
   evtSel.innerHTML = `<option value="All">All</option>` + evts.map(e => `<option value="${e}">${e}</option>`).join("");
   evtSel.value = "All";
   evtSel.onchange = applyFilters;
-  // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
-  const defaultYear = years.includes(2026) ? "2026" : "All";
+  // Defaults to the latest year of data actually present in the Booked
+  // Business sheet (rather than a hardcoded 2026), since this sheet tends to
+  // lag behind the others.
+  const defaultYear = years.length ? String(Math.max(...years)) : "All";
   yearSel.value = defaultYear;
   applyFilters();
+  renderHevBookedLink(); // fixed cross-reference, independent of the filters above (moved here from the Hosted Events tab)
 }
 function renderBooked(year, status, eventName) {
   let rows = byYear(DATA.bookedBusiness.raw, year);
@@ -1021,12 +1115,22 @@ function renderBooked(year, status, eventName) {
     kpiCard("Events That Generated Leads", fmt(distinctEvents)),
     kpiCard("Leads Generated", fmt(leadsGenerated)),
     kpiCard("Definite Leads", fmt(definiteLeads)),
-    kpiCard("Definite Leads Rate", pct(definiteRate)),
+    kpiCard("Definite Leads Percentage", pct(definiteRate)),
     kpiCard("Avg. Conversion Window", convWindowText)
   ].join("");
 
-  const byEvent = groupBy(uniqueLeadRows, r => r.eventName);
-  const eventTotals = [...byEvent.entries()].map(([name, rs]) => ({ name, count: rs.length })).sort((a, b) => b.count - a.count).slice(0, 10);
+  // Grouped from the full (non-deduped) rows, not uniqueLeadRows -- a lead
+  // that touches more than one event would otherwise get attributed to just
+  // whichever event lists it first (the same dedup-across-events quirk noted
+  // on the Hosted Events <-> Booked Business cross-reference), which was
+  // silently dropping events that only had "shared" leads from this chart
+  // and the conversion table below. Grouping first and taking a distinct
+  // Lead ID count *within* each event's own rows fixes that -- every event
+  // that has leads now shows up, and a lead who touches 2 events is counted
+  // once for each of them (this can add up to more than the tab-wide "Leads
+  // Generated" total above, which is deduped globally on purpose).
+  const byEvent = groupBy(rows, r => r.eventName);
+  const eventTotals = [...byEvent.entries()].map(([name, rs]) => ({ name, count: distinctCount(rs, r => r.leadId) })).sort((a, b) => b.count - a.count).slice(0, 10);
   makeChart("bb-chart1", {
     type: "bar",
     data: { labels: eventTotals.map(e => e.name), datasets: [{ label: "Leads", data: eventTotals.map(e => e.count), backgroundColor: COLORS.teal, borderRadius: 4 }] },
@@ -1037,7 +1141,17 @@ function renderBooked(year, status, eventName) {
   const statusLabels = [...byStatus.keys()];
   makeChart("bb-chart2", {
     type: "doughnut",
-    data: { labels: statusLabels, datasets: [{ data: statusLabels.map(s => byStatus.get(s).length), backgroundColor: [COLORS.teal, COLORS.navy, COLORS.tealLight, COLORS.pale], datalabels: { display: true, color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) } }] },
+    data: {
+      labels: statusLabels,
+      datasets: [{
+        data: statusLabels.map(s => byStatus.get(s).length), backgroundColor: [COLORS.teal, COLORS.navy, COLORS.tealLight, COLORS.pale],
+        // "center" anchor/align is the reliable setting for pie/doughnut arcs
+        // -- the dashboard-wide default (anchor:"end", meant for bars) was
+        // pushing labels toward the outer rim, where they clipped or
+        // vanished for larger slices.
+        datalabels: { display: true, anchor: "center", align: "center", color: (ctx) => labelContrast(ctx.dataset.backgroundColor[ctx.dataIndex]) }
+      }]
+    },
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } } }
   });
 
@@ -1055,9 +1169,24 @@ function renderBooked(year, status, eventName) {
   // "4-6 Months" = 91-180 days; "7-12 Months" = 181-365 days; "Over 12+
   // Months" = 366+ days.
   const buckets = [[0, 30], [31, 90], [91, 180], [181, 365], [366, Infinity]];
+  // Per the measure: for each Lead ID, take the MIN "Days of Lead Created
+  // from Event" across its rows, then count the lead once toward whichever
+  // bracket that minimum falls into -- a distinct-lead count, not a row
+  // count (a lead can have several attendee rows under the same event).
+  function distinctLeadsInBracket(rs, lo, hi) {
+    const byLead = groupBy(rs, r => r.leadId);
+    let count = 0;
+    byLead.forEach(leadRows => {
+      const vals = leadRows.map(r => r.daysFromLeadCreatedToEvent).filter(v => v !== null && v !== undefined);
+      if (!vals.length) return;
+      const dmin = Math.min(...vals);
+      if (dmin >= lo && dmin <= hi) count++;
+    });
+    return count;
+  }
   const perEventCounts = [...byEvent.entries()].map(([name, rs]) => ({
     name,
-    counts: buckets.map(([lo, hi]) => rs.filter(r => r.daysFromLeadCreatedToEvent !== null && r.daysFromLeadCreatedToEvent >= lo && r.daysFromLeadCreatedToEvent <= hi).length)
+    counts: buckets.map(([lo, hi]) => distinctLeadsInBracket(rs, lo, hi))
   }));
   document.querySelector("#bb-conversionTable tbody").innerHTML = perEventCounts.map(e =>
     `<tr><td>${e.name}</td>${e.counts.map(c => `<td>${c || ""}</td>`).join("")}</tr>`
