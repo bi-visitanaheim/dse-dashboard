@@ -41,23 +41,23 @@
 
   <!-- ================= OVERVIEW ================= -->
   <section class="tab-panel active" id="tab-overview">
+    <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="kpi-grid" id="ov-kpiGrid"></div>
     <section class="panel insight-panel">
       <h2>Department at a Glance</h2>
-      <p class="desc" id="ov-desc">The above data cards reflect totals from January 1, 2026 through the last month of data.</p>
+      <p class="desc" id="ov-desc"></p>
       <div id="ov-insights" class="insight-text"></div>
       <div class="glance-divider"></div>
-      <div class="table-scroll">
-        <table class="mini" id="ov-summaryTable">
-          <thead><tr><th>Category</th><th>Data Through</th><th>Previous Month</th><th>Year-to-Date (2026)</th><th>YoY % (vs 2025 YTD)</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
+      <table class="mini" id="ov-summaryTable">
+        <thead><tr><th>Category</th><th>Data Through</th><th>Previous Month</th><th>Year-to-Date (2026)</th><th>YoY % (vs 2025 YTD)</th></tr></thead>
+        <tbody></tbody>
+      </table>
     </section>
   </section>
 
   <!-- ================= TEAM KPIS ================= -->
   <section class="tab-panel" id="tab-team">
+    <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year <select id="team-year"></select></label>
     </div>
@@ -78,6 +78,7 @@
       <section class="panel">
         <h2>Year over Year KPIs</h2>
         <table class="mini" id="team-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+        <p class="desc auto-analysis" id="team-yoy-analysis"></p>
       </section>
       <section class="panel">
         <h2>Clients Serviced <span class="tag">Monthly</span></h2>
@@ -90,6 +91,7 @@
 
   <!-- ================= PARTNER REFERRALS ================= -->
   <section class="tab-panel" id="tab-referrals">
+    <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year <select id="ref-year"></select></label>
     </div>
@@ -97,49 +99,56 @@
     <div class="grid-2">
       <section class="panel">
         <h2>Partner Referrals by Staff</h2>
-        <p class="desc">Click a month or staff member to highlight it across all three charts on this tab.</p>
         <div class="chart-box clickable"><canvas id="ref-chart1"></canvas></div>
+        <p class="desc auto-analysis" id="ref-analysis1"></p>
       </section>
       <section class="panel">
         <h2>Partner Referrals by Month <span class="tag">Monthly</span></h2>
-        <p class="desc">Click a month to highlight it in this chart and in Monthly Referrals by Staff.</p>
         <div class="chart-box clickable"><canvas id="ref-chart2"></canvas></div>
+        <p class="desc auto-analysis" id="ref-analysis2"></p>
       </section>
     </div>
     <div class="grid-2">
       <section class="panel">
         <h2>Year over Year</h2>
         <table class="mini" id="ref-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+        <p class="desc auto-analysis" id="ref-yoy-analysis"></p>
       </section>
       <section class="panel">
-        <h2>Monthly Referrals by Staff</h2>
+        <h2>Monthly Referrals by Staff <span class="tag">Monthly</span></h2>
         <div class="chart-box clickable tall"><canvas id="ref-chart3"></canvas></div>
+        <p class="desc auto-analysis" id="ref-analysis3"></p>
       </section>
     </div>
   </section>
 
   <!-- ================= REPEAT CLIENTS ================= -->
   <section class="tab-panel" id="tab-repeat">
+    <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year (meeting start) <select id="rep-year"></select></label>
       <label>Account Name <select id="rep-account"></select></label>
       <label>Services Manager <select id="rep-manager"></select></label>
+      <label>Repeat <select id="rep-repeat"></select></label>
     </div>
     <div class="kpi-grid" id="rep-kpiGrid"></div>
     <div class="grid-2">
       <section class="panel">
         <h2>Repeat vs. New by Services Manager</h2>
         <div class="chart-box"><canvas id="rep-chart1"></canvas></div>
+        <p class="desc auto-analysis" id="rep-analysis1"></p>
       </section>
       <section class="panel">
         <h2>Repeat vs. New: Clients &amp; Accounts</h2>
         <p class="desc">Inner ring = distinct accounts; outer ring = individual client bookings (rows).</p>
         <div class="chart-box short"><canvas id="rep-chart2"></canvas></div>
+        <p class="desc auto-analysis" id="rep-analysis2"></p>
       </section>
     </div>
     <section class="panel">
       <h2>Year over Year</h2>
       <table class="mini" id="rep-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+      <p class="desc auto-analysis" id="rep-yoy-analysis"></p>
     </section>
     <section class="panel">
       <h2>Accounts</h2>
@@ -152,6 +161,7 @@
 
   <!-- ================= CLIENT SURVEY ================= -->
   <section class="tab-panel" id="tab-survey">
+    <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year (start date) <select id="sur-year"></select></label>
       <label>Services Manager <select id="sur-manager"></select></label>
@@ -162,16 +172,19 @@
       <section class="panel">
         <h2 id="sur-chart1-title">VA Survey Questions Rating</h2>
         <div class="chart-box tall"><canvas id="sur-chart1"></canvas></div>
+        <p class="desc auto-analysis" id="sur-analysis1"></p>
       </section>
       <section class="panel">
-        <h2 id="sur-chart2-title">VA Team Experience Avg. Score by Month</h2>
+        <h2 id="sur-chart2-title">VA Team Experience Avg. Score by Month <span class="tag">Monthly</span></h2>
         <div class="chart-box"><canvas id="sur-chart2"></canvas></div>
+        <p class="desc auto-analysis" id="sur-analysis2"></p>
       </section>
     </div>
     <section class="panel">
       <h2 id="sur-chart3-title">Avg. Rating by DS&amp;E Manager</h2>
       <p class="desc" id="sur-chart3-desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
       <div class="chart-box"><canvas id="sur-chart3"></canvas></div>
+      <p class="desc auto-analysis" id="sur-analysis3"></p>
     </section>
     <div class="grid-2">
       <section class="panel">
@@ -179,6 +192,7 @@
         <div class="table-scroll">
           <table class="mini" id="sur-yoyValuesTable"><thead><tr><th>Question</th></tr></thead><tbody></tbody></table>
         </div>
+        <p class="desc auto-analysis" id="sur-yoy-analysis"></p>
       </section>
       <section class="panel">
         <h2 id="sur-yoyPct-title">Year-over-Year % Change</h2>
@@ -198,6 +212,7 @@
 
   <!-- ================= HOSTED EVENTS ================= -->
   <section class="tab-panel" id="tab-events">
+    <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year <select id="hev-year"></select></label>
       <label>Event Category <select id="hev-category"></select></label>
@@ -208,11 +223,13 @@
       <section class="panel">
         <h2>Events by Month <span class="tag">Monthly</span></h2>
         <div class="chart-box"><canvas id="hev-chart1"></canvas></div>
+        <p class="desc auto-analysis" id="hev-analysis1"></p>
       </section>
       <section class="panel">
         <h2>Survey Questions Ratings <span class="tag">Monthly</span></h2>
         <p class="desc">Ranked on a scale of 0&ndash;5.</p>
         <div class="chart-box"><canvas id="hev-chart2"></canvas></div>
+        <p class="desc auto-analysis" id="hev-analysis2"></p>
       </section>
     </div>
     <div class="grid-2">
@@ -238,6 +255,7 @@
 
   <!-- ================= BOOKED BUSINESS ================= -->
   <section class="tab-panel" id="tab-booked">
+    <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year <select id="bb-year"></select></label>
       <label>Lead Status <select id="bb-status"></select></label>
@@ -246,22 +264,25 @@
     <div class="kpi-grid" id="bb-kpiGrid"></div>
     <section class="panel">
       <h2>Hosted Events &amp; Booked Business</h2>
-      <p class="desc">Of the 35 hosted events tracked here, these are matched by Event ID to a Booked Business record, showing how survey engagement on an event relates to the leads it generated. Always shows all years, independent of the filters above.</p>
+      <p class="desc" id="hev-bbDesc"></p>
       <div class="grid-2">
         <div class="chart-box"><canvas id="hev-bbChart"></canvas></div>
         <div class="table-scroll">
           <table class="mini" id="hev-bbTable"><thead><tr><th>Event</th><th>Survey Respondents</th><th>Avg. Satisfaction Score</th><th>Leads Generated</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
         </div>
       </div>
+      <p class="desc auto-analysis" id="hev-bb-analysis"></p>
     </section>
     <div class="grid-2">
       <section class="panel">
         <h2>Leads Generated by Event</h2>
         <div class="chart-box tall"><canvas id="bb-chart1"></canvas></div>
+        <p class="desc auto-analysis" id="bb-analysis1"></p>
       </section>
       <section class="panel">
         <h2>Leads Generated by Lead Status</h2>
         <div class="chart-box"><canvas id="bb-chart2"></canvas></div>
+        <p class="desc auto-analysis" id="bb-analysis2"></p>
       </section>
     </div>
     <section class="panel">

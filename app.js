@@ -554,23 +554,72 @@ function renderTeam(year) {
   const latest2 = latestRowWithData(rows, ["conventionGroupsServiced", "inHouseGroupsServiced"]);
   const latest3 = latestRowWithData(rows, ["clientsServiced"]);
   document.getElementById("team-analysis1").innerHTML = latest1
-    ? `In ${monthLabel(latest1.date.slice(0, 7))}, the team logged ${fmt(latest1.partnersVisited)} partner visits and ${fmt(latest1.planningVisits)} planning visits.`
+    ? `In <strong>${monthLabel(latest1.date.slice(0, 7))}</strong>, the team logged <strong>${fmt(latest1.partnersVisited)}</strong> partner visits and <strong>${fmt(latest1.planningVisits)}</strong> planning visits.`
     : "No data available for this period yet.";
   document.getElementById("team-analysis2").innerHTML = latest2
-    ? `In ${monthLabel(latest2.date.slice(0, 7))}, the team serviced ${fmt(latest2.conventionGroupsServiced)} convention groups and ${fmt(latest2.inHouseGroupsServiced)} in-house groups.`
+    ? `In <strong>${monthLabel(latest2.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest2.conventionGroupsServiced)}</strong> convention groups and <strong>${fmt(latest2.inHouseGroupsServiced)}</strong> in-house groups.`
     : "No data available for this period yet.";
   document.getElementById("team-analysis3").innerHTML = latest3
-    ? `In ${monthLabel(latest3.date.slice(0, 7))}, the team serviced ${fmt(latest3.clientsServiced)} clients.`
+    ? `In <strong>${monthLabel(latest3.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest3.clientsServiced)}</strong> clients.`
     : "No data available for this period yet.";
+
+  document.getElementById("team-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [
+    { label: "Partners Visited", fn: r => r.partnersVisited },
+    { label: "Planning Visits", fn: r => r.planningVisits },
+    { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
+    { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced },
+    { label: "Clients Serviced", fn: r => r.clientsServiced }
+  ], year);
 }
-// Walks a chronologically-ordered row list backward to find the latest row
-// where every one of the given fields has a real (non-null) value.
-function latestRowWithData(rows, fields) {
-  for (let i = rows.length - 1; i >= 0; i--) {
-    const r = rows[i];
+// Walks a row list (sorted ascending by dateField) backward to find the
+// latest row where every one of the given fields has a real (non-null)
+// value -- used dashboard-wide for the "latest month" auto-analysis
+// sentences, so a placeholder row for an upcoming month (all metrics still
+// null) never gets reported as if it were real data.
+function latestRowWithData(rows, fields, dateField = "date") {
+  const sorted = [...rows].sort((a, b) => (a[dateField] || "").localeCompare(b[dateField] || ""));
+  for (let i = sorted.length - 1; i >= 0; i--) {
+    const r = sorted[i];
     if (fields.every(f => r[f] !== null && r[f] !== undefined)) return r;
   }
   return null;
+}
+// Finds the item in `list` with the largest `valFn(item)`, skipping
+// null/undefined values -- used for "top staff/manager/event/status" style
+// auto-analysis sentences on charts that aren't month-based.
+function topEntry(list, valFn) {
+  let best = null;
+  list.forEach(item => {
+    const v = valFn(item);
+    if (v !== null && v !== undefined && !Number.isNaN(v) && (best === null || v > best.v)) best = { item, v };
+  });
+  return best;
+}
+// Same YoY prior/latest-year resolution as renderYoyTable, but returns
+// whichever metric moved the most (by absolute % change) -- feeds the
+// 1-sentence auto-analysis under each Year-over-Year table.
+function yoyBiggestMover(rows, metrics, selectedYear) {
+  const years = getYears(rows);
+  let prior, latest;
+  if (selectedYear && selectedYear !== "All") { latest = Number(selectedYear); prior = latest - 1; }
+  else { ({ prior, latest } = latestTwoYears(years)); }
+  if (prior === undefined || latest === undefined) return null;
+  let best = null;
+  metrics.forEach(m => {
+    const priRows = rows.filter(r => r.year === prior);
+    const curRows = rows.filter(r => r.year === latest);
+    const priVal = m.agg ? m.agg(priRows) : sum(priRows, m.fn);
+    const curVal = m.agg ? m.agg(curRows) : sum(curRows, m.fn);
+    const d = pctChange(priVal, curVal);
+    if (d !== null && (best === null || Math.abs(d) > Math.abs(best.d))) best = { label: m.label, priVal, curVal, d, prior, latest };
+  });
+  return best;
+}
+// Renders the yoyBiggestMover result (if any) as a bolded 1-sentence summary.
+function yoyAnalysisSentence(rows, metrics, selectedYear) {
+  const best = yoyBiggestMover(rows, metrics, selectedYear);
+  if (!best) return "No prior-year data available for this selection.";
+  return `Year over year, <strong>${best.label}</strong> saw the largest change: <strong>${deltaArrow(best.d)}${pct(best.d)}</strong> (<strong>${fmt(best.priVal)}</strong> in ${best.prior} to <strong>${fmt(best.curVal)}</strong> in ${best.latest}).`;
 }
 function renderYoyTable(tableId, rows, metrics, selectedYear) {
   const years = getYears(rows);
@@ -678,6 +727,24 @@ function renderReferrals(year) {
 
   renderYoyTable("ref-yoyTable", all, [{ label: "Partner Referrals", fn: r => r.count }], year);
   bindReferralsLink();
+
+  // Auto-analysis sentences (bolded values), same "latest data available"
+  // pattern used on Team KPIs -- charts without a month axis instead call out
+  // the top staff member.
+  const topStaff = topEntry(staffTotals, s => s.total);
+  document.getElementById("ref-analysis1").innerHTML = topStaff
+    ? `<strong>${topStaff.item.staff}</strong> leads all staff with <strong>${fmt(topStaff.v)}</strong> referrals.`
+    : "No data available for this period yet.";
+  const latestMonthKey = chronoMonths.length ? chronoMonths[chronoMonths.length - 1] : null;
+  const latestMonthTotal = latestMonthKey ? sum(byChronoMonth.get(latestMonthKey), r => r.count) : null;
+  document.getElementById("ref-analysis2").innerHTML = latestMonthKey
+    ? `In <strong>${monthLabel(latestMonthKey)}</strong>, the team received <strong>${fmt(latestMonthTotal)}</strong> partner referrals.`
+    : "No data available for this period yet.";
+  const latestMonthByStaff = latestMonthKey ? topEntry(staffTotals, s => sum((byChronoMonth.get(latestMonthKey) || []).filter(r => r.staff === s.staff), r => r.count)) : null;
+  document.getElementById("ref-analysis3").innerHTML = (latestMonthKey && latestMonthByStaff && latestMonthByStaff.v > 0)
+    ? `In <strong>${monthLabel(latestMonthKey)}</strong>, <strong>${latestMonthByStaff.item.staff}</strong> led all staff with <strong>${fmt(latestMonthByStaff.v)}</strong> referrals.`
+    : "No data available for this period yet.";
+  document.getElementById("ref-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [{ label: "Partner Referrals", fn: r => r.count }], year);
 }
 
 // =====================================================================
@@ -687,7 +754,8 @@ function initRepeat() {
   const yearSel = document.getElementById("rep-year");
   const acctSel = document.getElementById("rep-account");
   const mgrSel = document.getElementById("rep-manager");
-  function applyFilters() { renderRepeat(yearSel.value, acctSel.value, mgrSel.value); }
+  const repeatSel = document.getElementById("rep-repeat");
+  function applyFilters() { renderRepeat(yearSel.value, acctSel.value, mgrSel.value, repeatSel.value); }
   const years = getYears(DATA.repeatingClients.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const accounts = [...new Set(DATA.repeatingClients.raw.map(r => r.accountName).filter(Boolean))].sort();
@@ -698,15 +766,20 @@ function initRepeat() {
   mgrSel.innerHTML = `<option value="All">All</option>` + managers.map(m => `<option value="${m}">${m}</option>`).join("");
   mgrSel.value = "All";
   mgrSel.onchange = applyFilters;
+  // "Repeat" filter on the Repeat Business Yes/No column.
+  repeatSel.innerHTML = `<option value="All">All</option><option value="Yes">Yes</option><option value="No">No</option>`;
+  repeatSel.value = "All";
+  repeatSel.onchange = applyFilters;
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
   const defaultYear = years.includes(2026) ? "2026" : "All";
   yearSel.value = defaultYear;
-  renderRepeat(defaultYear, "All", "All");
+  renderRepeat(defaultYear, "All", "All", "All");
 }
-function renderRepeat(year, accountName, manager) {
+function renderRepeat(year, accountName, manager, repeatFilter) {
   let rows = byYear(DATA.repeatingClients.raw, year);
   if (accountName && accountName !== "All") rows = rows.filter(r => r.accountName === accountName);
   if (manager && manager !== "All") rows = rows.filter(r => r.servicesManager === manager);
+  if (repeatFilter && repeatFilter !== "All") rows = rows.filter(r => r.repeat === repeatFilter);
   // "Total Clients Serviced" = distinct count of Lead ID (not raw row count) --
   // matches the sheet's grain 1:1 today (no duplicate Lead IDs), but this is
   // the correct, future-proof formula per spec.
@@ -788,10 +861,23 @@ function renderRepeat(year, accountName, manager) {
   let yoyRows = DATA.repeatingClients.raw;
   if (accountName && accountName !== "All") yoyRows = yoyRows.filter(r => r.accountName === accountName);
   if (manager && manager !== "All") yoyRows = yoyRows.filter(r => r.servicesManager === manager);
-  renderYoyTable("rep-yoyTable", yoyRows, [
+  if (repeatFilter && repeatFilter !== "All") yoyRows = yoyRows.filter(r => r.repeat === repeatFilter);
+  const yoyMetrics = [
     { label: "Clients", agg: rs => rs.filter(r => r.leadId !== null && r.leadId !== undefined).length },
     { label: "Accounts", agg: rs => distinctCount(rs, r => r.accountId) }
-  ], year);
+  ];
+  renderYoyTable("rep-yoyTable", yoyRows, yoyMetrics, year);
+
+  // Auto-analysis sentences (bolded values) -- these charts aren't month-
+  // based, so they call out the top manager and the repeat-vs-new split
+  // instead of a "latest month" figure.
+  const topMgr = topEntry(mgrs.map(m => ({ m, total: byMgr.get(m).length })), x => x.total);
+  document.getElementById("rep-analysis1").innerHTML = topMgr
+    ? `<strong>${topMgr.item.m}</strong> serviced the most clients, with <strong>${fmt(topMgr.v)}</strong> total (repeat + new).`
+    : "No data available for this period yet.";
+  document.getElementById("rep-analysis2").innerHTML =
+    `Of the <strong>${fmt(totalClientsServiced)}</strong> clients serviced, <strong>${fmt(repeatClientsCount)}</strong> were repeat clients (<strong>${pct(totalClientsServiced ? repeatClientsCount / totalClientsServiced : null)}</strong>).`;
+  document.getElementById("rep-yoy-analysis").innerHTML = yoyAnalysisSentence(yoyRows, yoyMetrics, year);
 }
 
 // =====================================================================
@@ -859,7 +945,7 @@ function renderSurvey(year, manager, question) {
   ].join("");
 
   document.getElementById("sur-chart1-title").innerHTML = "VA Survey Questions Rating" + titleSuffix;
-  document.getElementById("sur-chart2-title").innerHTML = "VA Team Experience Avg. Score by Month" + titleSuffix;
+  document.getElementById("sur-chart2-title").innerHTML = "VA Team Experience Avg. Score by Month" + titleSuffix + ` <span class="tag">Monthly</span>`;
   document.getElementById("sur-chart3-title").innerHTML = "Avg. Rating by DS&amp;E Manager" + titleSuffix;
   document.getElementById("sur-yoyValues-title").innerHTML = "Ratings by Year" + titleSuffix;
   document.getElementById("sur-yoyPct-title").innerHTML = "Year-over-Year % Change" + titleSuffix;
@@ -930,6 +1016,31 @@ function renderSurvey(year, manager, question) {
     });
     return `<tr><td>${q}</td>${cells.join("")}</tr>`;
   }).join("");
+
+  // Auto-analysis sentences (bolded values). Chart 1 (by question) and
+  // Chart 3 (by manager) aren't month-based, so they call out the
+  // highest/top entry instead of a "latest month" figure; Chart 2 is
+  // month-based and follows the same "latest month with data" pattern used
+  // dashboard-wide.
+  const qAvgs = qLabels.map(q => ({ q, avg: mean(byQ.get(q), r => r.rating) }));
+  const topQ = topEntry(qAvgs, x => x.avg);
+  document.getElementById("sur-analysis1").innerHTML = topQ
+    ? `<strong>${topQ.item.q}</strong> has the highest average rating at <strong>${fmt(topQ.v, 2)}</strong>.`
+    : "No data available for this period yet.";
+  const latestSurveyRow = latestRowWithData(filteredRows, ["rating"], "date");
+  const latestMonthAvg = latestSurveyRow ? mean(byMonth.get(monthKey(latestSurveyRow.date)), r => r.rating) : null;
+  document.getElementById("sur-analysis2").innerHTML = latestSurveyRow
+    ? `In <strong>${monthLabel(latestSurveyRow.date.slice(0, 7))}</strong>, the average score was <strong>${fmt(latestMonthAvg, 2)}</strong>.`
+    : "No data available for this period yet.";
+  const topMgrRating = topEntry(mgrList, x => x.avg);
+  document.getElementById("sur-analysis3").innerHTML = topMgrRating
+    ? `<strong>${topMgrRating.item.m}</strong> has the highest average rating at <strong>${fmt(topMgrRating.v, 2)}</strong>.`
+    : "No data available for this period yet.";
+  document.getElementById("sur-yoy-analysis").innerHTML = yoyAnalysisSentence(
+    all.filter(r => questions.includes(r.question)),
+    questions.map(q => ({ label: q, agg: rs => mean(rs.filter(r => r.question === q), r => r.rating) })),
+    year
+  );
 }
 function renderQ2Q7(year, manager) {
   const spot = DATA.accSurvey.q2q7;
@@ -1067,6 +1178,21 @@ function renderEvents(year, category, eventName) {
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
     .map(r => `<tr><td>${r.event}</td><td>${r.surveyType}</td><td>${r.category || "&mdash;"}</td><td>${r.date || "&mdash;"}</td></tr>`)
     .join("");
+
+  // Auto-analysis sentences (bolded values), same "latest month with data"
+  // pattern used dashboard-wide -- both charts on this tab are month-based.
+  const latestMonthKeyEv = months.length ? months[months.length - 1] : null;
+  document.getElementById("hev-analysis1").innerHTML = latestMonthKeyEv
+    ? `In <strong>${monthLabel(latestMonthKeyEv)}</strong>, the team hosted <strong>${fmt(distinctCount(byMonth.get(latestMonthKeyEv), r => r.eventId))}</strong> events.`
+    : "No data available for this period yet.";
+  const latestMonthKeyQ = monthsQ.length ? monthsQ[monthsQ.length - 1] : null;
+  document.getElementById("hev-analysis2").innerHTML = latestMonthKeyQ
+    ? (() => {
+        const rs = byMonthQ.get(latestMonthKeyQ);
+        const satV = mean(rs, r => r.satisfaction);
+        return `In <strong>${monthLabel(latestMonthKeyQ)}</strong>, Overall Experience averaged <strong>${fmt(mean(rs, r => r.overall), 2)}</strong> and Satisfaction Score averaged <strong>${pct(satV)}</strong>.`;
+      })()
+    : "No data available for this period yet.";
 }
 
 // Cross-reference: eventSurveys and bookedBusiness share the same eventId
@@ -1076,10 +1202,25 @@ function renderEvents(year, category, eventName) {
 // (dedupeBy leadId) -- a handful of leads span more than one event in the
 // source data and get attributed to whichever event they list first, so this
 // shows 5 of the 6 ID-matching events (the 6th's leads all attribute
-// elsewhere). This is always the full, unfiltered picture.
-function renderHevBookedLink() {
-  const es = DATA.eventSurveys.raw;
-  const bb = dedupeBy(DATA.bookedBusiness.raw, r => r.leadId);
+// elsewhere). Now dynamic with the Booked Business tab's Year/Lead
+// Status/Event Name filters (previously always showed all years).
+function renderHevBookedLink(year, status, eventName) {
+  // Same "All" scoping fix as the Total Events card: when Year = All, the
+  // Event Surveys side only counts years that actually exist in the Booked
+  // Business sheet (currently just 2025), not every year Event Surveys has
+  // on file, so this cross-reference's "total events" figure always agrees
+  // with the Total Events KPI card above it.
+  const bbYearsPresent = getYears(DATA.bookedBusiness.raw);
+  let es = DATA.eventSurveys.raw;
+  es = (year && year !== "All") ? es.filter(r => r.year === Number(year)) : es.filter(r => bbYearsPresent.includes(r.year));
+  const totalEventsForYear = distinctCount(es, r => r.eventId);
+
+  let bbRaw = DATA.bookedBusiness.raw;
+  if (year && year !== "All") bbRaw = bbRaw.filter(r => r.year === Number(year));
+  if (status && status !== "All") bbRaw = bbRaw.filter(r => r.leadStatus === status);
+  if (eventName && eventName !== "All") bbRaw = bbRaw.filter(r => r.eventName === eventName);
+  const bb = dedupeBy(bbRaw, r => r.leadId);
+
   const esByEvent = groupBy(es, r => r.eventId);
   const bbByEvent = groupBy(bb, r => r.eventId);
   const rows = [...esByEvent.keys()]
@@ -1113,6 +1254,14 @@ function renderHevBookedLink() {
   // = sum; Avg. Satisfaction Score = average.
   document.querySelector("#hev-bbTable tfoot").innerHTML =
     `<tr><td>Total (${fmt(rows.length)} events)</td><td>${fmt(sum(rows, r => r.respondents))}</td><td>${pct(mean(rows, r => r.satisfaction))}</td><td>${fmt(sum(rows, r => r.leads))}</td></tr>`;
+
+  const yearLabel = (year && year !== "All") ? year : (bbYearsPresent.length ? bbYearsPresent.join("/") : "all years");
+  document.getElementById("hev-bbDesc").innerHTML =
+    `These are matched by Event ID to a Booked Business record, showing how survey engagement on an event relates to the leads it generated.`;
+  const totalLeads = sum(rows, r => r.leads);
+  document.getElementById("hev-bb-analysis").innerHTML = rows.length
+    ? `Out of the <strong>${fmt(totalEventsForYear)}</strong> events in <strong>${yearLabel}</strong>, <strong>${fmt(rows.length)}</strong> events generated <strong>${fmt(totalLeads)}</strong> leads, based on matching Event ID between Event Surveys and Booked Business.`
+    : "No data available for this selection yet.";
 }
 
 // =====================================================================
@@ -1139,7 +1288,6 @@ function initBooked() {
   const defaultYear = years.length ? String(Math.max(...years)) : "All";
   yearSel.value = defaultYear;
   applyFilters();
-  renderHevBookedLink(); // fixed cross-reference, independent of the filters above (moved here from the Hosted Events tab)
 }
 function renderBooked(year, status, eventName) {
   let rows = byYear(DATA.bookedBusiness.raw, year);
@@ -1153,7 +1301,16 @@ function renderBooked(year, status, eventName) {
   // Business-specific and the two sheets don't share an event-name
   // vocabulary (see the Hosted Events <-> Booked Business cross-reference
   // notes in the README for why event names differ between the two sheets).
-  const esRows = year === "All" ? DATA.eventSurveys.raw : DATA.eventSurveys.raw.filter(r => r.year === Number(year));
+  // When Year = All, this only counts years actually present in the Booked
+  // Business sheet itself (currently just 2025) rather than every year the
+  // separate Event Surveys sheet happens to have on file -- otherwise "All"
+  // pulled in Event Surveys years (e.g. 2026) that Booked Business doesn't
+  // have data for yet, inflating this card past what "All" should mean on
+  // this tab (35 vs. the correct 28).
+  const bbYearsPresent = getYears(DATA.bookedBusiness.raw);
+  const esRows = year === "All"
+    ? DATA.eventSurveys.raw.filter(r => bbYearsPresent.includes(r.year))
+    : DATA.eventSurveys.raw.filter(r => r.year === Number(year));
   const totalEvents = distinctCount(esRows, r => r.eventId);
 
   const distinctEvents = distinctCount(rows, r => r.eventId);
@@ -1265,6 +1422,20 @@ function renderBooked(year, status, eventName) {
     .sort((a, b) => (b.eventStartDate || "").localeCompare(a.eventStartDate || ""))
     .map(r => `<tr><td>${r.eventName}</td><td>${r.accountName}</td><td>${r.leadName}</td><td>${mdy(r.eventStartDate) || "&mdash;"}</td><td>${mdy(r.leadCreatedDate) || "&mdash;"}</td></tr>`)
     .join("");
+
+  // Auto-analysis sentences (bolded values) -- neither chart on this tab is
+  // month-based, so they call out the top event/status instead of a "latest
+  // month" figure.
+  const topEvent = topEntry(eventTotals, e => e.count);
+  document.getElementById("bb-analysis1").innerHTML = topEvent
+    ? `<strong>${topEvent.item.name}</strong> generated the most leads, with <strong>${fmt(topEvent.v)}</strong>.`
+    : "No data available for this period yet.";
+  const topStatus = topEntry(statusLabels.map(s => ({ s, count: byStatus.get(s).length })), x => x.count);
+  document.getElementById("bb-analysis2").innerHTML = topStatus
+    ? `<strong>${topStatus.item.s}</strong> is the most common lead status, with <strong>${fmt(topStatus.v)}</strong> leads.`
+    : "No data available for this period yet.";
+
+  renderHevBookedLink(year, status, eventName);
 }
 
 main();

@@ -246,7 +246,7 @@ The "Source: ..." line in the footer changes depending on which tab is active, s
 
 ## Filters implemented vs. the source report
 
-Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** and **Question** on Client Survey (drive the KPI grid, all three charts, the YoY tables, and the visual titles -- see the Client Survey mapping notes above for exactly how the Question filter recomputes/relabels things), and **Account Name** plus **Services Manager** on Repeat Clients (both drive the KPI grid, both charts, the Accounts table, and the new Year over Year table). The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
+Every tab has a **Year** filter (Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, Booked Business), plus: **Event Category** and **Event Name** on Hosted Events, **Lead Status** and **Event Name** on Booked Business, **Services Manager** and **Question** on Client Survey (drive the KPI grid, all three charts, the YoY tables, and the visual titles -- see the Client Survey mapping notes above for exactly how the Question filter recomputes/relabels things), and **Account Name**, **Services Manager**, plus **Repeat** (new -- see above) on Repeat Clients (all drive the KPI grid, both charts, the Accounts table, and the Year over Year table). The source Power BI report's **Staff** slicer (Partner Referrals) isn't wired up yet — the data needed for it is already in `data.json`.
 
 The Team KPIs YoY table now follows the Year filter: pick a year and the table compares it against the year before; "All" falls back to the two most recent years with data. The Partner Referrals and Client Survey YoY tables still always show the latest two (or full 2023–2026) years regardless of the Year filter, matching the source report's behavior — the Client Survey one does respect the Services Manager filter, though.
 
@@ -282,6 +282,38 @@ The three paragraphs below the Department at a Glance table are generated (not h
 ## Feedback section (Client Survey tab)
 
 Titled "Feedback," this section surfaces Question 7 (open-ended client testimonials). It originally paired a Question 2 line chart with the testimonials, but per later direction it's now feedback-cards only: each card is headed by its year and shows up to 20 testimonial quotes from Question 7 for that year (fewer if that year has less feedback than that). It now respects both filters on the tab — the Year filter (showing just the selected year's card, or every year present in the data when "All" is selected) and the Services Manager filter — same as every other card/chart on this tab (recomputed client-side from the raw survey rows).
+
+## Auto-analysis sentences (every chart and Year-over-Year table, all tabs)
+
+Every chart and every Year-over-Year table on Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, and Booked Business now has a bolded 1-sentence auto-generated takeaway underneath it (Overview already had its own narrative -- see above -- and wasn't touched here). All values inside these sentences are wrapped in `<strong>`. Two flavors, depending on whether the chart has a month axis:
+
+- **Month-based charts** (Team KPIs' 3 charts, Partner Referrals "by Month," Client Survey "Avg. Score by Month," Hosted Events' 2 charts) use the same `latestRowWithData(rows, fields, dateField)` helper as the Team KPIs fix above -- states the latest month that actually has data for that chart's metric(s), and that month's value(s).
+- **Non-month charts** (Partner Referrals "by Staff," Repeat Clients' 2 charts, Client Survey "by Question" and "by Manager," Booked Business's 2 charts) use a new `topEntry(list, valFn)` helper -- states whichever staff member/manager/question/event/status has the largest value instead of a "latest month," since these charts don't have a time axis to begin with.
+- **Year-over-Year tables** (Team KPIs, Partner Referrals, Repeat Clients, Client Survey's "Ratings by Year") get a new `yoyAnalysisSentence` sentence via `yoyBiggestMover`, which resolves the same prior/latest year pair the table itself uses and states whichever metric moved the most (by absolute % change), with both years' values.
+
+## Print / Export as PDF (every tab)
+
+Every tab now has an **"Export as PDF"** button at the top (`.tab-toolbar`). It simply calls the browser's native `window.print()` -- there's no server-side PDF generation. A `@media print` block in `style.css` hides the header, tab bar, and toolbar buttons and prints only the currently active tab, so choosing the browser's "Save as PDF" destination in the print dialog produces a clean one-tab-at-a-time document. To export a different tab, switch to it first, then click its Export button (or just print again).
+
+## Events-team tab bar coloring
+
+The Hosted Events and Booked Business tab buttons in the top nav now get a pale-blue tint (inactive) / solid pale-blue background when active (`.tab-btn[data-tab="events"]`, `.tab-btn[data-tab="booked"]` in `style.css`), matching the same events-team accent already used on their KPI cards -- so the tab bar itself signals the grouping before a user even clicks into either tab.
+
+## Repeat Clients: new "Repeat" filter
+
+A fourth filter, **Repeat** (All / Yes / No), was added alongside Year/Account Name/Services Manager. It filters directly on the "Repeat Business" column and drives every card, chart, and table on the tab the same way the other three filters do (including the Year-over-Year table, via the same `yoyRows` chain the other filters already flow through).
+
+## Booked Business: "Total Events" All-year fix + dynamic cross-reference
+
+Two related bugs, both stemming from the same root cause: the "Total Events" card and the "Hosted Events & Booked Business" cross-reference visual both pull their event count from the separate Event Surveys sheet, which has years 2023 through 2026 on file -- but the Booked Business sheet itself currently only has 2025 data. When the Year filter was set to "All," both visuals were counting every Event Surveys year (35 events) instead of just the year(s) Booked Business actually has data for (28 events), which didn't match what "All" means everywhere else on this tab.
+
+Fixed by scoping the Event Surveys side to `getYears(DATA.bookedBusiness.raw)` whenever Year = "All" (falls back to matching the single selected year otherwise), so "Total Events" now reads 28 for both "All" and "2025" specifically -- and will automatically expand to include 2026 once Booked Business itself has 2026 rows.
+
+The cross-reference visual (chart, table, and its new description above) is also no longer a fixed, filter-independent snapshot -- it now respects this tab's Year, Lead Status, and Event Name filters, using the same Event-Surveys-scoped-to-Booked-Business-years logic for its own event total. It gained a new auto-generated sentence: "Out of the **X** events in **[year]**, **Y** events generated **Z** leads, based on matching Event ID between Event Surveys and Booked Business." -- fully dynamic with the tab's filters.
+
+## Overview: Department at a Glance table no longer scrolls
+
+The `.table-scroll` wrapper (which capped the table at a fixed height with a vertical scrollbar) was removed from around `#ov-summaryTable` specifically -- the table now expands to its full natural height. Every other `.table-scroll`-wrapped table on the dashboard (Accounts, YoY value tables, detail tables, etc.) is unchanged.
 
 ## Known data-quality issue
 

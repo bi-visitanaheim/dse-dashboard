@@ -58,6 +58,7 @@ assert(doc.getElementById("ov-desc").textContent.trim() === "", "Overview: stale
 assert(doc.getElementById("ov-kpiGrid").textContent.includes("Repeat Account %"), "Overview: card renamed to Repeat Account % (was Repeat Client %)");
 assert(doc.querySelectorAll("#ov-summaryTable tbody tr").length === 12, "Overview: Department at a Glance summary table has all 12 categories");
 assert(doc.querySelector("#ov-summaryTable tbody tr").children.length === 5, "Overview: summary table rows have Category/Month/Previous Month/YTD/YoY% columns");
+assert(!doc.getElementById("ov-summaryTable").closest(".table-scroll"), "Overview: Department at a Glance table no longer wrapped in a scrolling container");
 assert(doc.querySelectorAll("#ov-kpiGrid .daterange").length === 12, "Overview: every KPI card shows its YTD date range");
 assert(doc.querySelectorAll("#ov-kpiGrid .kpi-card.events-team").length === 4, "Overview: 4 events-team cards get the blue accent");
 assert(
@@ -86,6 +87,11 @@ assert(doc.getElementById("team-kpiGrid").textContent.includes("In House Groups 
 assert(doc.getElementById("team-analysis1").textContent.trim().length > 0, "Team KPIs: auto-analysis sentence for Partners Visited & Planning Visits chart");
 assert(doc.getElementById("team-analysis2").textContent.trim().length > 0, "Team KPIs: auto-analysis sentence for Groups Serviced chart");
 assert(doc.getElementById("team-analysis3").textContent.trim().length > 0, "Team KPIs: auto-analysis sentence for Clients Serviced chart");
+assert(doc.getElementById("team-analysis1").querySelectorAll("strong").length > 0, "Team KPIs: analysis 1 values are bolded");
+assert(doc.getElementById("team-analysis2").querySelectorAll("strong").length > 0, "Team KPIs: analysis 2 values are bolded");
+assert(doc.getElementById("team-analysis3").querySelectorAll("strong").length > 0, "Team KPIs: analysis 3 values are bolded");
+assert(doc.getElementById("team-yoy-analysis").textContent.trim().length > 0, "Team KPIs: Year over Year KPIs table has an auto-analysis sentence");
+assert(doc.getElementById("team-yoy-analysis").querySelectorAll("strong").length > 0, "Team KPIs: YoY analysis sentence values are bolded");
 // Regression check: a trailing placeholder month with null values used to
 // render as the literal text "&mdash;" (textContent doesn't decode HTML
 // entities) instead of a real number or an actual em dash character.
@@ -99,6 +105,12 @@ assert(doc.querySelectorAll("#team-kpiGrid .daterange").length === 5, "Team KPIs
 assert(doc.getElementById("ref-kpiGrid").children.length === 2, "Partner Referrals: 2 KPI cards (Top Referrer removed)");
 assert(doc.querySelectorAll("#ref-yoyTable tbody tr").length > 0, "Partner Referrals: YoY table has rows");
 assert(doc.querySelectorAll("#ref-kpiGrid .daterange").length === 2, "Partner Referrals: every KPI card shows a dynamic date-range subtitle");
+assert(!doc.getElementById("tab-referrals").textContent.includes("Click a month"), "Partner Referrals: 'Click a month or staff member' subtitles removed");
+assert([...doc.querySelectorAll("#tab-referrals h2")].some(h => h.textContent.includes("Monthly Referrals by Staff") && h.textContent.includes("Monthly")), "Partner Referrals: 'Monthly' tag added to Monthly Referrals by Staff");
+assert(doc.getElementById("ref-analysis1").querySelectorAll("strong").length > 0, "Partner Referrals: analysis 1 (by staff) has bolded values");
+assert(doc.getElementById("ref-analysis2").querySelectorAll("strong").length > 0, "Partner Referrals: analysis 2 (by month) has bolded values");
+assert(doc.getElementById("ref-analysis3").querySelectorAll("strong").length > 0, "Partner Referrals: analysis 3 (monthly by staff) has bolded values");
+assert(doc.getElementById("ref-yoy-analysis").querySelectorAll("strong").length > 0, "Partner Referrals: YoY table analysis sentence has bolded values");
 {
   const refSel = doc.getElementById("ref-year");
   refSel.value = "2026";
@@ -115,6 +127,20 @@ assert(doc.querySelectorAll("#rep-yoyTable tbody tr").length === 2, "Repeat Clie
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Clients"), "Repeat Clients: YoY table has a Clients row");
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Accounts"), "Repeat Clients: YoY table has an Accounts row");
 assert(doc.querySelectorAll("#rep-kpiGrid .daterange").length === 5, "Repeat Clients: every KPI card shows a dynamic date-range subtitle");
+assert(doc.getElementById("rep-repeat").children.length === 3, "Repeat Clients: new 'Repeat' filter populated (All/Yes/No)");
+{
+  const repeatSel = doc.getElementById("rep-repeat");
+  const before = doc.querySelector("#rep-kpiGrid .kpi-card .value").textContent;
+  repeatSel.value = "Yes";
+  repeatSel.dispatchEvent(new window.Event("change"));
+  const afterYes = doc.querySelector("#rep-kpiGrid .kpi-card .value").textContent;
+  assert(Number(afterYes.replace(/,/g, "")) <= Number(before.replace(/,/g, "")), "Repeat Clients: 'Repeat' filter narrows the KPI cards when set to Yes");
+  repeatSel.value = "All";
+  repeatSel.dispatchEvent(new window.Event("change"));
+}
+assert(doc.getElementById("rep-analysis1").querySelectorAll("strong").length > 0, "Repeat Clients: analysis 1 (by manager) has bolded values");
+assert(doc.getElementById("rep-analysis2").querySelectorAll("strong").length > 0, "Repeat Clients: analysis 2 (repeat vs new) has bolded values");
+assert(doc.getElementById("rep-yoy-analysis").querySelectorAll("strong").length > 0, "Repeat Clients: YoY table analysis sentence has bolded values");
 
 // Client Survey
 assert(doc.getElementById("sur-kpiGrid").children.length === 4, "Client Survey: 4 KPI cards");
@@ -133,11 +159,16 @@ assert(!doc.getElementById("chartQ2"), "Client Survey: Q2 line chart removed fro
 assert(doc.getElementById("q2q7Desc").textContent.trim().startsWith("Visit Anaheim Team Experience Feedback"), "Client Survey: feedback section subtitle renamed to 'Visit Anaheim Team Experience Feedback'");
 assert(doc.querySelectorAll("#sur-kpiGrid .daterange").length >= 4, "Client Survey: every KPI card shows a dynamic date-range subtitle");
 assert(doc.querySelectorAll("#sur-kpiGrid").length && [...doc.querySelectorAll("#sur-kpiGrid .kpi-card")][1].textContent.includes("Consists of 6 Questions"), "Client Survey: Team Experience Score card shows 'Consists of 6 Questions' subtext");
+assert(doc.getElementById("sur-chart2-title").parentElement.querySelector(".tag")?.textContent === "Monthly", "Client Survey: 'Monthly' tag added next to 'VA Team Experience Avg. Score by Month'");
+assert(doc.getElementById("sur-analysis1").querySelectorAll("strong").length > 0, "Client Survey: analysis 1 (by question) has bolded values");
+assert(doc.getElementById("sur-analysis2").querySelectorAll("strong").length > 0, "Client Survey: analysis 2 (by month) has bolded values");
+assert(doc.getElementById("sur-analysis3").querySelectorAll("strong").length > 0, "Client Survey: analysis 3 (by manager) has bolded values");
+assert(doc.getElementById("sur-yoy-analysis").querySelectorAll("strong").length > 0, "Client Survey: YoY values table analysis sentence has bolded values");
 assert(doc.getElementById("sur-manager").children.length > 1, "Client Survey: services manager filter populated");
 assert(!doc.querySelector(".spotlight .tag"), "Client Survey: spotlight 'Beyond source report' tag removed");
 assert(doc.querySelector(".spotlight h2").textContent.trim() === "Feedback", "Client Survey: spotlight title renamed to 'Feedback'");
 assert(doc.getElementById("sur-chart1-title").textContent === "VA Survey Questions Rating", "Client Survey: 'Category Rating' renamed to 'VA Survey Questions Rating'");
-assert(doc.getElementById("sur-chart2-title").textContent === "VA Team Experience Avg. Score by Month", "Client Survey: 'Avg. Score by Month' renamed");
+assert(doc.getElementById("sur-chart2-title").textContent.trim().startsWith("VA Team Experience Avg. Score by Month"), "Client Survey: 'Avg. Score by Month' renamed");
 assert(doc.getElementById("sur-question").children.length > 1, "Client Survey: Question filter populated");
 {
   // Selecting a specific question should narrow/relabel every visual on the tab.
@@ -170,6 +201,8 @@ assert(!doc.querySelector("#tab-events #hev-bbTable"), "Hosted Events: cross-ref
 assert(![...doc.querySelectorAll("#tab-events h2")].some(h => h.textContent.includes("Hosted Events & Booked Business")), "Hosted Events: cross-reference section moved out of this tab");
 assert(doc.querySelectorAll("#hev-kpiGrid .kpi-card.events-team").length === 5, "Hosted Events: all 5 KPI cards get the blue events-team accent");
 assert(doc.querySelectorAll("#hev-kpiGrid .daterange").length === 5, "Hosted Events: every KPI card shows a dynamic date-range subtitle");
+assert(doc.getElementById("hev-analysis1").querySelectorAll("strong").length > 0, "Hosted Events: analysis 1 (Events by Month) has bolded values");
+assert(doc.getElementById("hev-analysis2").querySelectorAll("strong").length > 0, "Hosted Events: analysis 2 (Survey Questions Ratings) has bolded values");
 
 // Booked Business
 assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 KPI cards (Total Events card added)");
@@ -204,6 +237,32 @@ assert(doc.querySelector("#bb-detailTable thead").textContent.trim() === "EventA
 assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#bb-detailTable tbody tr td:nth-child(4)").textContent), "Booked Business: dates formatted MM/DD/YYYY");
 assert(doc.querySelectorAll("#bb-kpiGrid .kpi-card.events-team").length === 6, "Booked Business: all 6 KPI cards get the blue events-team accent");
 assert(doc.querySelectorAll("#bb-kpiGrid .daterange").length === 6, "Booked Business: every KPI card shows a dynamic date-range subtitle");
+assert(doc.getElementById("bb-analysis1").querySelectorAll("strong").length > 0, "Booked Business: analysis 1 (Leads Generated by Event) has bolded values");
+assert(doc.getElementById("bb-analysis2").querySelectorAll("strong").length > 0, "Booked Business: analysis 2 (Leads Generated by Lead Status) has bolded values");
+assert(doc.getElementById("hev-bb-analysis").textContent.includes("Out of the"), "Booked Business: cross-reference visual has the dynamic 'Out of the X events...' analysis sentence");
+{
+  // Regression check: Total Events with Year = All used to double-count
+  // years the Booked Business sheet doesn't have data for yet (35 instead of
+  // the correct 28, since Event Surveys has years 2023-2026 on file but
+  // Booked Business currently only has 2025). "All" should scope to years
+  // actually present in Booked Business, so it should match the single-year
+  // 2025 figure exactly (both tabs currently only have 2025 data).
+  const bbYearSel = doc.getElementById("bb-year");
+  bbYearSel.value = "2025";
+  bbYearSel.dispatchEvent(new window.Event("change"));
+  const totalEvents2025 = doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent;
+  bbYearSel.value = "All";
+  bbYearSel.dispatchEvent(new window.Event("change"));
+  const totalEventsAll = doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent;
+  assert(totalEventsAll === totalEvents2025, `Booked Business: 'Total Events' with Year=All (${totalEventsAll}) matches 2025-only (${totalEvents2025}), not inflated by other Event Surveys years`);
+  assert(totalEventsAll === "28", "Booked Business: 'Total Events' with Year=All correctly reads 28, not 35");
+  bbYearSel.value = "2025";
+  bbYearSel.dispatchEvent(new window.Event("change"));
+}
+
+// Export as PDF button + events-team tab coloring (cross-tab checks)
+assert(doc.querySelectorAll(".tab-panel .export-btn").length === 7, "Every tab has an 'Export as PDF' button");
+assert(doc.querySelector('.tab-btn[data-tab="events"]') && doc.querySelector('.tab-btn[data-tab="booked"]'), "Hosted Events and Booked Business tab buttons exist for color-coding via CSS");
 
 // Spot-check the corrected KPI math against values verified live in the Power BI report
 const overview = doc.getElementById("ov-kpiGrid").innerHTML;
