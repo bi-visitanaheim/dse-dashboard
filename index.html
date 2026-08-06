@@ -21,7 +21,7 @@
       </div>
     </div>
     <div class="pill-group">
-      <div class="updated-pill">Reporting period: <strong>Jan 1, 2026 &ndash; Jun 30, 2026</strong></div>
+      <div class="updated-pill">Reporting period: <strong id="headerReportingPeriod">Jan 1, 2026 &ndash; Jun 30, 2026</strong></div>
       <div class="updated-pill">Data last refreshed: <strong id="updatedAt">&mdash;</strong></div>
       <div class="updated-pill">Updates monthly on the 15th, reflecting data through the prior month.</div>
     </div>
@@ -153,7 +153,7 @@
     <section class="panel">
       <h2>Accounts</h2>
       <div class="table-scroll">
-        <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Attendance</th><th>Peak Room</th><th>Repeat?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
+        <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Lead</th><th>Start Date</th><th>End Date</th><th>Attendance</th><th>Peak Room</th><th>Repeat?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
       </div>
       <p class="desc auto-analysis" id="rep-analysis3"></p>
     </section>
@@ -205,7 +205,10 @@
     <!-- Q7 feedback wall -- bonus content beyond the source Power BI report -->
     <section class="spotlight">
       <h2>Feedback</h2>
-      <p class="desc" id="q2q7Desc"></p>
+      <div class="spotlight-head">
+        <p class="desc" id="q2q7Desc"></p>
+        <div class="sentiment-scale" id="q2q7SentimentScale"></div>
+      </div>
       <div id="testimonialCols" class="testimonial-cols"></div>
     </section>
   </section>

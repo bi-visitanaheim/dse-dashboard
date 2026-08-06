@@ -49,6 +49,21 @@ window.switchTab("events");
 assert(doc.getElementById("footSource").textContent === "Internal Tracking", "Footer: Hosted Events source updates on tab switch");
 window.switchTab("overview");
 
+// Header "Reporting period" pill updates dynamically per tab, matching each
+// tab's own KPI card date ranges (not a fixed hardcoded string).
+{
+  const overviewPeriod = doc.getElementById("headerReportingPeriod").innerHTML;
+  assert(/\d{4}/.test(overviewPeriod), "Header: Reporting period pill shows a real date range on load (Overview)");
+  window.switchTab("team");
+  const teamPeriod = doc.getElementById("headerReportingPeriod").innerHTML;
+  assert(teamPeriod !== overviewPeriod, "Header: Reporting period pill changes when switching to Team KPIs tab");
+  window.switchTab("repeat");
+  const repeatPeriod = doc.getElementById("headerReportingPeriod").innerHTML;
+  assert(repeatPeriod !== teamPeriod, "Header: Reporting period pill changes when switching to Repeat Clients tab");
+  window.switchTab("overview");
+  assert(doc.getElementById("headerReportingPeriod").innerHTML === overviewPeriod, "Header: Reporting period pill reverts to Overview's own range when switching back");
+}
+
 // Overview
 assert(doc.getElementById("ov-kpiGrid").children.length === 12, "Overview: 12 KPI cards");
 assert(doc.getElementById("ov-insights").querySelectorAll("p").length === 3, "Overview: 3 narrative paragraphs");
@@ -195,6 +210,24 @@ assert(doc.getElementById("rep-analysis3").querySelectorAll("strong").length > 0
 assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis1").innerHTML), "Repeat Clients: analysis 1 states the latest month, not a YTD/whole-period total");
 assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis2").innerHTML), "Repeat Clients: analysis 2 states the latest month, not a YTD/whole-period total");
 assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis3").innerHTML), "Repeat Clients: analysis 3 states the latest month, not a YTD/whole-period total");
+// Accounts table: new Lead/Start Date/End Date columns, positioned before Attendance.
+assert(doc.querySelector("#rep-clientsTable thead").textContent.trim() === "AccountLeadStart DateEnd DateAttendancePeak RoomRepeat?BookingsServices Manager", "Repeat Clients: Accounts table has Lead/Start Date/End Date columns before Attendance");
+assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#rep-clientsTable tbody tr td:nth-child(3)").textContent), "Repeat Clients: Accounts table Start Date formatted MM/DD/YYYY");
+{
+  // Regression check: selecting a completed past year (2025, since 2026 is
+  // the latest year present in this sheet) should switch all 3 analysis
+  // sentences from "latest month" to "full year" phrasing, matching Partner
+  // Referrals' behavior -- not just show the last month of that past year.
+  const repYearSel = doc.getElementById("rep-year");
+  repYearSel.value = "2025";
+  repYearSel.dispatchEvent(new window.Event("change"));
+  assert(doc.getElementById("rep-analysis1").innerHTML.includes("In <strong>2025</strong>"), "Repeat Clients: analysis 1 uses full-year phrasing for a completed past year, not last month");
+  assert(doc.getElementById("rep-analysis2").innerHTML.includes("In <strong>2025</strong>"), "Repeat Clients: analysis 2 uses full-year phrasing for a completed past year");
+  assert(doc.getElementById("rep-analysis3").innerHTML.includes("In <strong>2025</strong>"), "Repeat Clients: analysis 3 uses full-year phrasing for a completed past year");
+  repYearSel.value = "2026";
+  repYearSel.dispatchEvent(new window.Event("change"));
+  assert(!doc.getElementById("rep-analysis1").innerHTML.includes("In <strong>2026</strong>,"), "Repeat Clients: analysis 1 reverts to 'latest month' phrasing for the current year");
+}
 
 // Client Survey
 assert(doc.getElementById("sur-kpiGrid").children.length === 4, "Client Survey: 4 KPI cards");
@@ -223,6 +256,13 @@ assert(doc.querySelectorAll("#sur-yoyPctTable tbody tr").length === 7, "Client S
 assert(doc.querySelectorAll("#sur-yoyValuesTable thead th").length >= 2, "Client Survey: values table header built dynamically from data years");
 assert(doc.querySelectorAll("#testimonialCols .testimonial").length > 0, "Client Survey: Q7 testimonial cards rendered");
 assert(doc.querySelector("#testimonialCols .testimonial .yr"), "Client Survey: testimonial cards show a year title");
+assert(doc.querySelector("#testimonialCols .testimonial .yr .sentiment-badge"), "Client Survey: each testimonial card shows a sentiment badge next to its year");
+assert(
+  [...doc.querySelectorAll("#testimonialCols .testimonial .yr .sentiment-badge")].every(el => ["Positive", "Neutral", "Negative"].includes(el.textContent.trim())),
+  "Client Survey: sentiment badges are one of Positive/Neutral/Negative"
+);
+assert(doc.getElementById("q2q7SentimentScale").querySelector(".bar"), "Client Survey: aggregate sentiment scale (red-to-green bar) rendered next to the Feedback title");
+assert(/\d+% negative, \d+% neutral, \d+% positive/.test(doc.getElementById("q2q7SentimentScale").textContent), "Client Survey: aggregate sentiment breakdown text shows % negative/neutral/positive");
 assert(!doc.getElementById("chartQ2"), "Client Survey: Q2 line chart removed from spotlight");
 assert(doc.getElementById("q2q7Desc").textContent.trim().startsWith("Visit Anaheim Team Experience Feedback"), "Client Survey: feedback section subtitle renamed to 'Visit Anaheim Team Experience Feedback'");
 assert(doc.querySelectorAll("#sur-kpiGrid .daterange").length >= 4, "Client Survey: every KPI card shows a dynamic date-range subtitle");
@@ -276,6 +316,8 @@ assert(doc.querySelectorAll("#hev-kpiGrid .delta").length === 5, "Hosted Events:
 assert(doc.getElementById("hev-analysis3").querySelectorAll("strong").length > 0, "Hosted Events: 'Avg. Rating by Question' table has a bolded auto-analysis sentence");
 assert(doc.getElementById("hev-analysis4").querySelectorAll("strong").length > 0, "Hosted Events: 'Ratings by Event Category' table has a bolded auto-analysis sentence");
 assert(doc.getElementById("hev-analysis5").querySelectorAll("strong").length > 0, "Hosted Events: 'Event Survey Detail' table has a bolded auto-analysis sentence");
+assert(!doc.getElementById("hev-analysis5").textContent.includes("event/survey-type combinations are shown"), "Hosted Events: 'Event Survey Detail' subtext rewritten as a named-entity analysis, not the generic count sentence");
+assert(/has the most survey-type coverage/.test(doc.getElementById("hev-analysis5").innerHTML), "Hosted Events: 'Event Survey Detail' analysis names the top event by survey-type coverage");
 
 // Booked Business
 assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 KPI cards (Total Events card added)");
@@ -341,6 +383,13 @@ assert(doc.getElementById("bb-analysis4").querySelectorAll("strong").length > 0,
 // Export as PDF button + events-team tab coloring (cross-tab checks)
 assert(doc.querySelectorAll(".tab-panel .export-btn").length === 7, "Every tab has an 'Export as PDF' button");
 assert(doc.querySelector('.tab-btn[data-tab="events"]') && doc.querySelector('.tab-btn[data-tab="booked"]'), "Hosted Events and Booked Business tab buttons exist for color-coding via CSS");
+
+// Print CSS: zoomed out ~15% so exports show more content without cutoff/squishing.
+{
+  const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
+  const printBlockMatch = css.match(/@media print\s*\{[\s\S]*?\n\}/);
+  assert(printBlockMatch && /zoom:\s*85%/.test(printBlockMatch[0]), "Print CSS: @media print block zooms out to 85% (15% smaller)");
+}
 
 // Spot-check the corrected KPI math against values verified live in the Power BI report
 const overview = doc.getElementById("ov-kpiGrid").innerHTML;

@@ -288,6 +288,12 @@ async function main() {
   initSurvey();
   initEvents();
   initBooked();
+
+  // Overview is the tab active on load, so the header's "Reporting period"
+  // pill needs its initial value set directly here (every other tab picks up
+  // its own value automatically the first time someone clicks over to it).
+  const periodEl = document.getElementById("headerReportingPeriod");
+  if (periodEl && TAB_REPORTING_PERIODS.overview) periodEl.innerHTML = TAB_REPORTING_PERIODS.overview;
 }
 
 // Each tab pulls from a different mix of source systems, so the footer's
@@ -301,11 +307,20 @@ const TAB_SOURCES = {
   events: "Internal Tracking",
   booked: "Granicus"
 };
+// The header's "Reporting period" pill is dynamic per tab: each render*
+// function below stores its own tab's currently-filtered date range here
+// (the exact same range shown on that tab's own KPI cards), and switchTab
+// reads it back out whenever the person switches tabs. Re-populated by every
+// render call, so it also stays current as a tab's own Year/Manager/etc.
+// filters change without needing to switch away and back.
+const TAB_REPORTING_PERIODS = {};
 function switchTab(name) {
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${name}`));
   const footSource = document.getElementById("footSource");
   if (footSource && TAB_SOURCES[name]) footSource.textContent = TAB_SOURCES[name];
+  const periodEl = document.getElementById("headerReportingPeriod");
+  if (periodEl && TAB_REPORTING_PERIODS[name]) periodEl.innerHTML = TAB_REPORTING_PERIODS[name];
 }
 
 // =====================================================================
@@ -528,6 +543,13 @@ function renderOverview() {
   paras.push(`<p>The team hosted <strong>${fmt(hostedEventsCur)}</strong> surveyed VA events${deltaSpan(dHostedEvents)} at an average <strong>${pct(eventSatCur)}</strong> satisfaction score${deltaSpan(dEventSat)}, generating <strong>${fmt(leadsCurYtd)}</strong> leads${deltaSpan(dLeads)} with an average lead conversion window of <strong>${convWinFmt(convWinCur)}</strong>${deltaSpan(dConvWin)}.</p>`);
   OV_FULL_NARRATIVE = paras.join("");
   document.getElementById("ov-insights").innerHTML = OV_FULL_NARRATIVE;
+
+  // Header "Reporting period" pill (see TAB_REPORTING_PERIODS/switchTab):
+  // Overview's 12 cards each cover their own category's YTD window, so the
+  // header uses the same Jan-1-through-cutoff window as the Planning Visits
+  // cards (the tab's primary/first-shown metrics) as the representative
+  // period for the tab as a whole.
+  TAB_REPORTING_PERIODS.overview = ytdRangeLabel(CUR, pvCutoff);
 }
 
 // =====================================================================
@@ -641,6 +663,8 @@ function renderTeam(year) {
     { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced },
     { label: "Clients Serviced", fn: r => r.clientsServiced }
   ], year, "date", ["planningVisits"]);
+
+  TAB_REPORTING_PERIODS.team = teamRange || "&mdash;";
 }
 // True when a specific, already-completed past year is selected (not "All"
 // and not the latest year present in the data) -- used to switch the
@@ -870,6 +894,8 @@ function renderReferrals(year) {
       : "No data available for this period yet.";
   }
   document.getElementById("ref-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [{ label: "Partner Referrals", fn: r => r.count }], year, "date", null);
+
+  TAB_REPORTING_PERIODS.referrals = refRange || "&mdash;";
 }
 
 // =====================================================================
@@ -989,8 +1015,11 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
   const withBookings = rows.map(r => ({ ...r, bookings: acctCounts.get(r.accountId).length }))
     .sort((a, b) => b.bookings - a.bookings || (b.attendance || 0) - (a.attendance || 0))
     .slice(0, 30);
+  // "Lead" (Lead Name), "Start Date"/"End Date" (Meeting Dates Preferred
+  // Start/End -- startDate/endDate, see build_data.py) inserted before
+  // Attendance, per direction.
   document.querySelector("#rep-clientsTable tbody").innerHTML = withBookings.map(r =>
-    `<tr><td>${r.accountName}</td><td>${fmt(r.attendance)}</td><td>${fmt(r.peakRoom)}</td><td>${r.repeat}</td><td>${r.bookings}</td><td>${r.servicesManager}</td></tr>`
+    `<tr><td>${r.accountName}</td><td>${r.leadName || "&mdash;"}</td><td>${mdy(r.startDate) || "&mdash;"}</td><td>${mdy(r.endDate) || "&mdash;"}</td><td>${fmt(r.attendance)}</td><td>${fmt(r.peakRoom)}</td><td>${r.repeat}</td><td>${r.bookings}</td><td>${r.servicesManager}</td></tr>`
   ).join("");
 
   // Year over Year table (same pattern as Partner Referrals' YoY table):
@@ -1011,45 +1040,117 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
 
   document.getElementById("rep-yoy-analysis").innerHTML = yoyAnalysisSentence(yoyRows, yoyMetrics, year, "startDate", null);
 
-  // Auto-analysis sentences (bolded values) -- per direction, every visual
-  // on this tab states the latest available month of data (not a year-to-
-  // date/whole-period aggregate), same "latest month with data" pattern used
-  // dashboard-wide. Uses this tab's own currently-filtered `rows` (Year/
-  // Account/Manager/Repeat), so it narrows along with those filters too.
-  const repMonths = [...new Set(rows.map(r => monthKey(r.startDate)))].sort();
-  const repLatestMonth = repMonths.length ? repMonths[repMonths.length - 1] : null;
-  const repLatestRows = repLatestMonth ? rows.filter(r => monthKey(r.startDate) === repLatestMonth) : [];
+  // Auto-analysis sentences (bolded values) -- per direction, every visual on
+  // this tab states the latest available month of data (not a year-to-date/
+  // whole-period aggregate) for the current/latest year (or "All"). But once
+  // a *completed past* year is selected in the Year filter, "latest month"
+  // would just mean that year's last month, which reads oddly compared to
+  // how every other tab (Team KPIs, Partner Referrals, Client Survey, Hosted
+  // Events) instead states that year's full-year totals via isPastYear --
+  // so this tab now follows the exact same isPastYear pattern for
+  // consistency. Uses `repYoyBase` (Account/Manager/Repeat-filtered, but not
+  // Year-filtered) to decide past-vs-current, same convention used
+  // everywhere else on the dashboard.
+  if (isPastYear(repYoyBase, year)) {
+    const topMgrYear = topEntry(
+      [...groupBy(rows, r => r.servicesManager).entries()].map(([m, rs]) => ({ m, total: rs.length })),
+      x => x.total
+    );
+    document.getElementById("rep-analysis1").innerHTML = topMgrYear
+      ? `In <strong>${year}</strong>, <strong>${topMgrYear.item.m}</strong> serviced the most clients, with <strong>${fmt(topMgrYear.v)}</strong> total (repeat + new).`
+      : "No data available for this period yet.";
 
-  const topMgrMonth = topEntry(
-    [...groupBy(repLatestRows, r => r.servicesManager).entries()].map(([m, rs]) => ({ m, total: rs.length })),
-    x => x.total
-  );
-  document.getElementById("rep-analysis1").innerHTML = (repLatestMonth && topMgrMonth)
-    ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${topMgrMonth.item.m}</strong> serviced the most clients, with <strong>${fmt(topMgrMonth.v)}</strong> total (repeat + new).`
-    : "No data available for this period yet.";
+    const yearTotalClients = distinctCount(rows, r => r.leadId);
+    const yearRepeatClients = new Set(rows.filter(r => r.repeat === "Yes").map(r => r.leadId)).size;
+    document.getElementById("rep-analysis2").innerHTML = `In <strong>${year}</strong>, of the <strong>${fmt(yearTotalClients)}</strong> clients serviced, <strong>${fmt(yearRepeatClients)}</strong> were repeat clients (<strong>${pct(yearTotalClients ? yearRepeatClients / yearTotalClients : null)}</strong>).`;
 
-  const monthTotalClients = distinctCount(repLatestRows, r => r.leadId);
-  const monthRepeatClients = new Set(repLatestRows.filter(r => r.repeat === "Yes").map(r => r.leadId)).size;
-  document.getElementById("rep-analysis2").innerHTML = repLatestMonth
-    ? `In <strong>${monthLabel(repLatestMonth)}</strong>, of the <strong>${fmt(monthTotalClients)}</strong> clients serviced, <strong>${fmt(monthRepeatClients)}</strong> were repeat clients (<strong>${pct(monthTotalClients ? monthRepeatClients / monthTotalClients : null)}</strong>).`
-    : "No data available for this period yet.";
+    // Accounts table: the account with the most bookings across the whole
+    // selected year (acctCounts is already this tab's full filtered set).
+    const topAccountYear = topEntry(
+      [...acctCounts.entries()].map(([id, rs]) => ({ name: rs[0].accountName, count: rs.length })),
+      x => x.count
+    );
+    document.getElementById("rep-analysis3").innerHTML = topAccountYear
+      ? `In <strong>${year}</strong>, <strong>${topAccountYear.item.name}</strong> had the most bookings, with <strong>${fmt(topAccountYear.v)}</strong>.`
+      : "No data available for this period yet.";
+  } else {
+    const repMonths = [...new Set(rows.map(r => monthKey(r.startDate)))].sort();
+    const repLatestMonth = repMonths.length ? repMonths[repMonths.length - 1] : null;
+    const repLatestRows = repLatestMonth ? rows.filter(r => monthKey(r.startDate) === repLatestMonth) : [];
 
-  // Accounts table: the account with the most bookings recorded in the
-  // latest month specifically (row count for that account within that
-  // month), not its all-time/whole-period bookings total.
-  const monthAcctCounts = groupBy(repLatestRows, r => r.accountId);
-  const topAccountMonth = topEntry(
-    [...monthAcctCounts.entries()].map(([id, rs]) => ({ name: rs[0].accountName, count: rs.length })),
-    x => x.count
-  );
-  document.getElementById("rep-analysis3").innerHTML = (repLatestMonth && topAccountMonth)
-    ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${topAccountMonth.item.name}</strong> had the most bookings, with <strong>${fmt(topAccountMonth.v)}</strong>.`
-    : "No data available for this period yet.";
+    const topMgrMonth = topEntry(
+      [...groupBy(repLatestRows, r => r.servicesManager).entries()].map(([m, rs]) => ({ m, total: rs.length })),
+      x => x.total
+    );
+    document.getElementById("rep-analysis1").innerHTML = (repLatestMonth && topMgrMonth)
+      ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${topMgrMonth.item.m}</strong> serviced the most clients, with <strong>${fmt(topMgrMonth.v)}</strong> total (repeat + new).`
+      : "No data available for this period yet.";
+
+    const monthTotalClients = distinctCount(repLatestRows, r => r.leadId);
+    const monthRepeatClients = new Set(repLatestRows.filter(r => r.repeat === "Yes").map(r => r.leadId)).size;
+    document.getElementById("rep-analysis2").innerHTML = repLatestMonth
+      ? `In <strong>${monthLabel(repLatestMonth)}</strong>, of the <strong>${fmt(monthTotalClients)}</strong> clients serviced, <strong>${fmt(monthRepeatClients)}</strong> were repeat clients (<strong>${pct(monthTotalClients ? monthRepeatClients / monthTotalClients : null)}</strong>).`
+      : "No data available for this period yet.";
+
+    // Accounts table: the account with the most bookings recorded in the
+    // latest month specifically (row count for that account within that
+    // month), not its all-time/whole-period bookings total.
+    const monthAcctCounts = groupBy(repLatestRows, r => r.accountId);
+    const topAccountMonth = topEntry(
+      [...monthAcctCounts.entries()].map(([id, rs]) => ({ name: rs[0].accountName, count: rs.length })),
+      x => x.count
+    );
+    document.getElementById("rep-analysis3").innerHTML = (repLatestMonth && topAccountMonth)
+      ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${topAccountMonth.item.name}</strong> had the most bookings, with <strong>${fmt(topAccountMonth.v)}</strong>.`
+      : "No data available for this period yet.";
+  }
+
+  TAB_REPORTING_PERIODS.repeat = repRange || "&mdash;";
 }
 
 // =====================================================================
 // CLIENT SURVEY
 // =====================================================================
+// ---------- Feedback sentiment (Q7 "Feedback" section) ----------
+// Purely client-side, deterministic keyword-lexicon heuristic -- this is a
+// static site with no backend, so there's no real NLP/LLM service available
+// to call for a true sentiment model. Each testimonial is scored by counting
+// positive vs. negative keyword hits (case-insensitive, punctuation
+// stripped) and bucketed by the net result. This is a lightweight
+// approximation, not a substitute for human judgment on any individual
+// comment, but it's consistent and updates live with the tab's Year/Manager
+// filters.
+const SENTIMENT_POSITIVE_WORDS = [
+  "great", "excellent", "amazing", "wonderful", "fantastic", "helpful",
+  "friendly", "professional", "smooth", "easy", "perfect", "outstanding",
+  "exceptional", "responsive", "attentive", "efficient", "seamless",
+  "impressed", "impressive", "pleasure", "recommend", "best", "awesome",
+  "love", "loved", "enjoyed", "exceeded", "thank", "thanks", "appreciate",
+  "appreciated", "knowledgeable", "supportive", "fabulous", "superb", "kind",
+  "patient", "accommodating", "welcoming", "pleasant", "flexible",
+  "organized", "prompt", "incredible", "delightful", "invaluable", "top-notch"
+];
+const SENTIMENT_NEGATIVE_WORDS = [
+  "poor", "bad", "terrible", "disappointing", "disappointed", "slow",
+  "difficult", "confusing", "unresponsive", "rude", "unprofessional",
+  "frustrating", "frustrated", "issue", "issues", "problem", "problems",
+  "delay", "delayed", "unclear", "lacking", "worst", "horrible", "awful",
+  "unhelpful", "complicated", "concern", "concerns", "mistake", "mistakes",
+  "late", "missed", "disorganized", "unacceptable", "disappointment", "fail",
+  "failed", "failure", "refused", "negligent", "unacceptably"
+];
+function analyzeSentiment(text) {
+  if (!text) return "Neutral";
+  const words = String(text).toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
+  let score = 0;
+  words.forEach(w => {
+    if (SENTIMENT_POSITIVE_WORDS.includes(w)) score++;
+    if (SENTIMENT_NEGATIVE_WORDS.includes(w)) score--;
+  });
+  if (score > 0) return "Positive";
+  if (score < 0) return "Negative";
+  return "Neutral";
+}
 function initSurvey() {
   const yearSel = document.getElementById("sur-year");
   const mgrSel = document.getElementById("sur-manager");
@@ -1228,6 +1329,8 @@ function renderSurvey(year, manager, question) {
     questions.map(q => ({ label: q, agg: rs => mean(rs.filter(r => r.question === q), r => r.rating) })),
     year, "date", ["rating"]
   );
+
+  TAB_REPORTING_PERIODS.survey = surRange || "&mdash;";
 }
 function renderQ2Q7(year, manager) {
   const spot = DATA.accSurvey.q2q7;
@@ -1249,11 +1352,37 @@ function renderQ2Q7(year, manager) {
   YEARS.forEach(y => {
     testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 20);
   });
+  // Each card's sentiment word (see analyzeSentiment) sits next to its year,
+  // on the same row.
   const cols = document.getElementById("testimonialCols");
   cols.innerHTML = YEARS.map(y => {
     const items = testimonialsByYear[y] || [];
-    return items.map(it => `<div class="testimonial"><div class="yr">${y}</div>&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`).join("");
+    return items.map(it => {
+      const sentiment = analyzeSentiment(it.feedback);
+      return `<div class="testimonial"><div class="yr"><span>${y}</span><span class="sentiment-badge ${sentiment.toLowerCase()}">${sentiment}</span></div>&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`;
+    }).join("");
   }).join("");
+
+  // Aggregate sentiment breakdown next to the section title, on a
+  // red-to-green scale -- computed across ALL Q7 feedback matching the
+  // current Year/Manager filters (not just the up-to-20-per-year subset
+  // shown as cards above), so it's a true overall picture.
+  const allFeedback = raw.filter(r => r.question === spot.q7Text && r.feedback && (!year || year === "All" || r.year === Number(year)));
+  const scaleEl = document.getElementById("q2q7SentimentScale");
+  if (scaleEl) {
+    const total = allFeedback.length;
+    if (!total) {
+      scaleEl.innerHTML = "";
+    } else {
+      const counts = { Positive: 0, Neutral: 0, Negative: 0 };
+      allFeedback.forEach(r => { counts[analyzeSentiment(r.feedback)]++; });
+      const pctOf = n => Math.round((n / total) * 100);
+      const negPct = pctOf(counts.Negative), neuPct = pctOf(counts.Neutral), posPct = pctOf(counts.Positive);
+      scaleEl.innerHTML =
+        `<span>${negPct}% negative, ${neuPct}% neutral, ${posPct}% positive</span>` +
+        `<span class="bar"><span class="seg-negative" style="width:${negPct}%"></span><span class="seg-neutral" style="width:${neuPct}%"></span><span class="seg-positive" style="width:${posPct}%"></span></span>`;
+    }
+  }
 }
 
 // =====================================================================
@@ -1415,9 +1544,21 @@ function renderEvents(year, category, eventName) {
   document.getElementById("hev-analysis4").innerHTML = topCat
     ? `<strong>${topCat.item.cat}</strong> has the most respondents, with <strong>${fmt(topCat.v)}</strong> and an average satisfaction score of <strong>${pct(mean(topCat.item.rs, r => r.satisfaction))}</strong>.`
     : "No data available for this period yet.";
-  document.getElementById("hev-analysis5").innerHTML = detailRows.length
-    ? `<strong>${fmt(detailRows.length)}</strong> event/survey-type combinations are shown, spanning <strong>${fmt(totalEvents)}</strong> distinct events.`
+  // Event Survey Detail auto-analysis: names the event with the most
+  // survey-type coverage (Attendee + Partner, where both exist) instead of
+  // just stating a generic row/event count -- matches the "named top entity"
+  // style used by Repeat Clients' Accounts analysis (rep-analysis3) and
+  // Booked Business' Events That Generated Leads Detail analysis (bb-analysis4).
+  const detailByEvent = groupBy(detailRows, r => r.event);
+  const topDetailEvent = topEntry(
+    [...detailByEvent.entries()].map(([name, rs]) => ({ name, count: rs.length })),
+    x => x.count
+  );
+  document.getElementById("hev-analysis5").innerHTML = (detailRows.length && topDetailEvent)
+    ? `<strong>${topDetailEvent.item.name}</strong> has the most survey-type coverage, with <strong>${fmt(topDetailEvent.v)}</strong> survey type${topDetailEvent.v === 1 ? "" : "s"} recorded, across <strong>${fmt(totalEvents)}</strong> distinct events total.`
     : "No data available for this period yet.";
+
+  TAB_REPORTING_PERIODS.events = hevRange || "&mdash;";
 }
 
 // Cross-reference: eventSurveys and bookedBusiness share the same eventId
@@ -1695,6 +1836,8 @@ function renderBooked(year, status, eventName) {
     : "No data available for this period yet.";
 
   renderHevBookedLink(year, status, eventName);
+
+  TAB_REPORTING_PERIODS.booked = bbRange || "&mdash;";
 }
 
 main();

@@ -120,7 +120,7 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | Accounts w/ Repeat Bookings card | Account ID | `Repeat Accounts Count = COUNTROWS(FILTER(VALUES('RepeatingBusiness'[Account ID]), CALCULATE(COUNTROWS('RepeatingBusiness')) > 1))` |
 | "Repeat vs. New Services Manager" chart | Services Manager (y-axis); Repeat Business (x-axis, as count); Repeat Business (legend) | Row count per manager, split Repeat/New |
 | "Repeat vs. New: Clients & Accounts" chart | Lead ID (Clients ring), Account ID (Accounts ring); both split by Repeat Business (legend) | Distinct count, split Repeat/New |
-| Accounts table | Account = Account Name; Attendance = Original Total Attendance; Peak Room = Requested Peak Room; Repeat = Repeat Business; Services Manager = Services Manager | Row-level detail, top 30 by number of bookings |
+| Accounts table | Account = Account Name; Lead = Lead Name; Start Date/End Date = Meeting Dates (Preferred Start/End); Attendance = Original Total Attendance; Peak Room = Requested Peak Room; Repeat = Repeat Business; Services Manager = Services Manager | Row-level detail, top 30 by number of bookings |
 
 Notes:
 
@@ -368,6 +368,35 @@ The print stylesheet no longer hides the header, logo, branding, or "data last r
 ## Repeat Clients: auto-analysis sentences now state the latest month, not a YTD/whole-period total
 
 Per direction, every 1-sentence auto-analysis on this tab (the two charts and the Accounts table) was changed from a whole-selected-period aggregate to the same "latest month with data" pattern used dashboard-wide (e.g. "In Jun 26, Pearl, Jenni serviced the most clients, with 5 total (repeat + new)." instead of a whole-year figure). The latest month is found from whatever's currently filtered (Year/Account Name/Services Manager/Repeat), via `monthKey(r.startDate)`, so it moves with those filters too. The "Year over Year" table's own auto-analysis sentence (`rep-yoy-analysis`) was intentionally left as a year-over-year comparison, since that's inherent to what a Year-over-Year table shows -- a "latest month" framing wouldn't make sense directly under it.
+
+## Repeat Clients: Accounts table adds Lead/Start Date/End Date columns
+
+The Accounts table now shows **Lead** (Lead Name), **Start Date**, and **End Date** (Meeting Dates (Preferred Start)/(Preferred End) -- `startDate`/`endDate` in `data.json`, see build_data.py) ahead of the Attendance column. Dates are formatted `MM/DD/YYYY` via the existing `mdy()` helper (same formatting already used on the Booked Business detail table).
+
+## Repeat Clients: past-year analysis sentences now show full-year totals, not last month
+
+Fixed a gap from the previous "latest month" change above: when a *completed past* year is selected in this tab's Year filter, the three analysis sentences (Repeat vs. New Services Manager, Repeat vs. New: Clients & Accounts, Accounts table) now state that year's **full-year** totals, matching the same `isPastYear()`-driven pattern already used on Team KPIs, Partner Referrals, Client Survey, and Hosted Events -- rather than just reporting the last month of that past year, which is what the plain "latest month" logic worked out to for a year that's already over. The current/latest year (or "All") is unaffected and still reports the latest available month, as before.
+
+## Hosted Events: "Event Survey Detail" table analysis rewritten
+
+The table's auto-analysis sentence no longer states a generic "N event/survey-type combinations are shown, spanning M distinct events." It now names the specific event with the most survey-type coverage (e.g. "**Ducks vs. Stars** has the most survey-type coverage, with **2** survey types recorded, across **7** distinct events total."), matching the named-top-entity style already used by Repeat Clients' Accounts table analysis and Booked Business' Events That Generated Leads Detail analysis.
+
+## Header "Reporting period" pill is now dynamic per tab
+
+The pill in the top-right of the header used to show a single hardcoded date range regardless of which tab was open. It now updates to reflect whichever tab is currently active, using that exact same date-range logic each tab's own KPI cards already use (`TAB_REPORTING_PERIODS` in `app.js`, populated by every `render*()` function and read by `switchTab()`). It also refreshes automatically as a tab's own Year/Manager/etc. filters change, since every `render*()` call updates it, not just the initial tab load.
+
+## Print / Export as PDF: zoomed out ~15%
+
+`@media print { body { zoom: 85%; } }` was added so a full tab's cards, charts, and tables fit on the printed/PDF page without getting cut off at the edge or squished together. `zoom` (not `transform: scale`) was used deliberately -- it reflows the layout at the smaller size rather than just shrinking a full-size layout visually into a clipped box, which is what actually buys back usable room per page. Supported by Chrome/Edge, which is what "Save as PDF" printing runs through in practice.
+
+## Client Survey "Feedback" section: automated sentiment analysis
+
+Since this is a static site with no backend or LLM/API access available client-side, sentiment is classified with a small, deterministic keyword-lexicon heuristic (`analyzeSentiment()` in `app.js`): each Q7 testimonial's text is lowercased, stripped of punctuation, and scored by counting hits against a fixed list of positive and negative words; a positive net score is "Positive," negative is "Negative," and zero (including no keyword hits at all) is "Neutral." This is an approximation, not true NLP -- it won't catch sarcasm, negation ("not helpful"), or words outside its two lists -- but it's consistent, explainable, and requires no external service.
+
+- Each testimonial card shows its classified sentiment word (Positive/Neutral/Negative) as a small colored badge next to the year, on the same line (`.sentiment-badge`).
+- Next to the "Visit Anaheim Team Experience Feedback" title, an aggregate breakdown (e.g. "20% negative, 40% neutral, 40% positive") plus a red-to-green segmented bar (`.sentiment-scale`) shows the overall mix across **all** Q7 feedback currently matching the Year/Services Manager filters -- not just the up-to-20-per-year subset rendered as cards, so it's a true overall picture even when a year has more than 20 responses.
+- Both are fully dynamic: changing the Year or Services Manager filter re-classifies and re-aggregates immediately.
+- Red/amber/green is used **only** in this one spot on the dashboard, as a deliberate, scoped exception to the six-color brand palette described below -- red-to-green is the near-universal, instantly legible convention for sentiment, which the brand's teal/navy tones can't convey as clearly.
 
 ## Known data-quality issue
 

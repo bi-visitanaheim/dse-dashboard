@@ -372,7 +372,10 @@ table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; fo
   margin-bottom: 10px;
 }
 .testimonial .yr {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-size: 18px;
   font-weight: 800;
   color: var(--teal-light);
@@ -384,6 +387,57 @@ table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; fo
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 14px;
 }
+
+/* ---------- Feedback sentiment (Client Survey "Feedback" section) ----------
+   A lightweight, deterministic keyword-based heuristic (see analyzeSentiment
+   in app.js) classifies each Q7 testimonial as Positive/Neutral/Negative;
+   this is the only place red/amber/green appear in the dashboard, used
+   intentionally here (not the 6-color brand palette) because red-to-green is
+   the near-universal, instantly legible convention for sentiment, which the
+   brand's teal/navy tones can't convey as clearly. */
+.spotlight-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  margin-bottom: 4px;
+}
+.spotlight-head .desc { margin: 0; }
+.sentiment-badge {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  padding: 3px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.sentiment-badge.positive { background: rgba(76,154,106,.24); color: #8fd6ac; }
+.sentiment-badge.neutral { background: rgba(217,164,65,.24); color: #f0c778; }
+.sentiment-badge.negative { background: rgba(192,80,77,.24); color: #f0a09d; }
+.sentiment-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #c9d2e0;
+  white-space: nowrap;
+}
+.sentiment-scale .bar {
+  display: flex;
+  width: 150px;
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,.14);
+  flex-shrink: 0;
+}
+.sentiment-scale .bar span { display: block; height: 100%; }
+.sentiment-scale .seg-negative { background: #c0504d; }
+.sentiment-scale .seg-neutral { background: #d9a441; }
+.sentiment-scale .seg-positive { background: #4c9a6a; }
 
 footer.foot {
   text-align: center;
@@ -408,4 +462,12 @@ footer.foot {
   .tab-panel.active { display: block !important; }
   section.panel, .kpi-card { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
   .table-scroll { max-height: none; overflow: visible; }
+  /* Zoomed out ~15% vs. normal print scale so a full tab's worth of cards,
+     charts, and tables fits without getting cut off at the page edge or
+     squished together. `zoom` (not `transform: scale`) is used because it
+     reflows layout at the smaller size instead of just visually shrinking a
+     full-size layout into a clipped box -- this is what actually buys back
+     room for more content per printed page. Supported by Chrome/Edge, which
+     is what "Save as PDF" printing runs through in practice. */
+  body { zoom: 85%; }
 }
