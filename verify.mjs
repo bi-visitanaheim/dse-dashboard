@@ -82,6 +82,20 @@ assert([...doc.querySelectorAll("#ov-kpiGrid .kpi-card")].every(el => el.classLi
   assert(visibleAfter.length === 12, "Overview: clicking the same card again shows all 12 rows again");
 }
 {
+  // The narrative above the table is also dynamic with card selection: a
+  // selected card swaps the full 3-paragraph narrative for that one
+  // category's own 1-sentence version; deselecting restores the full thing.
+  const fullNarrativeHtml = doc.getElementById("ov-insights").innerHTML;
+  const fullParaCount = doc.getElementById("ov-insights").querySelectorAll("p").length;
+  const cards = [...doc.querySelectorAll("#ov-kpiGrid .kpi-card")];
+  cards[3].dispatchEvent(new window.Event("click"));
+  assert(doc.getElementById("ov-insights").querySelectorAll("p").length === 1, "Overview: selecting a card narrows the narrative to 1 paragraph");
+  assert(doc.getElementById("ov-insights").querySelector("strong")?.textContent === cards[3].querySelector(".label").textContent, "Overview: the 1-paragraph narrative names the selected card's own category");
+  cards[3].dispatchEvent(new window.Event("click"));
+  assert(doc.getElementById("ov-insights").querySelectorAll("p").length === fullParaCount, "Overview: deselecting restores the full multi-paragraph narrative");
+  assert(doc.getElementById("ov-insights").innerHTML === fullNarrativeHtml, "Overview: restored narrative matches the original exactly");
+}
+{
   const panelHtml = doc.querySelector(".insight-panel").innerHTML;
   assert(panelHtml.indexOf("ov-insights") < panelHtml.indexOf("ov-summaryTable"), "Overview: narrative appears above the summary table");
 }
@@ -176,6 +190,11 @@ assert(doc.getElementById("rep-yoy-analysis").querySelectorAll("strong").length 
 assert(doc.querySelectorAll("#rep-kpiGrid .delta").length === 5, "Repeat Clients: all 5 cards show a YoY % delta");
 assert(!doc.getElementById("tab-repeat").textContent.includes("proxy for repeat-booking depth"), "Repeat Clients: 'Bookings = how many times...' subsentence removed from Accounts table");
 assert(doc.getElementById("rep-analysis3").querySelectorAll("strong").length > 0, "Repeat Clients: Accounts table has a bolded auto-analysis sentence");
+// Regression check: every analysis sentence on this tab now states the
+// latest available month of data (not a year-to-date/whole-period total).
+assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis1").innerHTML), "Repeat Clients: analysis 1 states the latest month, not a YTD/whole-period total");
+assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis2").innerHTML), "Repeat Clients: analysis 2 states the latest month, not a YTD/whole-period total");
+assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis3").innerHTML), "Repeat Clients: analysis 3 states the latest month, not a YTD/whole-period total");
 
 // Client Survey
 assert(doc.getElementById("sur-kpiGrid").children.length === 4, "Client Survey: 4 KPI cards");

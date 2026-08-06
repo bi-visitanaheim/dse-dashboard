@@ -315,9 +315,14 @@ The cross-reference visual (chart, table, and its new description above) is also
 
 The `.table-scroll` wrapper (which capped the table at a fixed height with a vertical scrollbar) was removed from around `#ov-summaryTable` specifically -- the table now expands to its full natural height. Every other `.table-scroll`-wrapped table on the dashboard (Accounts, YoY value tables, detail tables, etc.) is unchanged.
 
-## Overview: clickable KPI cards filter the Department at a Glance table
+## Overview: clickable KPI cards filter the Department at a Glance table AND the narrative
 
-Every one of the 12 Overview KPI cards is now clickable (`.kpi-card.selectable` in `style.css`, click handlers wired up in `renderOverview()`). Clicking a card highlights it with a light teal shade and narrows the Department at a Glance table below to just that category's row; clicking the same card again (or reloading the page) clears the selection and shows all 12 rows. Only one card can be selected at a time. This is purely a display filter -- it doesn't change any underlying numbers, just which rows are visible.
+Every one of the 12 Overview KPI cards is now clickable (`.kpi-card.selectable` in `style.css`, click handlers wired up in `renderOverview()`). Clicking a card highlights it with a light teal shade and:
+
+- narrows the Department at a Glance table below to just that category's row, and
+- swaps the 3-paragraph narrative above the table for that one category's own 1-sentence version (e.g. "Year to date through May 31, 2026, **In House Groups Serviced** reached **26**.") -- same YTD cur/pri/cutoff figures as everywhere else on the tab, via the new `OV_CATEGORY_SENTENCES` array built alongside the full narrative in `renderOverview()`.
+
+Clicking the same card again (or reloading the page) clears the selection, restores all 12 summary-table rows, and restores the original full narrative (`OV_FULL_NARRATIVE`). Only one card can be selected at a time. This is purely a display filter -- it doesn't change any underlying numbers, just which rows/text are visible.
 
 ## Dashboard-wide YoY methodology: year-to-date, not full-year
 
@@ -359,6 +364,10 @@ The print stylesheet no longer hides the header, logo, branding, or "data last r
 ## Repeat Clients: new "Repeat" filter
 
 *(Documented above alongside the other Repeat Clients filters.)*
+
+## Repeat Clients: auto-analysis sentences now state the latest month, not a YTD/whole-period total
+
+Per direction, every 1-sentence auto-analysis on this tab (the two charts and the Accounts table) was changed from a whole-selected-period aggregate to the same "latest month with data" pattern used dashboard-wide (e.g. "In Jun 26, Pearl, Jenni serviced the most clients, with 5 total (repeat + new)." instead of a whole-year figure). The latest month is found from whatever's currently filtered (Year/Account Name/Services Manager/Repeat), via `monthKey(r.startDate)`, so it moves with those filters too. The "Year over Year" table's own auto-analysis sentence (`rep-yoy-analysis`) was intentionally left as a year-over-year comparison, since that's inherent to what a Year-over-Year table shows -- a "latest month" framing wouldn't make sense directly under it.
 
 ## Known data-quality issue
 

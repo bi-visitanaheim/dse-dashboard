@@ -153,8 +153,10 @@ function deltaSpan(d) {
   const dir = d > 0.001 ? "up" : d < -0.001 ? "down" : "flat";
   return ` (<span class="delta-inline ${cls}">${dir} ${Math.abs(d * 100).toFixed(1)}%</span>)`;
 }
-// ---------- Overview: clickable KPI cards filter the summary table ----------
+// ---------- Overview: clickable KPI cards filter the summary table AND narrative ----------
 let OV_SELECTED_INDEX = null;
+let OV_CATEGORY_SENTENCES = [];
+let OV_FULL_NARRATIVE = "";
 function applyOverviewSelection() {
   document.querySelectorAll("#ov-kpiGrid .kpi-card").forEach((el, i) => {
     el.classList.toggle("selected", OV_SELECTED_INDEX === i);
@@ -162,6 +164,10 @@ function applyOverviewSelection() {
   document.querySelectorAll("#ov-summaryTable tbody tr").forEach((tr, i) => {
     tr.style.display = (OV_SELECTED_INDEX === null || OV_SELECTED_INDEX === i) ? "" : "none";
   });
+  const insights = document.getElementById("ov-insights");
+  if (insights) {
+    insights.innerHTML = OV_SELECTED_INDEX === null ? OV_FULL_NARRATIVE : (OV_CATEGORY_SENTENCES[OV_SELECTED_INDEX] || OV_FULL_NARRATIVE);
+  }
 }
 // ---------- cross-chart month click-to-highlight (per tab) ----------
 const MONTH_LINK_STATE = {};
@@ -463,11 +469,24 @@ function renderOverview() {
       return kpiCard(c.label, c.fmtFn(c.cur), text, deltaClass(d), ytdRangeLabel(c.curYear, c.cutoff), cardClass, null, `data-cat-index="${i}"`);
     }).join("");
 
-  // Every card is clickable: selecting one highlights it (light shade) and
+  // Per-category 1-sentence version of the narrative below -- shown instead
+  // of the full 3-paragraph narrative whenever that category's card is
+  // selected (see applyOverviewSelection). Same YTD cur/pri/cutoff figures
+  // as everything else on this tab, so it never disagrees with the card or
+  // the (now single, filtered) Department at a Glance row.
+  OV_CATEGORY_SENTENCES = categories.map(c => {
+    const d = pctChange(c.pri, c.cur);
+    return `<p>Year to date through ${endOfMonthLabel(c.curYear, c.cutoff)}, <strong>${c.label}</strong> reached <strong>${c.fmtFn(c.cur)}</strong>${deltaSpan(d)}.</p>`;
+  });
+
+  // Every card is clickable: selecting one highlights it (light shade),
   // narrows the Department at a Glance table below to just that category's
-  // row; clicking the same card again (or reloading) clears the selection
-  // and shows all 12 rows again. Reset on every render so a stale selection
-  // never points at a row that's no longer there.
+  // row, AND swaps the narrative above the table for that one category's own
+  // 1-sentence version (see OV_CATEGORY_SENTENCES/OV_FULL_NARRATIVE and
+  // applyOverviewSelection). Clicking the same card again (or reloading)
+  // clears the selection and restores the full 12-category view everywhere.
+  // Reset on every render so a stale selection never points at a row that's
+  // no longer there.
   OV_SELECTED_INDEX = null;
   document.querySelectorAll("#ov-kpiGrid .kpi-card").forEach((el, i) => {
     el.addEventListener("click", () => {
@@ -507,7 +526,8 @@ function renderOverview() {
   paras.push(`<p>Year to date through ${endOfMonthLabel(CUR, pvCutoff)}, the team logged <strong>${fmt(partnersCur)}</strong> partner visits${deltaSpan(dPartners)}, <strong>${fmt(visitsCur)}</strong> planning visits${deltaSpan(dVisits)}, <strong>${fmt(convCur)}</strong> convention groups serviced${deltaSpan(dConv)}, <strong>${fmt(inHouseCur)}</strong> in-house groups serviced${deltaSpan(dInHouse)}, and <strong>${fmt(clientsCur)}</strong> clients serviced${deltaSpan(dClients)}.</p>`);
   paras.push(`<p>Partner referrals reached <strong>${fmt(totalReferralsCur)}</strong>${deltaSpan(dRef)}, the repeat account rate is <strong>${pct(rateCur)}</strong>${deltaSpan(dRate)}, and the Visit Anaheim team experience rating is <strong>${fmt(teamScoreCur, 2)}/10</strong>${deltaSpan(dTeamScore)}.</p>`);
   paras.push(`<p>The team hosted <strong>${fmt(hostedEventsCur)}</strong> surveyed VA events${deltaSpan(dHostedEvents)} at an average <strong>${pct(eventSatCur)}</strong> satisfaction score${deltaSpan(dEventSat)}, generating <strong>${fmt(leadsCurYtd)}</strong> leads${deltaSpan(dLeads)} with an average lead conversion window of <strong>${convWinFmt(convWinCur)}</strong>${deltaSpan(dConvWin)}.</p>`);
-  document.getElementById("ov-insights").innerHTML = paras.join("");
+  OV_FULL_NARRATIVE = paras.join("");
+  document.getElementById("ov-insights").innerHTML = OV_FULL_NARRATIVE;
 }
 
 // =====================================================================
@@ -989,21 +1009,41 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
   ];
   renderYoyTable("rep-yoyTable", yoyRows, yoyMetrics, year, "startDate", null);
 
-  // Auto-analysis sentences (bolded values) -- these charts aren't month-
-  // based, so they call out the top manager and the repeat-vs-new split
-  // instead of a "latest month" figure.
-  const topMgr = topEntry(mgrs.map(m => ({ m, total: byMgr.get(m).length })), x => x.total);
-  document.getElementById("rep-analysis1").innerHTML = topMgr
-    ? `<strong>${topMgr.item.m}</strong> serviced the most clients, with <strong>${fmt(topMgr.v)}</strong> total (repeat + new).`
-    : "No data available for this period yet.";
-  document.getElementById("rep-analysis2").innerHTML =
-    `Of the <strong>${fmt(totalClientsServiced)}</strong> clients serviced, <strong>${fmt(repeatClientsCount)}</strong> were repeat clients (<strong>${pct(totalClientsServiced ? repeatClientsCount / totalClientsServiced : null)}</strong>).`;
   document.getElementById("rep-yoy-analysis").innerHTML = yoyAnalysisSentence(yoyRows, yoyMetrics, year, "startDate", null);
 
-  // Accounts table auto-analysis: the account with the most bookings.
-  const topAccount = withBookings.length ? withBookings[0] : null;
-  document.getElementById("rep-analysis3").innerHTML = topAccount
-    ? `<strong>${topAccount.accountName}</strong> has the most bookings, with <strong>${fmt(topAccount.bookings)}</strong>.`
+  // Auto-analysis sentences (bolded values) -- per direction, every visual
+  // on this tab states the latest available month of data (not a year-to-
+  // date/whole-period aggregate), same "latest month with data" pattern used
+  // dashboard-wide. Uses this tab's own currently-filtered `rows` (Year/
+  // Account/Manager/Repeat), so it narrows along with those filters too.
+  const repMonths = [...new Set(rows.map(r => monthKey(r.startDate)))].sort();
+  const repLatestMonth = repMonths.length ? repMonths[repMonths.length - 1] : null;
+  const repLatestRows = repLatestMonth ? rows.filter(r => monthKey(r.startDate) === repLatestMonth) : [];
+
+  const topMgrMonth = topEntry(
+    [...groupBy(repLatestRows, r => r.servicesManager).entries()].map(([m, rs]) => ({ m, total: rs.length })),
+    x => x.total
+  );
+  document.getElementById("rep-analysis1").innerHTML = (repLatestMonth && topMgrMonth)
+    ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${topMgrMonth.item.m}</strong> serviced the most clients, with <strong>${fmt(topMgrMonth.v)}</strong> total (repeat + new).`
+    : "No data available for this period yet.";
+
+  const monthTotalClients = distinctCount(repLatestRows, r => r.leadId);
+  const monthRepeatClients = new Set(repLatestRows.filter(r => r.repeat === "Yes").map(r => r.leadId)).size;
+  document.getElementById("rep-analysis2").innerHTML = repLatestMonth
+    ? `In <strong>${monthLabel(repLatestMonth)}</strong>, of the <strong>${fmt(monthTotalClients)}</strong> clients serviced, <strong>${fmt(monthRepeatClients)}</strong> were repeat clients (<strong>${pct(monthTotalClients ? monthRepeatClients / monthTotalClients : null)}</strong>).`
+    : "No data available for this period yet.";
+
+  // Accounts table: the account with the most bookings recorded in the
+  // latest month specifically (row count for that account within that
+  // month), not its all-time/whole-period bookings total.
+  const monthAcctCounts = groupBy(repLatestRows, r => r.accountId);
+  const topAccountMonth = topEntry(
+    [...monthAcctCounts.entries()].map(([id, rs]) => ({ name: rs[0].accountName, count: rs.length })),
+    x => x.count
+  );
+  document.getElementById("rep-analysis3").innerHTML = (repLatestMonth && topAccountMonth)
+    ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${topAccountMonth.item.name}</strong> had the most bookings, with <strong>${fmt(topAccountMonth.v)}</strong>.`
     : "No data available for this period yet.";
 }
 
