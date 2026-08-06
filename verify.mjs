@@ -67,6 +67,20 @@ assert(
   "Overview: the correct 4 cards (Hosted Events, Event Satisfaction, Leads Generated, Conversion Window) are the events-team ones"
 );
 assert(doc.querySelector("#ov-kpiGrid").children[0].querySelector(".label").textContent === "Partners Visited", "Overview: cards reordered, Partners Visited first");
+assert([...doc.querySelectorAll("#ov-kpiGrid .kpi-card")].every(el => el.classList.contains("selectable")), "Overview: every KPI card is clickable/selectable");
+{
+  // Clicking a card highlights it and narrows the summary table to just its
+  // row; clicking it again clears the selection.
+  const cards = [...doc.querySelectorAll("#ov-kpiGrid .kpi-card")];
+  cards[2].dispatchEvent(new window.Event("click"));
+  const visible = [...doc.querySelectorAll("#ov-summaryTable tbody tr")].filter(tr => tr.style.display !== "none");
+  assert(cards[2].classList.contains("selected"), "Overview: clicked card gets the 'selected' highlight class");
+  assert(visible.length === 1, "Overview: clicking a card narrows the summary table to 1 row");
+  cards[2].dispatchEvent(new window.Event("click"));
+  const visibleAfter = [...doc.querySelectorAll("#ov-summaryTable tbody tr")].filter(tr => tr.style.display !== "none");
+  assert(!cards[2].classList.contains("selected"), "Overview: clicking the same card again clears the highlight");
+  assert(visibleAfter.length === 12, "Overview: clicking the same card again shows all 12 rows again");
+}
 {
   const panelHtml = doc.querySelector(".insight-panel").innerHTML;
   assert(panelHtml.indexOf("ov-insights") < panelHtml.indexOf("ov-summaryTable"), "Overview: narrative appears above the summary table");
@@ -100,6 +114,23 @@ assert(!doc.getElementById("team-analysis2").textContent.includes("&mdash;"), "T
 assert(!doc.getElementById("team-analysis3").textContent.includes("&mdash;"), "Team KPIs: analysis 3 has no literal '&mdash;' text");
 assert(/\d/.test(doc.getElementById("team-analysis1").textContent), "Team KPIs: analysis 1 reports an actual numeric value, not a placeholder");
 assert(doc.querySelectorAll("#team-kpiGrid .daterange").length === 5, "Team KPIs: every KPI card shows a dynamic date-range subtitle");
+assert(doc.querySelectorAll("#team-kpiGrid .delta").length > 0, "Team KPIs: at least some cards show a YoY % delta");
+{
+  // Selecting a completed past year (2025) should switch the analysis
+  // sentences from "latest month" to "full year" phrasing instead of
+  // falling back to "no data available" (Partners Visited/In House Groups
+  // Serviced are entirely null in 2025, which used to break the "latest row
+  // with data" lookup for the whole sentence).
+  const teamSel = doc.getElementById("team-year");
+  teamSel.value = "2025";
+  teamSel.dispatchEvent(new window.Event("change"));
+  assert(doc.getElementById("team-analysis1").innerHTML.includes("In <strong>2025</strong>"), "Team KPIs: analysis 1 uses full-year phrasing for a completed past year");
+  assert(!doc.getElementById("team-analysis1").textContent.includes("No data available"), "Team KPIs: analysis 1 no longer falls back to 'no data available' for 2025");
+  assert(!doc.getElementById("team-analysis2").textContent.includes("No data available"), "Team KPIs: analysis 2 no longer falls back to 'no data available' for 2025");
+  teamSel.value = "2026";
+  teamSel.dispatchEvent(new window.Event("change"));
+  assert(!doc.getElementById("team-analysis1").innerHTML.includes("In <strong>2026</strong>,"), "Team KPIs: analysis 1 reverts to 'latest month' phrasing for the current year");
+}
 
 // Partner Referrals
 assert(doc.getElementById("ref-kpiGrid").children.length === 2, "Partner Referrals: 2 KPI cards (Top Referrer removed)");
@@ -111,6 +142,7 @@ assert(doc.getElementById("ref-analysis1").querySelectorAll("strong").length > 0
 assert(doc.getElementById("ref-analysis2").querySelectorAll("strong").length > 0, "Partner Referrals: analysis 2 (by month) has bolded values");
 assert(doc.getElementById("ref-analysis3").querySelectorAll("strong").length > 0, "Partner Referrals: analysis 3 (monthly by staff) has bolded values");
 assert(doc.getElementById("ref-yoy-analysis").querySelectorAll("strong").length > 0, "Partner Referrals: YoY table analysis sentence has bolded values");
+assert(doc.querySelectorAll("#ref-kpiGrid .delta").length === 2, "Partner Referrals: both cards show a YoY % delta");
 {
   const refSel = doc.getElementById("ref-year");
   refSel.value = "2026";
@@ -141,11 +173,28 @@ assert(doc.getElementById("rep-repeat").children.length === 3, "Repeat Clients: 
 assert(doc.getElementById("rep-analysis1").querySelectorAll("strong").length > 0, "Repeat Clients: analysis 1 (by manager) has bolded values");
 assert(doc.getElementById("rep-analysis2").querySelectorAll("strong").length > 0, "Repeat Clients: analysis 2 (repeat vs new) has bolded values");
 assert(doc.getElementById("rep-yoy-analysis").querySelectorAll("strong").length > 0, "Repeat Clients: YoY table analysis sentence has bolded values");
+assert(doc.querySelectorAll("#rep-kpiGrid .delta").length === 5, "Repeat Clients: all 5 cards show a YoY % delta");
+assert(!doc.getElementById("tab-repeat").textContent.includes("proxy for repeat-booking depth"), "Repeat Clients: 'Bookings = how many times...' subsentence removed from Accounts table");
+assert(doc.getElementById("rep-analysis3").querySelectorAll("strong").length > 0, "Repeat Clients: Accounts table has a bolded auto-analysis sentence");
 
 // Client Survey
 assert(doc.getElementById("sur-kpiGrid").children.length === 4, "Client Survey: 4 KPI cards");
 assert(doc.querySelector("#sur-kpiGrid").children[0].textContent.includes("The Overall Anaheim Experience Score"), "Client Survey: 'The Overall Anaheim Experience Score' card is first (left of Team Experience Score)");
 assert(doc.querySelector("#sur-kpiGrid").children[1].textContent.includes("Visit Anaheim Team Experience Score"), "Client Survey: Team Experience Score card is second");
+{
+  // "VA Survey Questions Rating" reverted to a single uniform bar color
+  // (no more lighter-fill highlight for the Overall Anaheim Experience/DS&E
+  // Manager questions).
+  const seenConfigs = {};
+  const OrigChart = window.Chart;
+  window.Chart = function (ctx, config) { seenConfigs[ctx.id] = config; return new OrigChart(ctx, config); };
+  window.Chart.defaults = OrigChart.defaults;
+  window.Chart.register = OrigChart.register;
+  doc.getElementById("sur-manager").dispatchEvent(new window.Event("change"));
+  const bg = seenConfigs["sur-chart1"]?.data.datasets[0].backgroundColor;
+  assert(typeof bg === "string", "Client Survey: 'VA Survey Questions Rating' bars use one uniform color (not a per-question array)");
+  window.Chart = OrigChart;
+}
 assert(!doc.getElementById("sur-kpiGrid").textContent.includes("Met Event Objectives"), "Client Survey: old 'Met Event Objectives' card removed");
 // The ACC Survey sheet now has 8 rated questions (a new "The Overall Anaheim
 // Experience" question was added), minus the 1 open-ended Q7 testimonial
@@ -164,6 +213,7 @@ assert(doc.getElementById("sur-analysis1").querySelectorAll("strong").length > 0
 assert(doc.getElementById("sur-analysis2").querySelectorAll("strong").length > 0, "Client Survey: analysis 2 (by month) has bolded values");
 assert(doc.getElementById("sur-analysis3").querySelectorAll("strong").length > 0, "Client Survey: analysis 3 (by manager) has bolded values");
 assert(doc.getElementById("sur-yoy-analysis").querySelectorAll("strong").length > 0, "Client Survey: YoY values table analysis sentence has bolded values");
+assert(doc.querySelectorAll("#sur-kpiGrid .delta").length > 0, "Client Survey: at least some cards show a YoY % delta");
 assert(doc.getElementById("sur-manager").children.length > 1, "Client Survey: services manager filter populated");
 assert(!doc.querySelector(".spotlight .tag"), "Client Survey: spotlight 'Beyond source report' tag removed");
 assert(doc.querySelector(".spotlight h2").textContent.trim() === "Feedback", "Client Survey: spotlight title renamed to 'Feedback'");
@@ -203,6 +253,10 @@ assert(doc.querySelectorAll("#hev-kpiGrid .kpi-card.events-team").length === 5, 
 assert(doc.querySelectorAll("#hev-kpiGrid .daterange").length === 5, "Hosted Events: every KPI card shows a dynamic date-range subtitle");
 assert(doc.getElementById("hev-analysis1").querySelectorAll("strong").length > 0, "Hosted Events: analysis 1 (Events by Month) has bolded values");
 assert(doc.getElementById("hev-analysis2").querySelectorAll("strong").length > 0, "Hosted Events: analysis 2 (Survey Questions Ratings) has bolded values");
+assert(doc.querySelectorAll("#hev-kpiGrid .delta").length === 5, "Hosted Events: all 5 cards show a YoY % delta");
+assert(doc.getElementById("hev-analysis3").querySelectorAll("strong").length > 0, "Hosted Events: 'Avg. Rating by Question' table has a bolded auto-analysis sentence");
+assert(doc.getElementById("hev-analysis4").querySelectorAll("strong").length > 0, "Hosted Events: 'Ratings by Event Category' table has a bolded auto-analysis sentence");
+assert(doc.getElementById("hev-analysis5").querySelectorAll("strong").length > 0, "Hosted Events: 'Event Survey Detail' table has a bolded auto-analysis sentence");
 
 // Booked Business
 assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 KPI cards (Total Events card added)");
@@ -240,6 +294,11 @@ assert(doc.querySelectorAll("#bb-kpiGrid .daterange").length === 6, "Booked Busi
 assert(doc.getElementById("bb-analysis1").querySelectorAll("strong").length > 0, "Booked Business: analysis 1 (Leads Generated by Event) has bolded values");
 assert(doc.getElementById("bb-analysis2").querySelectorAll("strong").length > 0, "Booked Business: analysis 2 (Leads Generated by Lead Status) has bolded values");
 assert(doc.getElementById("hev-bb-analysis").textContent.includes("Out of the"), "Booked Business: cross-reference visual has the dynamic 'Out of the X events...' analysis sentence");
+assert(doc.getElementById("hev-bbDesc").textContent.trim() === "", "Booked Business: 'These are matched by Event ID...' subsentence removed from the cross-reference visual");
+assert(!doc.getElementById("tab-booked").textContent.includes("Days from lead created to event start"), "Booked Business: 'Days from lead created to event start...' subsentence removed from Conversion Window by Event");
+assert(!doc.getElementById("tab-booked").textContent.includes("One row per unique lead"), "Booked Business: 'One row per unique lead.' subsentence removed from Events That Generated Leads Detail");
+assert(doc.getElementById("bb-analysis3").querySelectorAll("strong").length > 0, "Booked Business: 'Conversion Window by Event' table has a bolded auto-analysis sentence");
+assert(doc.getElementById("bb-analysis4").querySelectorAll("strong").length > 0, "Booked Business: 'Events That Generated Leads Detail' table has a bolded auto-analysis sentence");
 {
   // Regression check: Total Events with Year = All used to double-count
   // years the Booked Business sheet doesn't have data for yet (35 instead of

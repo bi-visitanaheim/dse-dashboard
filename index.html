@@ -152,10 +152,10 @@
     </section>
     <section class="panel">
       <h2>Accounts</h2>
-      <p class="desc">"Bookings" = how many times this account appears in the dataset (a proxy for repeat-booking depth).</p>
       <div class="table-scroll">
         <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Attendance</th><th>Peak Room</th><th>Repeat?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
       </div>
+      <p class="desc auto-analysis" id="rep-analysis3"></p>
     </section>
   </section>
 
@@ -236,12 +236,14 @@
       <section class="panel">
         <h2>Avg. Rating by Question</h2>
         <table class="mini" id="hev-byQuestionTable"><thead><tr><th>Question</th><th>Attendee</th><th>Partner</th><th>Avg. Total</th></tr></thead><tbody></tbody></table>
+        <p class="desc auto-analysis" id="hev-analysis3"></p>
       </section>
       <section class="panel">
         <h2>Ratings by Event Category</h2>
         <div class="table-scroll">
           <table class="mini" id="hev-byCategoryTable"><thead><tr><th>Category</th><th>Respondents</th><th>Avg. Satisfaction Score</th><th>Overall Experience</th><th>Arrival and Registration</th><th>Recommend Future Events</th></tr></thead><tbody></tbody></table>
         </div>
+        <p class="desc auto-analysis" id="hev-analysis4"></p>
       </section>
     </div>
 
@@ -250,6 +252,7 @@
       <div class="table-scroll">
         <table class="mini" id="hev-detailTable"><thead><tr><th>Event</th><th>Event Type</th><th>Category</th><th>Date</th></tr></thead><tbody></tbody></table>
       </div>
+      <p class="desc auto-analysis" id="hev-analysis5"></p>
     </section>
   </section>
 
@@ -287,18 +290,18 @@
     </div>
     <section class="panel">
       <h2>Conversion Window by Event <span class="tag">Detail</span></h2>
-      <p class="desc">Days from lead created to event start, bucketed by month. "Total" is the number of leads in each bucket.</p>
       <div class="table-scroll">
         <table class="mini" id="bb-conversionTable"><thead><tr><th>Event</th><th>1 Month</th><th>2-3 Months</th><th>4-6 Months</th><th>7-12 Months</th><th>Over 12+ Months</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
       </div>
+      <p class="desc auto-analysis" id="bb-analysis3"></p>
     </section>
 
     <section class="panel">
       <h2>Events That Generated Leads Detail</h2>
-      <p class="desc">One row per unique lead.</p>
       <div class="table-scroll">
         <table class="mini" id="bb-detailTable"><thead><tr><th>Event</th><th>Account</th><th>Lead</th><th>Event Start Date</th><th>Lead Created Date</th></tr></thead><tbody></tbody></table>
       </div>
+      <p class="desc auto-analysis" id="bb-analysis4"></p>
     </section>
   </section>
 

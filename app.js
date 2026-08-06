@@ -84,8 +84,8 @@ function dedupeBy(arr, keyFn) {
 }
 function monthKey(iso) { return iso.slice(0, 7); }
 function monthLabel(m) { const [y, mo] = m.split("-"); return new Date(Number(y), Number(mo) - 1, 1).toLocaleDateString("en-US", { month: "short", year: "2-digit" }); }
-function kpiCard(label, value, deltaText, deltaCls, dateRange, cardClass, note) {
-  return `<div class="kpi-card${cardClass ? " " + cardClass : ""}"><div class="label">${label}</div><div class="value">${value}</div>${deltaText ? `<div class="delta ${deltaCls || ""}">${deltaText}</div>` : ""}${note ? `<div class="daterange">${note}</div>` : ""}${dateRange ? `<div class="daterange">${dateRange}</div>` : ""}</div>`;
+function kpiCard(label, value, deltaText, deltaCls, dateRange, cardClass, note, extraAttrs) {
+  return `<div class="kpi-card${cardClass ? " " + cardClass : ""}"${extraAttrs ? " " + extraAttrs : ""}><div class="label">${label}</div><div class="value">${value}</div>${deltaText ? `<div class="delta ${deltaCls || ""}">${deltaText}</div>` : ""}${note ? `<div class="daterange">${note}</div>` : ""}${dateRange ? `<div class="daterange">${dateRange}</div>` : ""}</div>`;
 }
 // "Jan 1, 2026 – May 31, 2026" -- the exact YTD window a card's number covers.
 function ytdRangeLabel(year, cutoffMonth) {
@@ -152,6 +152,16 @@ function deltaSpan(d) {
   const cls = deltaClass(d);
   const dir = d > 0.001 ? "up" : d < -0.001 ? "down" : "flat";
   return ` (<span class="delta-inline ${cls}">${dir} ${Math.abs(d * 100).toFixed(1)}%</span>)`;
+}
+// ---------- Overview: clickable KPI cards filter the summary table ----------
+let OV_SELECTED_INDEX = null;
+function applyOverviewSelection() {
+  document.querySelectorAll("#ov-kpiGrid .kpi-card").forEach((el, i) => {
+    el.classList.toggle("selected", OV_SELECTED_INDEX === i);
+  });
+  document.querySelectorAll("#ov-summaryTable tbody tr").forEach((tr, i) => {
+    tr.style.display = (OV_SELECTED_INDEX === null || OV_SELECTED_INDEX === i) ? "" : "none";
+  });
 }
 // ---------- cross-chart month click-to-highlight (per tab) ----------
 const MONTH_LINK_STATE = {};
@@ -446,7 +456,25 @@ function renderOverview() {
   ];
 
   document.getElementById("ov-kpiGrid").innerHTML =
-    categories.map(c => cardWithDelta(c.label, c.fmtFn(c.cur), c.cur, c.pri, c.priYear, c.fmtFn(c.pri), ytdRangeLabel(c.curYear, c.cutoff), c.team === "events" ? "events-team" : "")).join("");
+    categories.map((c, i) => {
+      const d = pctChange(c.pri, c.cur);
+      const text = d === null ? null : `${deltaArrow(d)}${pct(d)} (${c.fmtFn(c.pri)} in ${c.priYear}) vs ${c.priYear} YTD`;
+      const cardClass = `selectable${c.team === "events" ? " events-team" : ""}`;
+      return kpiCard(c.label, c.fmtFn(c.cur), text, deltaClass(d), ytdRangeLabel(c.curYear, c.cutoff), cardClass, null, `data-cat-index="${i}"`);
+    }).join("");
+
+  // Every card is clickable: selecting one highlights it (light shade) and
+  // narrows the Department at a Glance table below to just that category's
+  // row; clicking the same card again (or reloading) clears the selection
+  // and shows all 12 rows again. Reset on every render so a stale selection
+  // never points at a row that's no longer there.
+  OV_SELECTED_INDEX = null;
+  document.querySelectorAll("#ov-kpiGrid .kpi-card").forEach((el, i) => {
+    el.addEventListener("click", () => {
+      OV_SELECTED_INDEX = OV_SELECTED_INDEX === i ? null : i;
+      applyOverviewSelection();
+    });
+  });
 
   // The per-card date range (see ytdRangeLabel above) now shows each card's
   // own YTD window directly on the card, so this section no longer needs a
@@ -503,12 +531,25 @@ function renderTeam(year) {
   // skipping the placeholder future-month row that has no real data yet.
   const teamRange = rangeLabelFiltered(rows, "date", ["partnersVisited", "planningVisits", "conventionGroupsServiced", "inHouseGroupsServiced", "clientsServiced"]);
 
+  // YoY % delta on every card -- same YTD-cutoff methodology as the Overview
+  // tab's own cards (see ytdYoyMetric), not a full-year comparison. This
+  // naturally becomes a full-year comparison on its own whenever the
+  // selected/latest year is a complete past year (see that function's
+  // comment for why).
+  const { prior: teamPrior, latest: teamLatest } = resolveYoyYears(all, year);
+  function teamYoy(fieldFn) { return ytdYoyMetric(all, "date", teamLatest, teamPrior, ["planningVisits"], rs => sum(rs, fieldFn)); }
+  const dPartnersV = teamYoy(r => r.partnersVisited);
+  const dPlanningV = teamYoy(r => r.planningVisits);
+  const dConvV = teamYoy(r => r.conventionGroupsServiced);
+  const dInHouseV = teamYoy(r => r.inHouseGroupsServiced);
+  const dClientsV = teamYoy(r => r.clientsServiced);
+
   document.getElementById("team-kpiGrid").innerHTML = [
-    kpiCard("Partners Visited*", fmt(sum(rows, r => r.partnersVisited)), null, null, teamRange),
-    kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits)), null, null, teamRange),
-    kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced)), null, null, teamRange),
-    kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), null, null, teamRange),
-    kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)), null, null, teamRange)
+    kpiCard("Partners Visited*", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
+    kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits)), ytdDeltaText(dPlanningV, fmt), deltaClass(dPlanningV.d), teamRange),
+    kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced)), ytdDeltaText(dConvV, fmt), deltaClass(dConvV.d), teamRange),
+    kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), ytdDeltaText(dInHouseV, fmt), deltaClass(dInHouseV.d), teamRange),
+    kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)), ytdDeltaText(dClientsV, fmt), deltaClass(dClientsV.d), teamRange)
   ].join("");
 
   const labels = rows.map(r => monthLabel(r.date.slice(0, 7)));
@@ -541,27 +582,37 @@ function renderTeam(year) {
     { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
     { label: "In House Groups Serviced*", fn: r => r.inHouseGroupsServiced },
     { label: "Clients Serviced", fn: r => r.clientsServiced }
-  ], year);
+  ], year, "date", ["planningVisits"]);
 
   bindMonthLink("team", ["team-chart1", "team-chart2", "team-chart3"]);
 
-  // Automated 1-sentence analysis per chart -- states the latest *populated*
-  // month's figures for that chart's own metrics (the sheet pre-creates a
-  // placeholder row for the upcoming month before it has real numbers, so
-  // this skips back past any trailing null row instead of reporting blanks).
-  // Updates on its own every time the workbook is refreshed and rebuilt.
-  const latest1 = latestRowWithData(rows, ["partnersVisited", "planningVisits"]);
-  const latest2 = latestRowWithData(rows, ["conventionGroupsServiced", "inHouseGroupsServiced"]);
-  const latest3 = latestRowWithData(rows, ["clientsServiced"]);
-  document.getElementById("team-analysis1").innerHTML = latest1
-    ? `In <strong>${monthLabel(latest1.date.slice(0, 7))}</strong>, the team logged <strong>${fmt(latest1.partnersVisited)}</strong> partner visits and <strong>${fmt(latest1.planningVisits)}</strong> planning visits.`
-    : "No data available for this period yet.";
-  document.getElementById("team-analysis2").innerHTML = latest2
-    ? `In <strong>${monthLabel(latest2.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest2.conventionGroupsServiced)}</strong> convention groups and <strong>${fmt(latest2.inHouseGroupsServiced)}</strong> in-house groups.`
-    : "No data available for this period yet.";
-  document.getElementById("team-analysis3").innerHTML = latest3
-    ? `In <strong>${monthLabel(latest3.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest3.clientsServiced)}</strong> clients.`
-    : "No data available for this period yet.";
+  // Automated 1-sentence analysis per chart. For the current/latest year (or
+  // "All"), this states the latest *populated* month's figures (the sheet
+  // pre-creates a placeholder row for the upcoming month before it has real
+  // numbers, so this skips back past any trailing null row instead of
+  // reporting blanks). For a completed past year, a "latest month" doesn't
+  // mean much -- it just states that year's full-year totals instead, so a
+  // metric that happens to be entirely null for a stretch of that year
+  // (e.g. Partners Visited wasn't tracked at all in 2025) doesn't fall back
+  // to "no data available" when the year overall does have real data.
+  if (isPastYear(all, year)) {
+    document.getElementById("team-analysis1").innerHTML = `In <strong>${year}</strong>, the team logged a total of <strong>${fmt(sum(rows, r => r.partnersVisited))}</strong> partner visits and <strong>${fmt(sum(rows, r => r.planningVisits))}</strong> planning visits.`;
+    document.getElementById("team-analysis2").innerHTML = `In <strong>${year}</strong>, the team serviced a total of <strong>${fmt(sum(rows, r => r.conventionGroupsServiced))}</strong> convention groups and <strong>${fmt(sum(rows, r => r.inHouseGroupsServiced))}</strong> in-house groups.`;
+    document.getElementById("team-analysis3").innerHTML = `In <strong>${year}</strong>, the team serviced a total of <strong>${fmt(sum(rows, r => r.clientsServiced))}</strong> clients.`;
+  } else {
+    const latest1 = latestRowWithData(rows, ["partnersVisited", "planningVisits"]);
+    const latest2 = latestRowWithData(rows, ["conventionGroupsServiced", "inHouseGroupsServiced"]);
+    const latest3 = latestRowWithData(rows, ["clientsServiced"]);
+    document.getElementById("team-analysis1").innerHTML = latest1
+      ? `In <strong>${monthLabel(latest1.date.slice(0, 7))}</strong>, the team logged <strong>${fmt(latest1.partnersVisited)}</strong> partner visits and <strong>${fmt(latest1.planningVisits)}</strong> planning visits.`
+      : "No data available for this period yet.";
+    document.getElementById("team-analysis2").innerHTML = latest2
+      ? `In <strong>${monthLabel(latest2.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest2.conventionGroupsServiced)}</strong> convention groups and <strong>${fmt(latest2.inHouseGroupsServiced)}</strong> in-house groups.`
+      : "No data available for this period yet.";
+    document.getElementById("team-analysis3").innerHTML = latest3
+      ? `In <strong>${monthLabel(latest3.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest3.clientsServiced)}</strong> clients.`
+      : "No data available for this period yet.";
+  }
 
   document.getElementById("team-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [
     { label: "Partners Visited", fn: r => r.partnersVisited },
@@ -569,7 +620,16 @@ function renderTeam(year) {
     { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
     { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced },
     { label: "Clients Serviced", fn: r => r.clientsServiced }
-  ], year);
+  ], year, "date", ["planningVisits"]);
+}
+// True when a specific, already-completed past year is selected (not "All"
+// and not the latest year present in the data) -- used to switch the
+// auto-analysis sentences from "latest month" to "full year" phrasing.
+function isPastYear(rows, selectedYear) {
+  if (!selectedYear || selectedYear === "All") return false;
+  const years = getYears(rows);
+  const maxYear = years.length ? Math.max(...years) : null;
+  return maxYear !== null && Number(selectedYear) < maxYear;
 }
 // Walks a row list (sorted ascending by dateField) backward to find the
 // latest row where every one of the given fields has a real (non-null)
@@ -595,41 +655,68 @@ function topEntry(list, valFn) {
   });
   return best;
 }
+// Resolves which two years a YoY comparison covers: a specific selected year
+// vs. the year immediately before it, or (when the Year filter is "All") the
+// two most recent years actually present in the data.
+function resolveYoyYears(rows, selectedYear) {
+  const years = getYears(rows);
+  if (selectedYear && selectedYear !== "All") { const latest = Number(selectedYear); return { prior: latest - 1, latest }; }
+  return latestTwoYears(years);
+}
+// The same year-to-date-cutoff methodology used for the Overview tab's own
+// 12 KPI cards, generalized for reuse everywhere else on the dashboard: the
+// cutoff month is the latest month with real data in `curYear` (skipping any
+// month whose row exists but is still a null placeholder, per
+// `cutoffCheckFields`), and `priYear` is compared over that identical
+// Jan-1-through-cutoff window rather than its own full 12 months. For a
+// *complete* past year, every month has data, so the cutoff naturally
+// resolves to December and this becomes an ordinary full-year comparison --
+// so this one formula correctly handles both "a finished past year is
+// selected" and "the current, still-in-progress year is selected" without
+// needing separate logic for each case.
+function ytdYoyMetric(allRows, dateField, curYear, priYear, cutoffCheckFields, metricFn) {
+  if (curYear === undefined || priYear === undefined) return { curVal: null, priVal: null, d: null, curYear, priYear, cutoff: null };
+  const curYearRows = allRows.filter(r => r.year === curYear);
+  const cutoffRows = cutoffCheckFields ? curYearRows.filter(r => cutoffCheckFields.some(f => r[f] !== null && r[f] !== undefined)) : curYearRows;
+  const cutoff = ytdCutoff(cutoffRows, dateField);
+  const curYtd = ytdRows(allRows, dateField, curYear, cutoff);
+  const priYtd = ytdRows(allRows, dateField, priYear, cutoff);
+  const curVal = metricFn(curYtd);
+  const priVal = metricFn(priYtd);
+  return { curVal, priVal, d: pctChange(priVal, curVal), curYear, priYear, cutoff };
+}
+// Renders a ytdYoyMetric result as the same delta-text format Overview's
+// cards use: "▲ 12.3% (45 in 2025) vs 2025 YTD".
+function ytdDeltaText(res, fmtFn) {
+  if (!res || res.d === null || res.priYear === undefined) return null;
+  return `${deltaArrow(res.d)}${pct(res.d)} (${fmtFn(res.priVal)} in ${res.priYear}) vs ${res.priYear} YTD`;
+}
 // Same YoY prior/latest-year resolution as renderYoyTable, but returns
 // whichever metric moved the most (by absolute % change) -- feeds the
-// 1-sentence auto-analysis under each Year-over-Year table.
-function yoyBiggestMover(rows, metrics, selectedYear) {
-  const years = getYears(rows);
-  let prior, latest;
-  if (selectedYear && selectedYear !== "All") { latest = Number(selectedYear); prior = latest - 1; }
-  else { ({ prior, latest } = latestTwoYears(years)); }
+// 1-sentence auto-analysis under each Year-over-Year table. Uses the same
+// YTD-cutoff methodology as ytdYoyMetric (dateField/cutoffCheckFields), not a
+// full-year comparison.
+function yoyBiggestMover(rows, metrics, selectedYear, dateField, cutoffCheckFields) {
+  const { prior, latest } = resolveYoyYears(rows, selectedYear);
   if (prior === undefined || latest === undefined) return null;
   let best = null;
   metrics.forEach(m => {
-    const priRows = rows.filter(r => r.year === prior);
-    const curRows = rows.filter(r => r.year === latest);
-    const priVal = m.agg ? m.agg(priRows) : sum(priRows, m.fn);
-    const curVal = m.agg ? m.agg(curRows) : sum(curRows, m.fn);
-    const d = pctChange(priVal, curVal);
-    if (d !== null && (best === null || Math.abs(d) > Math.abs(best.d))) best = { label: m.label, priVal, curVal, d, prior, latest };
+    const metricFn = m.agg || (rs => sum(rs, m.fn));
+    const res = ytdYoyMetric(rows, dateField, latest, prior, cutoffCheckFields, metricFn);
+    if (res.d !== null && (best === null || Math.abs(res.d) > Math.abs(best.d))) best = { label: m.label, priVal: res.priVal, curVal: res.curVal, d: res.d, prior, latest };
   });
   return best;
 }
 // Renders the yoyBiggestMover result (if any) as a bolded 1-sentence summary.
-function yoyAnalysisSentence(rows, metrics, selectedYear) {
-  const best = yoyBiggestMover(rows, metrics, selectedYear);
+function yoyAnalysisSentence(rows, metrics, selectedYear, dateField, cutoffCheckFields) {
+  const best = yoyBiggestMover(rows, metrics, selectedYear, dateField, cutoffCheckFields);
   if (!best) return "No prior-year data available for this selection.";
   return `Year over year, <strong>${best.label}</strong> saw the largest change: <strong>${deltaArrow(best.d)}${pct(best.d)}</strong> (<strong>${fmt(best.priVal)}</strong> in ${best.prior} to <strong>${fmt(best.curVal)}</strong> in ${best.latest}).`;
 }
-function renderYoyTable(tableId, rows, metrics, selectedYear) {
-  const years = getYears(rows);
-  let prior, latest;
-  if (selectedYear && selectedYear !== "All") {
-    latest = Number(selectedYear);
-    prior = latest - 1;
-  } else {
-    ({ prior, latest } = latestTwoYears(years));
-  }
+// Same YTD-cutoff methodology as ytdYoyMetric/Overview's own cards (not a
+// full-year comparison) -- see the long comment on ytdYoyMetric above.
+function renderYoyTable(tableId, rows, metrics, selectedYear, dateField, cutoffCheckFields) {
+  const { prior, latest } = resolveYoyYears(rows, selectedYear);
   const tbody = document.querySelector(`#${tableId} tbody`);
   const noData = `<tr><td colspan="4">No prior-year data available for this selection.</td></tr>`;
   if (prior === undefined || latest === undefined) { tbody.innerHTML = noData; return; }
@@ -640,12 +727,9 @@ function renderYoyTable(tableId, rows, metrics, selectedYear) {
   // sum (m.fn, the original/default) or a custom aggregator (m.agg, for
   // things like a distinct count that a simple sum can't express).
   const html = metrics.map(m => {
-    const priRows = rows.filter(r => r.year === prior);
-    const curRows = rows.filter(r => r.year === latest);
-    const priVal = m.agg ? m.agg(priRows) : sum(priRows, m.fn);
-    const curVal = m.agg ? m.agg(curRows) : sum(curRows, m.fn);
-    const d = pctChange(priVal, curVal);
-    return `<tr><td>${m.label}</td><td>${fmt(priVal)}</td><td>${fmt(curVal)}</td><td class="${deltaClass(d)}">${deltaArrow(d)}${pct(d)}</td></tr>`;
+    const metricFn = m.agg || (rs => sum(rs, m.fn));
+    const res = ytdYoyMetric(rows, dateField, latest, prior, cutoffCheckFields, metricFn);
+    return `<tr><td>${m.label}</td><td>${fmt(res.priVal)}</td><td>${fmt(res.curVal)}</td><td class="${deltaClass(res.d)}">${res.d === null ? "&mdash;" : deltaArrow(res.d) + pct(res.d)}</td></tr>`;
   }).join("");
   tbody.innerHTML = html || noData;
 }
@@ -677,9 +761,15 @@ function renderReferrals(year) {
   // Dynamic date-range subtitle -- dynamic with the Year filter via `rows`.
   const refRange = rangeLabel(rows, "date");
 
+  // YoY % delta on every card -- same YTD-cutoff methodology as Overview
+  // (see ytdYoyMetric).
+  const { prior: refPrior, latest: refLatest } = resolveYoyYears(all, year);
+  const dTotalRef = ytdYoyMetric(all, "date", refLatest, refPrior, null, rs => sum(rs, r => r.count));
+  const dAvgRef = ytdYoyMetric(all, "date", refLatest, refPrior, null, rs => rs.length ? sum(rs, r => r.count) / rs.length : null);
+
   document.getElementById("ref-kpiGrid").innerHTML = [
-    kpiCard("Partner Referrals", fmt(total), null, null, refRange),
-    kpiCard("Avg. Referrals Per Month", fmt(avgPerMonth, 2), null, null, refRange)
+    kpiCard("Partner Referrals", fmt(total), ytdDeltaText(dTotalRef, fmt), deltaClass(dTotalRef.d), refRange),
+    kpiCard("Avg. Referrals Per Month", fmt(avgPerMonth, 2), ytdDeltaText(dAvgRef, v => fmt(v, 2)), deltaClass(dAvgRef.d), refRange)
   ].join("");
 
   makeChart("ref-chart1", {
@@ -725,26 +815,41 @@ function renderReferrals(year) {
     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
   });
 
-  renderYoyTable("ref-yoyTable", all, [{ label: "Partner Referrals", fn: r => r.count }], year);
+  renderYoyTable("ref-yoyTable", all, [{ label: "Partner Referrals", fn: r => r.count }], year, "date", null);
   bindReferralsLink();
 
-  // Auto-analysis sentences (bolded values), same "latest data available"
-  // pattern used on Team KPIs -- charts without a month axis instead call out
-  // the top staff member.
+  // Auto-analysis sentences (bolded values). Chart 1 (by staff) isn't
+  // month-based, so it calls out the top staff member regardless of year.
+  // Charts 2 and 3 are month-based: for the current/latest year (or "All")
+  // they state the latest populated month; for a completed past year they
+  // state that year's full-year totals instead (see isPastYear).
   const topStaff = topEntry(staffTotals, s => s.total);
   document.getElementById("ref-analysis1").innerHTML = topStaff
     ? `<strong>${topStaff.item.staff}</strong> leads all staff with <strong>${fmt(topStaff.v)}</strong> referrals.`
     : "No data available for this period yet.";
-  const latestMonthKey = chronoMonths.length ? chronoMonths[chronoMonths.length - 1] : null;
-  const latestMonthTotal = latestMonthKey ? sum(byChronoMonth.get(latestMonthKey), r => r.count) : null;
-  document.getElementById("ref-analysis2").innerHTML = latestMonthKey
-    ? `In <strong>${monthLabel(latestMonthKey)}</strong>, the team received <strong>${fmt(latestMonthTotal)}</strong> partner referrals.`
-    : "No data available for this period yet.";
-  const latestMonthByStaff = latestMonthKey ? topEntry(staffTotals, s => sum((byChronoMonth.get(latestMonthKey) || []).filter(r => r.staff === s.staff), r => r.count)) : null;
-  document.getElementById("ref-analysis3").innerHTML = (latestMonthKey && latestMonthByStaff && latestMonthByStaff.v > 0)
-    ? `In <strong>${monthLabel(latestMonthKey)}</strong>, <strong>${latestMonthByStaff.item.staff}</strong> led all staff with <strong>${fmt(latestMonthByStaff.v)}</strong> referrals.`
-    : "No data available for this period yet.";
-  document.getElementById("ref-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [{ label: "Partner Referrals", fn: r => r.count }], year);
+  const pastYearRef = isPastYear(all, year);
+  if (pastYearRef) {
+    document.getElementById("ref-analysis2").innerHTML = `In <strong>${year}</strong>, the team received a total of <strong>${fmt(total)}</strong> partner referrals.`;
+  } else {
+    const latestMonthKey = chronoMonths.length ? chronoMonths[chronoMonths.length - 1] : null;
+    const latestMonthTotal = latestMonthKey ? sum(byChronoMonth.get(latestMonthKey), r => r.count) : null;
+    document.getElementById("ref-analysis2").innerHTML = latestMonthKey
+      ? `In <strong>${monthLabel(latestMonthKey)}</strong>, the team received <strong>${fmt(latestMonthTotal)}</strong> partner referrals.`
+      : "No data available for this period yet.";
+  }
+  if (pastYearRef) {
+    const topStaffFullYear = topEntry(staffTotals, s => s.total);
+    document.getElementById("ref-analysis3").innerHTML = topStaffFullYear
+      ? `In <strong>${year}</strong>, <strong>${topStaffFullYear.item.staff}</strong> led all staff with <strong>${fmt(topStaffFullYear.v)}</strong> referrals total.`
+      : "No data available for this period yet.";
+  } else {
+    const latestMonthKey = chronoMonths.length ? chronoMonths[chronoMonths.length - 1] : null;
+    const latestMonthByStaff = latestMonthKey ? topEntry(staffTotals, s => sum((byChronoMonth.get(latestMonthKey) || []).filter(r => r.staff === s.staff), r => r.count)) : null;
+    document.getElementById("ref-analysis3").innerHTML = (latestMonthKey && latestMonthByStaff && latestMonthByStaff.v > 0)
+      ? `In <strong>${monthLabel(latestMonthKey)}</strong>, <strong>${latestMonthByStaff.item.staff}</strong> led all staff with <strong>${fmt(latestMonthByStaff.v)}</strong> referrals.`
+      : "No data available for this period yet.";
+  }
+  document.getElementById("ref-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [{ label: "Partner Referrals", fn: r => r.count }], year, "date", null);
 }
 
 // =====================================================================
@@ -797,12 +902,28 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
   // Dynamic date-range subtitle -- dynamic with the Year/Account/Manager filters via `rows`.
   const repRange = rangeLabel(rows, "startDate");
 
+  // YoY % delta on every card -- same YTD-cutoff methodology as Overview
+  // (see ytdYoyMetric). Uses the same Account Name/Services Manager/Repeat
+  // filtered base (`repYoyBase`, defined below near the Year-over-Year
+  // table) so the delta always reflects whatever's currently filtered.
+  const repYoyBase = DATA.repeatingClients.raw
+    .filter(r => !accountName || accountName === "All" || r.accountName === accountName)
+    .filter(r => !manager || manager === "All" || r.servicesManager === manager)
+    .filter(r => !repeatFilter || repeatFilter === "All" || r.repeat === repeatFilter);
+  const { prior: repPrior, latest: repLatest } = resolveYoyYears(repYoyBase, year);
+  function repYoy(metricFn) { return ytdYoyMetric(repYoyBase, "startDate", repLatest, repPrior, null, metricFn); }
+  const dTotalClients = repYoy(rs => distinctCount(rs, r => r.leadId));
+  const dTotalAccounts = repYoy(rs => distinctCount(rs, r => r.accountId));
+  const dRepeatAccounts = repYoy(rs => rs.filter(r => r.repeat === "Yes").length);
+  const dRepeatRate = repYoy(rs => rs.length ? rs.filter(r => r.repeat === "Yes").length / rs.length : null);
+  const dAcctsRepeatBookings = repYoy(rs => { const ac = groupBy(rs, r => r.accountId); return [...ac.values()].filter(v => v.length > 1).length; });
+
   document.getElementById("rep-kpiGrid").innerHTML = [
-    kpiCard("Total Clients Serviced", fmt(totalClientsServiced), null, null, repRange),
-    kpiCard("Total Accounts Serviced", fmt(accountsServiced), null, null, repRange),
-    kpiCard("Repeat Accounts", fmt(repeatYes), null, null, repRange),
-    kpiCard("Repeat Account Percentage", pct(rate), null, null, repRange),
-    kpiCard("Accounts w/ Repeat Bookings", fmt(accountsWithRepeatBookings), null, null, repRange)
+    kpiCard("Total Clients Serviced", fmt(totalClientsServiced), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
+    kpiCard("Total Accounts Serviced", fmt(accountsServiced), ytdDeltaText(dTotalAccounts, fmt), deltaClass(dTotalAccounts.d), repRange),
+    kpiCard("Repeat Accounts", fmt(repeatYes), ytdDeltaText(dRepeatAccounts, fmt), deltaClass(dRepeatAccounts.d), repRange),
+    kpiCard("Repeat Account Percentage", pct(rate), ytdDeltaText(dRepeatRate, pct), deltaClass(dRepeatRate.d), repRange),
+    kpiCard("Accounts w/ Repeat Bookings", fmt(accountsWithRepeatBookings), ytdDeltaText(dAcctsRepeatBookings, fmt), deltaClass(dAcctsRepeatBookings.d), repRange)
   ].join("");
 
   const byMgr = groupBy(rows, r => r.servicesManager);
@@ -866,7 +987,7 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
     { label: "Clients", agg: rs => rs.filter(r => r.leadId !== null && r.leadId !== undefined).length },
     { label: "Accounts", agg: rs => distinctCount(rs, r => r.accountId) }
   ];
-  renderYoyTable("rep-yoyTable", yoyRows, yoyMetrics, year);
+  renderYoyTable("rep-yoyTable", yoyRows, yoyMetrics, year, "startDate", null);
 
   // Auto-analysis sentences (bolded values) -- these charts aren't month-
   // based, so they call out the top manager and the repeat-vs-new split
@@ -877,7 +998,13 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
     : "No data available for this period yet.";
   document.getElementById("rep-analysis2").innerHTML =
     `Of the <strong>${fmt(totalClientsServiced)}</strong> clients serviced, <strong>${fmt(repeatClientsCount)}</strong> were repeat clients (<strong>${pct(totalClientsServiced ? repeatClientsCount / totalClientsServiced : null)}</strong>).`;
-  document.getElementById("rep-yoy-analysis").innerHTML = yoyAnalysisSentence(yoyRows, yoyMetrics, year);
+  document.getElementById("rep-yoy-analysis").innerHTML = yoyAnalysisSentence(yoyRows, yoyMetrics, year, "startDate", null);
+
+  // Accounts table auto-analysis: the account with the most bookings.
+  const topAccount = withBookings.length ? withBookings[0] : null;
+  document.getElementById("rep-analysis3").innerHTML = topAccount
+    ? `<strong>${topAccount.accountName}</strong> has the most bookings, with <strong>${fmt(topAccount.bookings)}</strong>.`
+    : "No data available for this period yet.";
 }
 
 // =====================================================================
@@ -937,11 +1064,23 @@ function renderSurvey(year, manager, question) {
   // narrows it to a single question, that note no longer applies.
   const teamScoreNote = hasQ ? null : "Consists of 6 Questions";
 
+  // YoY % delta on every card -- same YTD-cutoff methodology as Overview
+  // (see ytdYoyMetric), using `all` (Manager-filtered but not Year-filtered).
+  const { prior: surPrior, latest: surLatest } = resolveYoyYears(all, year);
+  function surYoy(metricFn) { return ytdYoyMetric(all, "date", surLatest, surPrior, ["rating"], metricFn); }
+  const dOverallScore = surYoy(rs => mean(rs.filter(r => r.question === overallText && r.rating !== null), r => r.rating));
+  const dTeamScore = surYoy(rs => {
+    const rated = rs.filter(r => r.rating !== null);
+    return mean(hasQ ? rated.filter(r => r.question === question) : rated, r => r.rating);
+  });
+  const dManagerScore = surYoy(rs => mean(rs.filter(r => r.question === q2Text && r.rating !== null), r => r.rating));
+  const dRespondents = surYoy(rs => distinctCount(rs, r => r.leadId));
+
   document.getElementById("sur-kpiGrid").innerHTML = [
-    kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2), null, null, surRange),
-    kpiCard(teamScoreLabel, fmt(teamScore, 2), null, null, surRange, "", teamScoreNote),
-    kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2), null, null, surRange),
-    kpiCard("Survey Respondents", fmt(respondents), null, null, surRange)
+    kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2), ytdDeltaText(dOverallScore, v => fmt(v, 2)), deltaClass(dOverallScore.d), surRange),
+    kpiCard(teamScoreLabel, fmt(teamScore, 2), ytdDeltaText(dTeamScore, v => fmt(v, 2)), deltaClass(dTeamScore.d), surRange, "", teamScoreNote),
+    kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2), ytdDeltaText(dManagerScore, v => fmt(v, 2)), deltaClass(dManagerScore.d), surRange),
+    kpiCard("Survey Respondents", fmt(respondents), ytdDeltaText(dRespondents, fmt), deltaClass(dRespondents.d), surRange)
   ].join("");
 
   document.getElementById("sur-chart1-title").innerHTML = "VA Survey Questions Rating" + titleSuffix;
@@ -955,15 +1094,14 @@ function renderSurvey(year, manager, question) {
 
   const byQ = groupBy(filteredRows, r => r.question);
   const qLabels = [...byQ.keys()];
-  // The Overall Anaheim Experience and DS&E Manager questions are
-  // highlighted (a lighter fill) since they're also called out as their own
-  // KPI cards above.
-  const highlightQs = new Set([q2Text, overallText]);
+  // Reverted per direction: every bar uses the same uniform color again (no
+  // more lighter-fill highlight for the Overall Anaheim Experience/DS&E
+  // Manager questions, even though those two are also their own KPI cards).
   makeChart("sur-chart1", {
     type: "bar",
     data: { labels: qLabels.map(q => wrapLabel(q)), datasets: [{
       label: "Avg Rating", data: qLabels.map(q => mean(byQ.get(q), r => r.rating)),
-      backgroundColor: qLabels.map(q => highlightQs.has(q) ? COLORS.tealLight : COLORS.navy), borderRadius: 4,
+      backgroundColor: COLORS.navy, borderRadius: 4,
       // Bold, larger data labels so they're easy to read at a glance.
       datalabels: { font: { size: 13, weight: "700" }, color: COLORS.text }
     }] },
@@ -994,12 +1132,17 @@ function renderSurvey(year, manager, question) {
   // Year filter (but do respect the Services Manager and Question filters
   // via `all`/`question` above). Years come from whatever's actually in the
   // sheet (2023 through the latest year present), not a hardcoded range, so
-  // this keeps working as new years of data get added.
+  // this keeps working as new years of data get added. Each year's average
+  // is limited to the same Jan-1-through-cutoff window of months (the
+  // cutoff being the latest month with real data in the most recent year),
+  // so every year column is an apples-to-apples YTD comparison rather than
+  // mixing complete past years against a partial current year.
   const YEARS = getYears(DATA.accSurvey.raw);
+  const surYearlyCutoff = ytdCutoff(all.filter(r => r.year === Math.max(...YEARS) && r.rating !== null), "date");
   const questions = hasQ ? [question] : DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
   const yearlyByQ = questions.map(q => {
     const yearly = {};
-    YEARS.forEach(y => { yearly[y] = mean(all.filter(r => r.question === q && r.year === y), r => r.rating); });
+    YEARS.forEach(y => { yearly[y] = mean(ytdRows(all, "date", y, surYearlyCutoff).filter(r => r.question === q), r => r.rating); });
     return { q, yearly };
   });
   document.querySelector("#sur-yoyValuesTable thead tr").innerHTML =
@@ -1027,11 +1170,15 @@ function renderSurvey(year, manager, question) {
   document.getElementById("sur-analysis1").innerHTML = topQ
     ? `<strong>${topQ.item.q}</strong> has the highest average rating at <strong>${fmt(topQ.v, 2)}</strong>.`
     : "No data available for this period yet.";
-  const latestSurveyRow = latestRowWithData(filteredRows, ["rating"], "date");
-  const latestMonthAvg = latestSurveyRow ? mean(byMonth.get(monthKey(latestSurveyRow.date)), r => r.rating) : null;
-  document.getElementById("sur-analysis2").innerHTML = latestSurveyRow
-    ? `In <strong>${monthLabel(latestSurveyRow.date.slice(0, 7))}</strong>, the average score was <strong>${fmt(latestMonthAvg, 2)}</strong>.`
-    : "No data available for this period yet.";
+  if (isPastYear(all, year)) {
+    document.getElementById("sur-analysis2").innerHTML = `In <strong>${year}</strong>, the average score was <strong>${fmt(mean(filteredRows, r => r.rating), 2)}</strong>.`;
+  } else {
+    const latestSurveyRow = latestRowWithData(filteredRows, ["rating"], "date");
+    const latestMonthAvg = latestSurveyRow ? mean(byMonth.get(monthKey(latestSurveyRow.date)), r => r.rating) : null;
+    document.getElementById("sur-analysis2").innerHTML = latestSurveyRow
+      ? `In <strong>${monthLabel(latestSurveyRow.date.slice(0, 7))}</strong>, the average score was <strong>${fmt(latestMonthAvg, 2)}</strong>.`
+      : "No data available for this period yet.";
+  }
   const topMgrRating = topEntry(mgrList, x => x.avg);
   document.getElementById("sur-analysis3").innerHTML = topMgrRating
     ? `<strong>${topMgrRating.item.m}</strong> has the highest average rating at <strong>${fmt(topMgrRating.v, 2)}</strong>.`
@@ -1039,7 +1186,7 @@ function renderSurvey(year, manager, question) {
   document.getElementById("sur-yoy-analysis").innerHTML = yoyAnalysisSentence(
     all.filter(r => questions.includes(r.question)),
     questions.map(q => ({ label: q, agg: rs => mean(rs.filter(r => r.question === q), r => r.rating) })),
-    year
+    year, "date", ["rating"]
   );
 }
 function renderQ2Q7(year, manager) {
@@ -1108,15 +1255,29 @@ function renderEvents(year, category, eventName) {
   // Dynamic date-range subtitle -- dynamic with the Year/Category/Event filters via `rows`.
   const hevRange = rangeLabel(rows, "date");
 
+  // YoY % delta on every card -- same YTD-cutoff methodology as Overview
+  // (see ytdYoyMetric), using the Category/Event-Name-filtered base (but not
+  // Year-filtered) so the delta always reflects whatever's currently filtered.
+  let hevYoyBase = DATA.eventSurveys.raw;
+  if (category !== "All") hevYoyBase = hevYoyBase.filter(r => r.category === category);
+  if (eventName && eventName !== "All") hevYoyBase = hevYoyBase.filter(r => r.event === eventName);
+  const { prior: hevPrior, latest: hevLatest } = resolveYoyYears(hevYoyBase, year);
+  function hevYoy(metricFn) { return ytdYoyMetric(hevYoyBase, "date", hevLatest, hevPrior, null, metricFn); }
+  const dTotalEvents = hevYoy(rs => distinctCount(rs, r => r.eventId));
+  const dAttendeeEvents = hevYoy(rs => distinctCount(rs.filter(r => r.surveyType === "Attendee"), r => r.eventId));
+  const dPartnerEvents = hevYoy(rs => distinctCount(rs.filter(r => r.surveyType === "Partner"), r => r.eventId));
+  const dRespondents2 = hevYoy(rs => rs.filter(r => r.eventId !== null && r.eventId !== undefined).length);
+  const dAvgSat = hevYoy(rs => mean(rs, r => r.satisfaction));
+
   // Hosted Events and Booked Business both represent the events team's own
   // data, so every card on these two tabs gets the same pale-blue
   // "events-team" accent used for the 4 events-team cards on the Overview tab.
   document.getElementById("hev-kpiGrid").innerHTML = [
-    kpiCard("Total Events", fmt(totalEvents), null, null, hevRange, "events-team"),
-    kpiCard("Attendee Events", fmt(distinctCount(attendeeRows, r => r.eventId)), null, null, hevRange, "events-team"),
-    kpiCard("Partner Events", fmt(distinctCount(partnerRows, r => r.eventId)), null, null, hevRange, "events-team"),
-    kpiCard("Survey Respondents", fmt(respondents), null, null, hevRange, "events-team"),
-    kpiCard("Avg. Satisfaction Score", pct(avgSatisfaction), null, null, hevRange, "events-team")
+    kpiCard("Total Events", fmt(totalEvents), ytdDeltaText(dTotalEvents, fmt), deltaClass(dTotalEvents.d), hevRange, "events-team"),
+    kpiCard("Attendee Events", fmt(distinctCount(attendeeRows, r => r.eventId)), ytdDeltaText(dAttendeeEvents, fmt), deltaClass(dAttendeeEvents.d), hevRange, "events-team"),
+    kpiCard("Partner Events", fmt(distinctCount(partnerRows, r => r.eventId)), ytdDeltaText(dPartnerEvents, fmt), deltaClass(dPartnerEvents.d), hevRange, "events-team"),
+    kpiCard("Survey Respondents", fmt(respondents), ytdDeltaText(dRespondents2, fmt), deltaClass(dRespondents2.d), hevRange, "events-team"),
+    kpiCard("Avg. Satisfaction Score", pct(avgSatisfaction), ytdDeltaText(dAvgSat, pct), deltaClass(dAvgSat.d), hevRange, "events-team")
   ].join("");
 
   const byMonth = groupBy(rows, r => monthKey(r.date));
@@ -1179,19 +1340,43 @@ function renderEvents(year, category, eventName) {
     .map(r => `<tr><td>${r.event}</td><td>${r.surveyType}</td><td>${r.category || "&mdash;"}</td><td>${r.date || "&mdash;"}</td></tr>`)
     .join("");
 
-  // Auto-analysis sentences (bolded values), same "latest month with data"
-  // pattern used dashboard-wide -- both charts on this tab are month-based.
-  const latestMonthKeyEv = months.length ? months[months.length - 1] : null;
-  document.getElementById("hev-analysis1").innerHTML = latestMonthKeyEv
-    ? `In <strong>${monthLabel(latestMonthKeyEv)}</strong>, the team hosted <strong>${fmt(distinctCount(byMonth.get(latestMonthKeyEv), r => r.eventId))}</strong> events.`
+  // Auto-analysis sentences (bolded values). Both charts on this tab are
+  // month-based: for the current/latest year (or "All") they state the
+  // latest populated month; for a completed past year they state that
+  // year's full-year figures instead (see isPastYear).
+  const pastYearHev = isPastYear(hevYoyBase, year);
+  if (pastYearHev) {
+    document.getElementById("hev-analysis1").innerHTML = `In <strong>${year}</strong>, the team hosted a total of <strong>${fmt(totalEvents)}</strong> events.`;
+  } else {
+    const latestMonthKeyEv = months.length ? months[months.length - 1] : null;
+    document.getElementById("hev-analysis1").innerHTML = latestMonthKeyEv
+      ? `In <strong>${monthLabel(latestMonthKeyEv)}</strong>, the team hosted <strong>${fmt(distinctCount(byMonth.get(latestMonthKeyEv), r => r.eventId))}</strong> events.`
+      : "No data available for this period yet.";
+  }
+  if (pastYearHev) {
+    document.getElementById("hev-analysis2").innerHTML = `In <strong>${year}</strong>, Overall Experience averaged <strong>${fmt(mean(rows, r => r.overall), 2)}</strong> and Satisfaction Score averaged <strong>${pct(avgSatisfaction)}</strong> overall.`;
+  } else {
+    const latestMonthKeyQ = monthsQ.length ? monthsQ[monthsQ.length - 1] : null;
+    document.getElementById("hev-analysis2").innerHTML = latestMonthKeyQ
+      ? (() => {
+          const rs = byMonthQ.get(latestMonthKeyQ);
+          const satV = mean(rs, r => r.satisfaction);
+          return `In <strong>${monthLabel(latestMonthKeyQ)}</strong>, Overall Experience averaged <strong>${fmt(mean(rs, r => r.overall), 2)}</strong> and Satisfaction Score averaged <strong>${pct(satV)}</strong>.`;
+        })()
+      : "No data available for this period yet.";
+  }
+
+  // Table auto-analysis sentences.
+  const qOverallTotal = mean(rows, r => r.overall);
+  document.getElementById("hev-analysis3").innerHTML = qOverallTotal !== null
+    ? `Overall, respondents rated "Overall Experience" <strong>${fmt(qOverallTotal, 2)}</strong> out of 5 on average.`
     : "No data available for this period yet.";
-  const latestMonthKeyQ = monthsQ.length ? monthsQ[monthsQ.length - 1] : null;
-  document.getElementById("hev-analysis2").innerHTML = latestMonthKeyQ
-    ? (() => {
-        const rs = byMonthQ.get(latestMonthKeyQ);
-        const satV = mean(rs, r => r.satisfaction);
-        return `In <strong>${monthLabel(latestMonthKeyQ)}</strong>, Overall Experience averaged <strong>${fmt(mean(rs, r => r.overall), 2)}</strong> and Satisfaction Score averaged <strong>${pct(satV)}</strong>.`;
-      })()
+  const topCat = topEntry([...byCat.entries()].map(([cat, rs]) => ({ cat, rs })), x => x.rs.length);
+  document.getElementById("hev-analysis4").innerHTML = topCat
+    ? `<strong>${topCat.item.cat}</strong> has the most respondents, with <strong>${fmt(topCat.v)}</strong> and an average satisfaction score of <strong>${pct(mean(topCat.item.rs, r => r.satisfaction))}</strong>.`
+    : "No data available for this period yet.";
+  document.getElementById("hev-analysis5").innerHTML = detailRows.length
+    ? `<strong>${fmt(detailRows.length)}</strong> event/survey-type combinations are shown, spanning <strong>${fmt(totalEvents)}</strong> distinct events.`
     : "No data available for this period yet.";
 }
 
@@ -1256,8 +1441,9 @@ function renderHevBookedLink(year, status, eventName) {
     `<tr><td>Total (${fmt(rows.length)} events)</td><td>${fmt(sum(rows, r => r.respondents))}</td><td>${pct(mean(rows, r => r.satisfaction))}</td><td>${fmt(sum(rows, r => r.leads))}</td></tr>`;
 
   const yearLabel = (year && year !== "All") ? year : (bbYearsPresent.length ? bbYearsPresent.join("/") : "all years");
-  document.getElementById("hev-bbDesc").innerHTML =
-    `These are matched by Event ID to a Booked Business record, showing how survey engagement on an event relates to the leads it generated.`;
+  // Subtitle sentence removed per direction -- the auto-analysis sentence
+  // below the table now covers this same information dynamically.
+  document.getElementById("hev-bbDesc").innerHTML = "";
   const totalLeads = sum(rows, r => r.leads);
   document.getElementById("hev-bb-analysis").innerHTML = rows.length
     ? `Out of the <strong>${fmt(totalEventsForYear)}</strong> events in <strong>${yearLabel}</strong>, <strong>${fmt(rows.length)}</strong> events generated <strong>${fmt(totalLeads)}</strong> leads, based on matching Event ID between Event Surveys and Booked Business.`
@@ -1330,16 +1516,36 @@ function renderBooked(year, status, eventName) {
   // Dynamic date-range subtitle -- dynamic with the Year/Status/Event filters via `rows`.
   const bbRange = rangeLabel(rows, "eventStartDate");
 
+  // YoY % delta on every card -- same YTD-cutoff methodology as Overview
+  // (see ytdYoyMetric). "Total Events" is cross-sheet (Event Surveys), so it
+  // resolves curYear/priYear the same "All" = scoped-to-Booked-Business-years
+  // way as the fixed Total Events card above; the other 5 cards use the
+  // Status/Event-Name-filtered Booked Business rows (but not Year-filtered).
+  let bbCurYear, bbPriYear;
+  if (year !== "All") { bbCurYear = Number(year); bbPriYear = bbCurYear - 1; }
+  else { const lt = latestTwoYears(bbYearsPresent); bbCurYear = lt.latest; bbPriYear = lt.prior; }
+  const dTotalEventsBB = ytdYoyMetric(DATA.eventSurveys.raw, "date", bbCurYear, bbPriYear, null, rs => distinctCount(rs, r => r.eventId));
+  let bbYoyBase = DATA.bookedBusiness.raw;
+  if (status !== "All") bbYoyBase = bbYoyBase.filter(r => r.leadStatus === status);
+  if (eventName && eventName !== "All") bbYoyBase = bbYoyBase.filter(r => r.eventName === eventName);
+  function bbYoy(metricFn) { return ytdYoyMetric(bbYoyBase, "eventStartDate", bbCurYear, bbPriYear, null, metricFn); }
+  const dDistinctEvents = bbYoy(rs => distinctCount(rs, r => r.eventId));
+  const dLeadsGen = bbYoy(rs => distinctCount(rs, r => r.leadId));
+  const dDefiniteLeads = bbYoy(rs => dedupeBy(rs, r => r.leadId).filter(r => r.leadStatus === "Definite").length);
+  const dDefiniteRate = bbYoy(rs => { const uniq = dedupeBy(rs, r => r.leadId); const leads = distinctCount(rs, r => r.leadId); return leads ? uniq.filter(r => r.leadStatus === "Definite").length / leads : null; });
+  const dConvWindow = bbYoy(rs => mean(rs, r => r.daysFromLeadCreatedToEvent));
+  const convWinFmtBB = v => (v === null ? "&mdash;" : v > 90 ? fmt(v / 30, 1) + " months" : fmt(v) + " days");
+
   // Hosted Events and Booked Business both represent the events team's own
   // data, so every card on these two tabs gets the same pale-blue
   // "events-team" accent used for the 4 events-team cards on the Overview tab.
   document.getElementById("bb-kpiGrid").innerHTML = [
-    kpiCard("Total Events", fmt(totalEvents), null, null, bbRange, "events-team"),
-    kpiCard("Events That Generated Leads", fmt(distinctEvents), null, null, bbRange, "events-team"),
-    kpiCard("Leads Generated", fmt(leadsGenerated), null, null, bbRange, "events-team"),
-    kpiCard("Definite Leads", fmt(definiteLeads), null, null, bbRange, "events-team"),
-    kpiCard("Definite Leads Percentage", pct(definiteRate), null, null, bbRange, "events-team"),
-    kpiCard("Avg. Conversion Window", convWindowText, null, null, bbRange, "events-team")
+    kpiCard("Total Events", fmt(totalEvents), ytdDeltaText(dTotalEventsBB, fmt), deltaClass(dTotalEventsBB.d), bbRange, "events-team"),
+    kpiCard("Events That Generated Leads", fmt(distinctEvents), ytdDeltaText(dDistinctEvents, fmt), deltaClass(dDistinctEvents.d), bbRange, "events-team"),
+    kpiCard("Leads Generated", fmt(leadsGenerated), ytdDeltaText(dLeadsGen, fmt), deltaClass(dLeadsGen.d), bbRange, "events-team"),
+    kpiCard("Definite Leads", fmt(definiteLeads), ytdDeltaText(dDefiniteLeads, fmt), deltaClass(dDefiniteLeads.d), bbRange, "events-team"),
+    kpiCard("Definite Leads Percentage", pct(definiteRate), ytdDeltaText(dDefiniteRate, pct), deltaClass(dDefiniteRate.d), bbRange, "events-team"),
+    kpiCard("Avg. Conversion Window", convWindowText, ytdDeltaText(dConvWindow, convWinFmtBB), deltaClass(dConvWindow.d), bbRange, "events-team")
   ].join("");
 
   // Grouped from the full (non-deduped) rows, not uniqueLeadRows -- a lead
@@ -1433,6 +1639,19 @@ function renderBooked(year, status, eventName) {
   const topStatus = topEntry(statusLabels.map(s => ({ s, count: byStatus.get(s).length })), x => x.count);
   document.getElementById("bb-analysis2").innerHTML = topStatus
     ? `<strong>${topStatus.item.s}</strong> is the most common lead status, with <strong>${fmt(topStatus.v)}</strong> leads.`
+    : "No data available for this period yet.";
+
+  // Conversion Window by Event table auto-analysis: which bracket has the
+  // most leads overall.
+  const bucketLabels = ["1 Month", "2-3 Months", "4-6 Months", "7-12 Months", "Over 12+ Months"];
+  const topBucket = topEntry(bucketLabels.map((label, i) => ({ label, total: bucketTotals[i] })), x => x.total);
+  document.getElementById("bb-analysis3").innerHTML = topBucket && topBucket.v > 0
+    ? `<strong>${topBucket.item.label}</strong> is the most common conversion window, with <strong>${fmt(topBucket.v)}</strong> leads.`
+    : "No data available for this period yet.";
+
+  // Events That Generated Leads Detail table auto-analysis.
+  document.getElementById("bb-analysis4").innerHTML = uniqueLeadRows.length
+    ? `<strong>${fmt(uniqueLeadRows.length)}</strong> unique leads are shown across <strong>${fmt(distinctEvents)}</strong> events.`
     : "No data available for this period yet.";
 
   renderHevBookedLink(year, status, eventName);

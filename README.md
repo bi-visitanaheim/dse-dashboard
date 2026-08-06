@@ -315,6 +315,51 @@ The cross-reference visual (chart, table, and its new description above) is also
 
 The `.table-scroll` wrapper (which capped the table at a fixed height with a vertical scrollbar) was removed from around `#ov-summaryTable` specifically -- the table now expands to its full natural height. Every other `.table-scroll`-wrapped table on the dashboard (Accounts, YoY value tables, detail tables, etc.) is unchanged.
 
+## Overview: clickable KPI cards filter the Department at a Glance table
+
+Every one of the 12 Overview KPI cards is now clickable (`.kpi-card.selectable` in `style.css`, click handlers wired up in `renderOverview()`). Clicking a card highlights it with a light teal shade and narrows the Department at a Glance table below to just that category's row; clicking the same card again (or reloading the page) clears the selection and shows all 12 rows. Only one card can be selected at a time. This is purely a display filter -- it doesn't change any underlying numbers, just which rows are visible.
+
+## Dashboard-wide YoY methodology: year-to-date, not full-year
+
+Every KPI card that shows a YoY % delta -- on every tab, not just Overview -- now uses the exact same methodology: the "current" year is compared against the prior year over the identical January-1-through-cutoff-month window (the cutoff being the latest month with real, non-placeholder data in the current year), rather than comparing full calendar years against each other. This one rule (`ytdYoyMetric` in `app.js`) automatically produces the right result in both situations:
+
+- If the selected/latest year is **still in progress** (like 2026 today), the comparison is a true YTD one -- exactly what Overview's cards have always done.
+- If the selected year is a **completed past year** (like 2025), every month already has data, so the cutoff naturally resolves to December and the comparison becomes an ordinary full-year-vs-full-year one on its own -- no separate code path needed.
+
+This same YTD-cutoff approach now also drives the existing "Year over Year" tables on Team KPIs, Partner Referrals, and Repeat Clients (previously full-selected-year-vs-full-prior-year sums), and Client Survey's "Ratings by Year"/"Year-over-Year % Change" tables (previously each year's full-year average; now every year column is limited to the same Jan-1-through-cutoff window of months, so a partial current year is never unfairly compared against complete past years). `resolveYoyYears()` centralizes which two years are being compared (a specific selected year vs. the year before it, or the two most recent years present when "All" is selected); `ytdDeltaText()` formats the result to match Overview's exact card wording ("▲ 12.3% (45 in 2025) vs 2025 YTD").
+
+## Auto-analysis sentences: full-year phrasing for a completed past year
+
+Every month-based auto-analysis sentence (Team KPIs' 3 charts, Partner Referrals "by Month" and "Monthly Referrals by Staff," Client Survey "by Month," Hosted Events' 2 charts) now checks `isPastYear(rows, selectedYear)` first. For the current/latest year (or "All"), it still states the latest populated month's figures as before. For a selected year that's already complete, it instead states that year's full-year totals -- this fixes a bug where a metric that's entirely null for an otherwise-complete year (e.g. Partners Visited wasn't tracked at all in 2025) used to make the whole sentence fall back to "No data available for this period yet." even though the year overall has plenty of real data.
+
+## New auto-analysis sentences on table-only visuals
+
+Beyond the chart/YoY-table sentences added previously, these table-only visuals also got a bolded 1-sentence auto-analysis: Repeat Clients' "Accounts" table (top account by number of bookings), Hosted Events' "Avg. Rating by Question," "Ratings by Event Category," and "Event Survey Detail" tables, and Booked Business's "Conversion Window by Event" and "Events That Generated Leads Detail" tables.
+
+## Repeat Clients: removed "Bookings" subsentence
+
+The "Accounts" table's subtitle sentence explaining what the Bookings column means ("Bookings = how many times this account appears in the dataset...") was removed per direction; the table now has its own auto-analysis sentence instead (see above).
+
+## Booked Business: removed 3 subsentences
+
+Per direction, three static subtitle sentences were removed (the visuals now rely on their new/existing auto-analysis sentences instead): "Of the 35 hosted events tracked here, these are matched by Event ID..." (Hosted Events & Booked Business), "Days from lead created to event start, bucketed by month..." (Conversion Window by Event), and "One row per unique lead." (Events That Generated Leads Detail).
+
+## Client Survey: "VA Survey Questions Rating" bar color reverted
+
+The lighter-fill highlight previously applied to the Overall Anaheim Experience and DS&E Manager bars (since those two also have their own KPI cards) was reverted per direction -- every bar on this chart is the same uniform navy color again.
+
+## Tab bar: stronger color contrast for Hosted Events/Booked Business
+
+The Hosted Events and Booked Business tab buttons now use a solid pale-blue fill (not just a faint tint) so they read as clearly distinct from the other 5 tabs at a glance, matching the same events-team accent already used on their KPI cards. The active state keeps the tab bar's normal off-white active background, with a pale-blue underline accent so it's still clear which of the two is currently open.
+
+## Export as PDF: full page now prints
+
+The print stylesheet no longer hides the header, logo, branding, or "data last refreshed" pill -- only the tab bar buttons and the "Export as PDF" buttons themselves are hidden (they're purely interactive controls with nothing to print). Only the currently active tab's content prints; switch to a different tab first to export that one instead.
+
+## Repeat Clients: new "Repeat" filter
+
+*(Documented above alongside the other Repeat Clients filters.)*
+
 ## Known data-quality issue
 
 Two rows in the **Events** sheet have a typo'd year (`2206` instead of, presumably, `2026`). `build_data.py` excludes any Events date outside 2020–2030 rather than guessing the intended year (`data.json → events.skippedInvalidDates`). Fix the dates in the source workbook and regenerate to include them.

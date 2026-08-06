@@ -119,15 +119,17 @@ header.top p.sub {
 .tab-btn.active { background: var(--bg); color: var(--navy); border-color: var(--bg); }
 /* Hosted Events and Booked Business both represent the events team's own
    data (same reasoning as the pale-blue "events-team" KPI card accent on
-   those two tabs) -- give their tab buttons a matching pale-blue tint so the
-   tab bar itself hints at the same grouping before a user even clicks in. */
+   those two tabs) -- give their tab buttons a solid, clearly distinct
+   pale-blue fill (not just a faint tint) so the tab bar itself signals the
+   grouping before a user even clicks in. */
 .tab-btn[data-tab="events"], .tab-btn[data-tab="booked"] {
-  background: rgba(180,217,227,.16);
-  border-color: rgba(180,217,227,.32);
-  color: #eaf3f6;
+  background: var(--pale);
+  border-color: var(--pale);
+  color: var(--navy);
+  font-weight: 800;
 }
-.tab-btn[data-tab="events"]:hover, .tab-btn[data-tab="booked"]:hover { background: rgba(180,217,227,.28); }
-.tab-btn[data-tab="events"].active, .tab-btn[data-tab="booked"].active { background: var(--pale); color: var(--navy); border-color: var(--pale); }
+.tab-btn[data-tab="events"]:hover, .tab-btn[data-tab="booked"]:hover { background: var(--teal-light); border-color: var(--teal-light); }
+.tab-btn[data-tab="events"].active, .tab-btn[data-tab="booked"].active { background: var(--bg); color: var(--navy); border-color: var(--bg); box-shadow: inset 0 -3px 0 var(--pale); }
 
 .tab-panel { display: none; padding-top: 24px; }
 .tab-panel.active { display: block; }
@@ -220,6 +222,15 @@ header.top p.sub {
 .kpi-card.events-team {
   border-top-color: var(--pale);
   background: linear-gradient(180deg, rgba(180, 217, 227, .18), var(--card) 70%);
+}
+/* Overview tab: every card is clickable -- selecting one highlights it with a
+   light shade and narrows the Department at a Glance table below to just
+   that category's row (see ov-selected-card handling in app.js). */
+.kpi-card.selectable { cursor: pointer; transition: box-shadow .15s ease, background .15s ease; }
+.kpi-card.selectable:hover { box-shadow: 0 1px 2px rgba(18,92,96,.1), 0 6px 20px rgba(18,92,96,.14); }
+.kpi-card.selected {
+  background: rgba(180, 217, 227, .32);
+  box-shadow: 0 0 0 2px var(--teal) inset, var(--shadow);
 }
 
 /* ---------- Sections ---------- */
@@ -387,11 +398,14 @@ footer.foot {
    per page-break-friendly block, so the browser's own "Save as PDF" print
    destination produces a clean, presentable document. */
 @media print {
-  header.top, .tabbar, .tab-toolbar, .export-btn { display: none !important; }
-  body { background: #fff; }
-  .wrap { max-width: 100%; padding: 0 12px; }
+  /* Full page prints as-is (header/logo/branding, fonts, "data last
+     refreshed" pill, footer) -- only the tab bar buttons and the "Export as
+     PDF" buttons themselves are hidden, since they're purely interactive
+     controls with nothing to print. Only the currently active tab's content
+     prints (switch tabs first to export a different one). */
+  .tabbar, .tab-toolbar, .export-btn { display: none !important; }
   .tab-panel { display: none !important; }
-  .tab-panel.active { display: block !important; padding-top: 0; }
+  .tab-panel.active { display: block !important; }
   section.panel, .kpi-card { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
   .table-scroll { max-height: none; overflow: visible; }
 }
