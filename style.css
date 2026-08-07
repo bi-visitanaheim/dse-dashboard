@@ -298,7 +298,15 @@ table.mini th, table.mini td {
   text-align: left;
   padding: 7px 9px;
   border-bottom: 1px solid var(--border);
-  white-space: nowrap;
+  /* Wraps by default (word-break so a single very long token, like an event
+     or account name, still breaks instead of overflowing its column) so no
+     table on the dashboard needs horizontal scrolling to read every column --
+     this used to be nowrap-by-default with one-off overrides added per wide
+     table as they came up; flipping the default removes the need for those
+     one-off fixes and fixes the Repeat Clients Accounts table (9 columns as
+     of the Lead/Start Date/End Date addition) the same way. */
+  white-space: normal;
+  word-break: break-word;
 }
 table.mini th { color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: .04em; position: sticky; top: 0; background: var(--card); }
 table.mini tr:last-child td { border-bottom: none; }
@@ -451,23 +459,60 @@ footer.foot {
    hides the nav chrome and prints only the currently active tab, one section
    per page-break-friendly block, so the browser's own "Save as PDF" print
    destination produces a clean, presentable document. */
+.print-only-tab-title {
+  display: none;
+  margin: 0;
+  padding: 10px 0 2px;
+  font-size: 20px;
+  font-weight: 800;
+  font-family: var(--font-display);
+  color: var(--navy);
+}
 @media print {
+  /* Landscape gives every tab's KPI grid, side-by-side charts, and wide
+     tables (e.g. Conversion Window by Event, Ratings by Event Category)
+     meaningfully more usable width than portrait -- this, more than the zoom
+     level below, is what was making every tab except Repeat Clients (whose
+     Accounts table/2 charts happened to fit portrait width already) look
+     squished: their content was wider than a portrait page, so the browser's
+     own "shrink to fit" print scaling was compressing them further and
+     unevenly on top of our own zoom. */
+  @page { size: landscape; margin: 0.4in; }
   /* Full page prints as-is (header/logo/branding, fonts, "data last
      refreshed" pill, footer) -- only the tab bar buttons and the "Export as
      PDF" buttons themselves are hidden, since they're purely interactive
      controls with nothing to print. Only the currently active tab's content
-     prints (switch tabs first to export a different one). */
+     prints (switch tabs first to export a different one). Filters
+     (.filter-row) are intentionally left visible so the exported page shows
+     exactly what was selected when it was generated. */
   .tabbar, .tab-toolbar, .export-btn { display: none !important; }
   .tab-panel { display: none !important; }
   .tab-panel.active { display: block !important; }
+  /* Tab nav buttons are hidden above, so this print-only heading (kept in
+     sync with the active tab by switchTab() in app.js) is the only place an
+     exported page states which report it is. */
+  .print-only-tab-title { display: block !important; }
   section.panel, .kpi-card { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
   .table-scroll { max-height: none; overflow: visible; }
+  /* .wrap normally caps at 1320px to keep the on-screen layout readable on
+     wide monitors -- in print that cap just wastes the extra width landscape
+     buys back, so every tab's content is allowed to use the full printable
+     page width instead. */
+  .wrap { max-width: none !important; }
+  /* A fixed 3-column KPI grid (instead of auto-fit/minmax, which can pack as
+     many as 6-7 narrow cards per row on a wide screen) keeps card width
+     comfortable and consistent across every tab regardless of how many cards
+     that tab has (5, 6, or 12 on Overview). */
+  .kpi-grid { grid-template-columns: repeat(3, 1fr) !important; }
   /* Zoomed out ~15% vs. normal print scale so a full tab's worth of cards,
      charts, and tables fits without getting cut off at the page edge or
      squished together. `zoom` (not `transform: scale`) is used because it
      reflows layout at the smaller size instead of just visually shrinking a
      full-size layout into a clipped box -- this is what actually buys back
      room for more content per printed page. Supported by Chrome/Edge, which
-     is what "Save as PDF" printing runs through in practice. */
+     is what "Save as PDF" printing runs through in practice. Combined with
+     landscape + the full-width .wrap override above, this is what brings
+     every tab's export in line with how Repeat Clients was already printing.
+  */
   body { zoom: 85%; }
 }

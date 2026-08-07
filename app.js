@@ -288,12 +288,6 @@ async function main() {
   initSurvey();
   initEvents();
   initBooked();
-
-  // Overview is the tab active on load, so the header's "Reporting period"
-  // pill needs its initial value set directly here (every other tab picks up
-  // its own value automatically the first time someone clicks over to it).
-  const periodEl = document.getElementById("headerReportingPeriod");
-  if (periodEl && TAB_REPORTING_PERIODS.overview) periodEl.innerHTML = TAB_REPORTING_PERIODS.overview;
 }
 
 // Each tab pulls from a different mix of source systems, so the footer's
@@ -308,19 +302,36 @@ const TAB_SOURCES = {
   booked: "Granicus"
 };
 // The header's "Reporting period" pill is dynamic per tab: each render*
-// function below stores its own tab's currently-filtered date range here
-// (the exact same range shown on that tab's own KPI cards), and switchTab
-// reads it back out whenever the person switches tabs. Re-populated by every
-// render call, so it also stays current as a tab's own Year/Manager/etc.
-// filters change without needing to switch away and back.
+// function below calls setReportingPeriod() with its own tab's currently-
+// filtered date range (the exact same range shown on that tab's own KPI
+// cards). That helper both stores the value (for switchTab to restore when
+// coming back to a tab later) AND, if that tab is the one currently on
+// screen, writes straight to the header DOM element immediately -- so the
+// pill also updates live when a Year/Manager/etc. filter changes without
+// switching tabs, not just when switching tabs.
 const TAB_REPORTING_PERIODS = {};
+let ACTIVE_TAB = "overview";
+function setReportingPeriod(tabName, rangeText) {
+  TAB_REPORTING_PERIODS[tabName] = rangeText || "&mdash;";
+  if (ACTIVE_TAB === tabName) {
+    const el = document.getElementById("headerReportingPeriod");
+    if (el) el.innerHTML = TAB_REPORTING_PERIODS[tabName];
+  }
+}
 function switchTab(name) {
+  ACTIVE_TAB = name;
   document.querySelectorAll(".tab-btn").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === `tab-${name}`));
   const footSource = document.getElementById("footSource");
   if (footSource && TAB_SOURCES[name]) footSource.textContent = TAB_SOURCES[name];
   const periodEl = document.getElementById("headerReportingPeriod");
   if (periodEl && TAB_REPORTING_PERIODS[name]) periodEl.innerHTML = TAB_REPORTING_PERIODS[name];
+  // Print-only heading (see #printTabTitle in index.html) names whichever
+  // tab is active, since the tab nav itself is hidden when printing/
+  // exporting -- otherwise an exported page wouldn't say which report it is.
+  const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+  const printTitleEl = document.getElementById("printTabTitle");
+  if (printTitleEl && btn) printTitleEl.textContent = btn.textContent;
 }
 
 // =====================================================================
@@ -549,7 +560,7 @@ function renderOverview() {
   // header uses the same Jan-1-through-cutoff window as the Planning Visits
   // cards (the tab's primary/first-shown metrics) as the representative
   // period for the tab as a whole.
-  TAB_REPORTING_PERIODS.overview = ytdRangeLabel(CUR, pvCutoff);
+  setReportingPeriod("overview", ytdRangeLabel(CUR, pvCutoff));
 }
 
 // =====================================================================
@@ -664,7 +675,7 @@ function renderTeam(year) {
     { label: "Clients Serviced", fn: r => r.clientsServiced }
   ], year, "date", ["planningVisits"]);
 
-  TAB_REPORTING_PERIODS.team = teamRange || "&mdash;";
+  setReportingPeriod("team", teamRange);
 }
 // True when a specific, already-completed past year is selected (not "All"
 // and not the latest year present in the data) -- used to switch the
@@ -895,7 +906,7 @@ function renderReferrals(year) {
   }
   document.getElementById("ref-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [{ label: "Partner Referrals", fn: r => r.count }], year, "date", null);
 
-  TAB_REPORTING_PERIODS.referrals = refRange || "&mdash;";
+  setReportingPeriod("referrals", refRange);
 }
 
 // =====================================================================
@@ -1105,7 +1116,7 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
       : "No data available for this period yet.";
   }
 
-  TAB_REPORTING_PERIODS.repeat = repRange || "&mdash;";
+  setReportingPeriod("repeat", repRange);
 }
 
 // =====================================================================
@@ -1137,15 +1148,44 @@ const SENTIMENT_NEGATIVE_WORDS = [
   "delay", "delayed", "unclear", "lacking", "worst", "horrible", "awful",
   "unhelpful", "complicated", "concern", "concerns", "mistake", "mistakes",
   "late", "missed", "disorganized", "unacceptable", "disappointment", "fail",
-  "failed", "failure", "refused", "negligent", "unacceptably"
+  "failed", "failure", "refused", "negligent", "unacceptably", "silence",
+  "silent", "ghosted", "ignored", "overlooked", "neglected", "unheard"
+];
+// Negators: when one of these appears anywhere in the same clause as a
+// positive/negative keyword, that keyword's usual polarity is flipped (e.g.
+// "wasn't helpful" counts as negative, "never disappointed" counts as
+// positive) -- without this, a plain keyword count misreads a negated
+// positive word as praise, which is exactly what was happening with
+// responses like "I don't feel like Visit Anaheim is as customer friendly as
+// they used to be" (the single keyword hit, "friendly," was scoring
+// Positive even though the sentence is a complaint). Clause-level (not just
+// a fixed word-distance window) because the negator and the keyword it's
+// negating are often several words apart, as in that example.
+const SENTIMENT_NEGATORS = [
+  "not", "no", "never", "none", "nobody", "nothing", "cannot", "without",
+  "hardly", "barely", "rarely", "lack", "lacking", "don't", "doesn't",
+  "didn't", "isn't", "wasn't", "aren't", "weren't", "won't", "wouldn't",
+  "couldn't", "shouldn't", "can't"
 ];
 function analyzeSentiment(text) {
   if (!text) return "Neutral";
-  const words = String(text).toLowerCase().replace(/[^a-z\s]/g, " ").split(/\s+/).filter(Boolean);
+  // Split into clauses on sentence/clause punctuation first (apostrophes
+  // kept, so contractions like "don't" survive as one token for the
+  // negator list above) -- negation is evaluated per clause, not per whole
+  // testimonial, so a negator in one sentence doesn't flip keywords in an
+  // unrelated later sentence.
+  const clauses = String(text).toLowerCase().split(/[.!?;,]/);
   let score = 0;
-  words.forEach(w => {
-    if (SENTIMENT_POSITIVE_WORDS.includes(w)) score++;
-    if (SENTIMENT_NEGATIVE_WORDS.includes(w)) score--;
+  clauses.forEach(clause => {
+    const words = clause.replace(/[^a-z'\s]/g, " ").split(/\s+/).filter(Boolean);
+    const hasNegator = words.some(w => SENTIMENT_NEGATORS.includes(w));
+    words.forEach(w => {
+      let polarity = 0;
+      if (SENTIMENT_POSITIVE_WORDS.includes(w)) polarity = 1;
+      else if (SENTIMENT_NEGATIVE_WORDS.includes(w)) polarity = -1;
+      if (polarity === 0) return;
+      score += hasNegator ? -polarity : polarity;
+    });
   });
   if (score > 0) return "Positive";
   if (score < 0) return "Negative";
@@ -1330,7 +1370,7 @@ function renderSurvey(year, manager, question) {
     year, "date", ["rating"]
   );
 
-  TAB_REPORTING_PERIODS.survey = surRange || "&mdash;";
+  setReportingPeriod("survey", surRange);
 }
 function renderQ2Q7(year, manager) {
   const spot = DATA.accSurvey.q2q7;
@@ -1558,7 +1598,7 @@ function renderEvents(year, category, eventName) {
     ? `<strong>${topDetailEvent.item.name}</strong> has the most survey-type coverage, with <strong>${fmt(topDetailEvent.v)}</strong> survey type${topDetailEvent.v === 1 ? "" : "s"} recorded, across <strong>${fmt(totalEvents)}</strong> distinct events total.`
     : "No data available for this period yet.";
 
-  TAB_REPORTING_PERIODS.events = hevRange || "&mdash;";
+  setReportingPeriod("events", hevRange);
 }
 
 // Cross-reference: eventSurveys and bookedBusiness share the same eventId
@@ -1837,7 +1877,7 @@ function renderBooked(year, status, eventName) {
 
   renderHevBookedLink(year, status, eventName);
 
-  TAB_REPORTING_PERIODS.booked = bbRange || "&mdash;";
+  setReportingPeriod("booked", bbRange);
 }
 
 main();

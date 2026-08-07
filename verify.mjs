@@ -63,6 +63,29 @@ window.switchTab("overview");
   window.switchTab("overview");
   assert(doc.getElementById("headerReportingPeriod").innerHTML === overviewPeriod, "Header: Reporting period pill reverts to Overview's own range when switching back");
 }
+{
+  // Regression check: the pill used to only refresh inside switchTab(), so
+  // changing a Year/filter dropdown while remaining on the same tab left it
+  // stale. Switch to Repeat Clients, note its pill, change the Year filter
+  // without switching tabs, and confirm the pill updates immediately.
+  window.switchTab("repeat");
+  const before = doc.getElementById("headerReportingPeriod").innerHTML;
+  const repYearSel = doc.getElementById("rep-year");
+  repYearSel.value = "2025";
+  repYearSel.dispatchEvent(new window.Event("change"));
+  const after = doc.getElementById("headerReportingPeriod").innerHTML;
+  assert(after !== before, "Header: Reporting period pill updates live when a filter changes on the active tab, without switching tabs");
+  repYearSel.value = "2026";
+  repYearSel.dispatchEvent(new window.Event("change"));
+  window.switchTab("overview");
+}
+// Print-only tab title (see .print-only-tab-title) names whichever tab is
+// active, since the tab bar itself is hidden when printing -- kept in sync
+// by switchTab().
+assert(doc.getElementById("printTabTitle").textContent === "Overview", "Print: tab title shows 'Overview' by default");
+window.switchTab("booked");
+assert(doc.getElementById("printTabTitle").textContent === "Booked Business", "Print: tab title updates to 'Booked Business' on tab switch");
+window.switchTab("overview");
 
 // Overview
 assert(doc.getElementById("ov-kpiGrid").children.length === 12, "Overview: 12 KPI cards");
@@ -213,6 +236,7 @@ assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-a
 // Accounts table: new Lead/Start Date/End Date columns, positioned before Attendance.
 assert(doc.querySelector("#rep-clientsTable thead").textContent.trim() === "AccountLeadStart DateEnd DateAttendancePeak RoomRepeat?BookingsServices Manager", "Repeat Clients: Accounts table has Lead/Start Date/End Date columns before Attendance");
 assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#rep-clientsTable tbody tr td:nth-child(3)").textContent), "Repeat Clients: Accounts table Start Date formatted MM/DD/YYYY");
+assert(!doc.getElementById("rep-clientsTable").closest(".table-scroll"), "Repeat Clients: Accounts table no longer wrapped in a scrolling container");
 {
   // Regression check: selecting a completed past year (2025, since 2026 is
   // the latest year present in this sheet) should switch all 3 analysis
@@ -263,6 +287,21 @@ assert(
 );
 assert(doc.getElementById("q2q7SentimentScale").querySelector(".bar"), "Client Survey: aggregate sentiment scale (red-to-green bar) rendered next to the Feedback title");
 assert(/\d+% negative, \d+% neutral, \d+% positive/.test(doc.getElementById("q2q7SentimentScale").textContent), "Client Survey: aggregate sentiment breakdown text shows % negative/neutral/positive");
+{
+  // Regression check: a real, clearly negative testimonial ("I don't feel
+  // like Visit Anaheim is as customer friendly as they used to be. Never
+  // heard a word from our sales person...") was misclassified as Positive --
+  // its one literal keyword hit, "friendly," was being counted at face value
+  // even though it's inside a negated clause. Clause-level negation (see
+  // SENTIMENT_NEGATORS/analyzeSentiment) should now flip it to Negative.
+  assert(typeof window.analyzeSentiment === "function", "Client Survey: analyzeSentiment() is available for testing");
+  const misclassifiedBefore = "Honestly, I don't feel like Visit Anaheim is as customer friendly as they used to be.  Never heard a word from our sales person after we booked and don't recall hearing from them as we approached this year's meeting.";
+  assert(window.analyzeSentiment(misclassifiedBefore) === "Negative", "Client Survey: previously-misclassified negative testimonial now correctly scores Negative");
+  assert(window.analyzeSentiment("The staff was not helpful at all.") === "Negative", "Client Survey: negated positive keyword ('not helpful') scores Negative");
+  assert(window.analyzeSentiment("We were never disappointed with the service.") === "Positive", "Client Survey: negated negative keyword ('never disappointed') scores Positive");
+  assert(window.analyzeSentiment("The team was extremely helpful and professional, we loved working with them!") === "Positive", "Client Survey: plainly positive feedback still scores Positive");
+  assert(window.analyzeSentiment("This was a terrible experience, very unprofessional and slow.") === "Negative", "Client Survey: plainly negative feedback still scores Negative");
+}
 assert(!doc.getElementById("chartQ2"), "Client Survey: Q2 line chart removed from spotlight");
 assert(doc.getElementById("q2q7Desc").textContent.trim().startsWith("Visit Anaheim Team Experience Feedback"), "Client Survey: feedback section subtitle renamed to 'Visit Anaheim Team Experience Feedback'");
 assert(doc.querySelectorAll("#sur-kpiGrid .daterange").length >= 4, "Client Survey: every KPI card shows a dynamic date-range subtitle");
@@ -384,12 +423,26 @@ assert(doc.getElementById("bb-analysis4").querySelectorAll("strong").length > 0,
 assert(doc.querySelectorAll(".tab-panel .export-btn").length === 7, "Every tab has an 'Export as PDF' button");
 assert(doc.querySelector('.tab-btn[data-tab="events"]') && doc.querySelector('.tab-btn[data-tab="booked"]'), "Hosted Events and Booked Business tab buttons exist for color-coding via CSS");
 
-// Print CSS: zoomed out ~15% so exports show more content without cutoff/squishing.
+// Print CSS: zoomed out ~15%, landscape, full-width, and fixed 3-column KPI
+// grid so every tab's export isn't cut off/squished, matching how Repeat
+// Clients was already printing.
 {
   const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
-  const printBlockMatch = css.match(/@media print\s*\{[\s\S]*?\n\}/);
-  assert(printBlockMatch && /zoom:\s*85%/.test(printBlockMatch[0]), "Print CSS: @media print block zooms out to 85% (15% smaller)");
+  // Brace-matching (not a lazy regex) since the block now contains a nested
+  // @page {...} rule of its own -- a lazy `[\s\S]*?\n\}` would stop at that
+  // inner closing brace instead of the outer block's.
+  const startIdx = css.indexOf("@media print");
+  const openIdx = css.indexOf("{", startIdx);
+  let depth = 1, i = openIdx + 1;
+  while (depth > 0 && i < css.length) { if (css[i] === "{") depth++; else if (css[i] === "}") depth--; i++; }
+  const printBlock = css.slice(startIdx, i);
+  assert(/zoom:\s*85%/.test(printBlock), "Print CSS: @media print block zooms out to 85% (15% smaller)");
+  assert(/@page\s*\{[^}]*size:\s*landscape/.test(printBlock), "Print CSS: @media print forces landscape orientation");
+  assert(/\.wrap\s*\{[^}]*max-width:\s*none/.test(printBlock), "Print CSS: @media print lets .wrap use the full page width");
+  assert(/\.kpi-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3/.test(printBlock), "Print CSS: @media print forces a consistent 3-column KPI grid");
+  assert(/\.print-only-tab-title\s*\{[^}]*display:\s*block/.test(printBlock), "Print CSS: @media print shows the print-only tab title");
 }
+assert(doc.querySelector(".print-only-tab-title"), "Print: print-only tab title element exists in the header");
 
 // Spot-check the corrected KPI math against values verified live in the Power BI report
 const overview = doc.getElementById("ov-kpiGrid").innerHTML;
