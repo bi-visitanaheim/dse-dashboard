@@ -423,9 +423,9 @@ assert(doc.getElementById("bb-analysis4").querySelectorAll("strong").length > 0,
 assert(doc.querySelectorAll(".tab-panel .export-btn").length === 7, "Every tab has an 'Export as PDF' button");
 assert(doc.querySelector('.tab-btn[data-tab="events"]') && doc.querySelector('.tab-btn[data-tab="booked"]'), "Hosted Events and Booked Business tab buttons exist for color-coding via CSS");
 
-// Print CSS: zoomed out ~15%, landscape, full-width, and fixed 3-column KPI
-// grid so every tab's export isn't cut off/squished, matching how Repeat
-// Clients was already printing.
+// Print CSS: zoomed out ~15%, landscape, and full-width (auto-fit KPI grid,
+// no fixed-column override) so every tab's export isn't cut off/squished,
+// matching how Repeat Clients was already printing.
 {
   const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
   // Brace-matching (not a lazy regex) since the block now contains a nested
@@ -439,10 +439,30 @@ assert(doc.querySelector('.tab-btn[data-tab="events"]') && doc.querySelector('.t
   assert(/zoom:\s*85%/.test(printBlock), "Print CSS: @media print block zooms out to 85% (15% smaller)");
   assert(/@page\s*\{[^}]*size:\s*landscape/.test(printBlock), "Print CSS: @media print forces landscape orientation");
   assert(/\.wrap\s*\{[^}]*max-width:\s*none/.test(printBlock), "Print CSS: @media print lets .wrap use the full page width");
-  assert(/\.kpi-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3/.test(printBlock), "Print CSS: @media print forces a consistent 3-column KPI grid");
+  // Regression check: an earlier pass forced .kpi-grid to a fixed 3-column
+  // layout in print, which actually made wider-card tabs (e.g. Repeat
+  // Clients' naturally-good 5-across row) look worse, not better -- it's
+  // been removed so print relies on the same auto-fit/minmax rule used
+  // on-screen, just with more width available to it.
+  assert(!/\.kpi-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3/.test(printBlock), "Print CSS: no forced 3-column KPI grid override in print (reverted -- auto-fit now applies)");
   assert(/\.print-only-tab-title\s*\{[^}]*display:\s*block/.test(printBlock), "Print CSS: @media print shows the print-only tab title");
 }
 assert(doc.querySelector(".print-only-tab-title"), "Print: print-only tab title element exists in the header");
+// On-screen layout: .wrap widened from 1320px so the dashboard uses more of
+// the screen (and every KPI grid/chart/table sized off it gets wider too).
+{
+  const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
+  const wrapMatch = css.match(/\.wrap\s*\{[^}]*max-width:\s*(\d+)px/);
+  assert(wrapMatch && Number(wrapMatch[1]) >= 1600, `.wrap max-width widened to at least 1600px (got ${wrapMatch ? wrapMatch[1] : "no match"}px)`);
+}
+// Repeat Clients Accounts table: date/short-value columns (Start Date, End
+// Date, Attendance, Peak Room, Repeat?, Bookings) stay on one line so a date
+// never breaks mid-value; only Account/Lead/Services Manager wrap.
+{
+  const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
+  assert(/#rep-clientsTable[^{]*nth-child\(3\)[\s\S]*?white-space:\s*nowrap/.test(css), "Repeat Clients: Start Date column forced nowrap so dates don't break mid-value");
+  assert(/#rep-clientsTable[^{]*nth-child\(4\)[\s\S]*?white-space:\s*nowrap/.test(css), "Repeat Clients: End Date column forced nowrap so dates don't break mid-value");
+}
 
 // Spot-check the corrected KPI math against values verified live in the Power BI report
 const overview = doc.getElementById("ov-kpiGrid").innerHTML;

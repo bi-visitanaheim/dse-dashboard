@@ -30,9 +30,13 @@ body {
 }
 
 .wrap {
-  max-width: 1320px;
+  /* Widened from 1320px so the dashboard uses more of the screen on larger
+     monitors -- more room for the header, and every KPI grid/chart/table
+     below gets proportionally wider too since they're all sized off this
+     same container. */
+  max-width: 1680px;
   margin: 0 auto;
-  padding: 0 24px 64px;
+  padding: 0 32px 64px;
 }
 
 /* ---------- Header ---------- */
@@ -313,6 +317,21 @@ table.mini tr:last-child td { border-bottom: none; }
 table.mini td.up { color: var(--up); font-weight: 700; }
 table.mini td.down { color: var(--down); font-weight: 700; }
 table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; font-weight: 700; background: var(--card); }
+/* Repeat Clients "Accounts" table: only the long-text columns (Account,
+   Lead, Services Manager) should wrap -- the short, fixed-format columns
+   (Start Date, End Date, Attendance, Peak Room, Repeat?, Bookings) stay on
+   one line so a date like "05/22/2026" never breaks mid-value. Keeping
+   those columns nowrap frees up their row's width for Account/Lead to wrap
+   onto more lines instead, rather than every column fighting for the same
+   narrow share of the table. */
+#rep-clientsTable th:nth-child(3), #rep-clientsTable td:nth-child(3),
+#rep-clientsTable th:nth-child(4), #rep-clientsTable td:nth-child(4),
+#rep-clientsTable th:nth-child(5), #rep-clientsTable td:nth-child(5),
+#rep-clientsTable th:nth-child(6), #rep-clientsTable td:nth-child(6),
+#rep-clientsTable th:nth-child(7), #rep-clientsTable td:nth-child(7),
+#rep-clientsTable th:nth-child(8), #rep-clientsTable td:nth-child(8) {
+  white-space: nowrap;
+}
 /* Question text wraps instead of forcing the table wider than its panel
    (which was pushing these two tables out of alignment with the rest of the
    page's centered layout). */
@@ -494,16 +513,16 @@ footer.foot {
   .print-only-tab-title { display: block !important; }
   section.panel, .kpi-card { box-shadow: none; border: 1px solid var(--border); break-inside: avoid; }
   .table-scroll { max-height: none; overflow: visible; }
-  /* .wrap normally caps at 1320px to keep the on-screen layout readable on
+  /* .wrap normally caps at 1680px to keep the on-screen layout readable on
      wide monitors -- in print that cap just wastes the extra width landscape
      buys back, so every tab's content is allowed to use the full printable
-     page width instead. */
+     page width instead. Letting .kpi-grid's normal auto-fit/minmax(170px,1fr)
+     rule apply here too (no fixed-column override) is what made Repeat
+     Clients' 5-card row print comfortably wide already -- forcing every tab
+     into a fixed 3-column grid was actually a regression on tabs like that
+     one, not a fix, so it's been removed in favor of just letting auto-fit
+     do its job with the extra width this section frees up. */
   .wrap { max-width: none !important; }
-  /* A fixed 3-column KPI grid (instead of auto-fit/minmax, which can pack as
-     many as 6-7 narrow cards per row on a wide screen) keeps card width
-     comfortable and consistent across every tab regardless of how many cards
-     that tab has (5, 6, or 12 on Overview). */
-  .kpi-grid { grid-template-columns: repeat(3, 1fr) !important; }
   /* Zoomed out ~15% vs. normal print scale so a full tab's worth of cards,
      charts, and tables fits without getting cut off at the page edge or
      squished together. `zoom` (not `transform: scale`) is used because it
