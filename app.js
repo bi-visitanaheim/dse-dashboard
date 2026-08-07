@@ -1191,6 +1191,18 @@ function analyzeSentiment(text) {
   if (score < 0) return "Negative";
   return "Neutral";
 }
+// Sentiment for a Q7 testimonial row: prefers the "Sentiment" column added
+// directly to the ACC Survey sheet (row.sentiment, manually tagged
+// Positive/Neutral/Negative by the team -- see build_data.py) over the
+// keyword heuristic above. Only falls back to analyzeSentiment(feedback)
+// for a row that has feedback text but no Sentiment value filled in yet
+// (e.g. an older response from before that column existed), so every
+// testimonial still gets a badge either way.
+function resolveSentiment(row) {
+  const tagged = row.sentiment && String(row.sentiment).trim();
+  if (tagged && ["Positive", "Neutral", "Negative"].includes(tagged)) return tagged;
+  return analyzeSentiment(row.feedback);
+}
 function initSurvey() {
   const yearSel = document.getElementById("sur-year");
   const mgrSel = document.getElementById("sur-manager");
@@ -1392,13 +1404,14 @@ function renderQ2Q7(year, manager) {
   YEARS.forEach(y => {
     testimonialsByYear[y] = raw.filter(r => r.question === spot.q7Text && r.year === y && r.feedback).slice(0, 20);
   });
-  // Each card's sentiment word (see analyzeSentiment) sits next to its year,
-  // on the same row.
+  // Each card's sentiment word (see resolveSentiment) sits next to its year,
+  // on the same row -- pulled directly from the "Sentiment" column on the
+  // ACC Survey sheet for each response.
   const cols = document.getElementById("testimonialCols");
   cols.innerHTML = YEARS.map(y => {
     const items = testimonialsByYear[y] || [];
     return items.map(it => {
-      const sentiment = analyzeSentiment(it.feedback);
+      const sentiment = resolveSentiment(it);
       return `<div class="testimonial"><div class="yr"><span>${y}</span><span class="sentiment-badge ${sentiment.toLowerCase()}">${sentiment}</span></div>&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`;
     }).join("");
   }).join("");
@@ -1415,7 +1428,7 @@ function renderQ2Q7(year, manager) {
       scaleEl.innerHTML = "";
     } else {
       const counts = { Positive: 0, Neutral: 0, Negative: 0 };
-      allFeedback.forEach(r => { counts[analyzeSentiment(r.feedback)]++; });
+      allFeedback.forEach(r => { counts[resolveSentiment(r)]++; });
       const pctOf = n => Math.round((n / total) * 100);
       const negPct = pctOf(counts.Negative), neuPct = pctOf(counts.Neutral), posPct = pctOf(counts.Positive);
       scaleEl.innerHTML =

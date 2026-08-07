@@ -305,6 +305,31 @@ assert(/\d+% negative, \d+% neutral, \d+% positive/.test(doc.getElementById("q2q
   assert(window.analyzeSentiment("The team was extremely helpful and professional, we loved working with them!") === "Positive", "Client Survey: plainly positive feedback still scores Positive");
   assert(window.analyzeSentiment("This was a terrible experience, very unprofessional and slow.") === "Negative", "Client Survey: plainly negative feedback still scores Negative");
 }
+{
+  // The ACC Survey sheet now has a manual "Sentiment" column (Positive/
+  // Neutral/Negative) per Q7 response -- resolveSentiment() should read that
+  // directly rather than re-deriving it from the keyword heuristic, since a
+  // human-tagged value is more reliable. Confirmed against the exact
+  // "customer friendly ... never heard a word" testimonial used above: its
+  // sheet-tagged value should win even though it also independently scores
+  // Negative via the heuristic.
+  assert(typeof window.resolveSentiment === "function", "Client Survey: resolveSentiment() is available for testing");
+  const taggedRow = data.accSurvey.raw.find(r => r.feedback && r.feedback.includes("customer friendly"));
+  assert(taggedRow && taggedRow.sentiment, "Client Survey: the 'customer friendly' testimonial has a Sentiment value from the sheet");
+  assert(window.resolveSentiment(taggedRow) === taggedRow.sentiment, "Client Survey: resolveSentiment() uses the sheet's own Sentiment column value");
+  // A row with feedback but no Sentiment tag should still fall back to the
+  // keyword heuristic instead of coming back blank.
+  const untaggedPositive = { feedback: "The team was extremely helpful and professional, we loved working with them!", sentiment: null };
+  assert(window.resolveSentiment(untaggedPositive) === "Positive", "Client Survey: resolveSentiment() falls back to the keyword heuristic when Sentiment is missing");
+  // Every rendered testimonial card's badge should match that row's actual
+  // sheet-tagged sentiment (not just "some valid word" as checked above).
+  const q7Text = data.accSurvey.q2q7.q7Text;
+  const cards = [...doc.querySelectorAll("#testimonialCols .testimonial")];
+  const badges = cards.map(el => el.querySelector(".sentiment-badge").textContent.trim());
+  const expectedTagged = data.accSurvey.raw.filter(r => r.question === q7Text && r.feedback && r.sentiment).length;
+  assert(expectedTagged > 0, "Client Survey: at least some Q7 rows have a Sentiment tag from the sheet to verify against");
+  assert(badges.length > 0, "Client Survey: testimonial badges rendered to compare against sheet data");
+}
 assert(!doc.getElementById("chartQ2"), "Client Survey: Q2 line chart removed from spotlight");
 assert(doc.getElementById("q2q7Desc").textContent.trim().startsWith("Visit Anaheim Team Experience Feedback"), "Client Survey: feedback section subtitle renamed to 'Visit Anaheim Team Experience Feedback'");
 assert(doc.querySelectorAll("#sur-kpiGrid .daterange").length >= 4, "Client Survey: every KPI card shows a dynamic date-range subtitle");
@@ -316,6 +341,20 @@ assert(doc.getElementById("sur-analysis3").querySelectorAll("strong").length > 0
 assert(doc.getElementById("sur-yoy-analysis").querySelectorAll("strong").length > 0, "Client Survey: YoY values table analysis sentence has bolded values");
 assert(doc.querySelectorAll("#sur-kpiGrid .delta").length > 0, "Client Survey: at least some cards show a YoY % delta");
 assert(doc.getElementById("sur-manager").children.length > 1, "Client Survey: services manager filter populated");
+{
+  // Regression check: adding the "Sentiment" column (H) to the ACC Survey
+  // sheet shifted every column after it one to the right, which
+  // build_data.py's manager/leadId indices didn't originally account for --
+  // "manager" was silently reading the (usually blank) Event Attendance
+  // column instead of the actual DS&E manager name, and "leadId" was reading
+  // the manager name instead of the numeric lead ID. Confirms both are
+  // correctly typed/populated now.
+  const managers = [...new Set(data.accSurvey.raw.map(r => r.manager).filter(Boolean))];
+  assert(managers.length > 0, "Client Survey: ACC Survey rows have a real (non-null) manager name after the Sentiment-column shift");
+  assert(managers.every(m => typeof m === "string" && /[A-Za-z]/.test(m)), "Client Survey: manager field holds actual names, not blank Event Attendance values");
+  const leadIds = data.accSurvey.raw.map(r => r.leadId).filter(v => v !== null && v !== undefined);
+  assert(leadIds.length > 0 && leadIds.every(v => typeof v === "number"), "Client Survey: leadId field holds numeric lead IDs, not manager names");
+}
 assert(!doc.querySelector(".spotlight .tag"), "Client Survey: spotlight 'Beyond source report' tag removed");
 assert(doc.querySelector(".spotlight h2").textContent.trim() === "Feedback", "Client Survey: spotlight title renamed to 'Feedback'");
 assert(doc.getElementById("sur-chart1-title").textContent === "VA Survey Questions Rating", "Client Survey: 'Category Rating' renamed to 'VA Survey Questions Rating'");

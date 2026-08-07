@@ -95,8 +95,19 @@ for r in range(5, ws.max_row + 1):
         "year": sd.year,
         "recordedDate": iso_dt(rd),
         "feedback": (str(ws.cell(row=r, column=7).value).strip() if ws.cell(row=r, column=7).value else None),
-        "manager": ws.cell(row=r, column=9).value,
-        "leadId": ws.cell(row=r, column=10).value,
+        # Column H, added after this dashboard was first built: a manual
+        # Positive/Neutral/Negative sentiment tag on each Q7 testimonial row,
+        # feeding the Feedback section's sentiment badges/scale directly
+        # instead of the earlier keyword-heuristic estimate.
+        "sentiment": (str(ws.cell(row=r, column=8).value).strip() if ws.cell(row=r, column=8).value else None),
+        # NOTE: adding the Sentiment column (H) shifted every column after it
+        # one to the right -- Event Attendance is now column I (9), the DS&E
+        # manager name is now column J (10, was 9), and LeadID is now column K
+        # (11, was 10). Manager/LeadID below were updated to match; if more
+        # columns are added/removed from this sheet in the future, re-check
+        # these indices against the sheet's actual header row.
+        "manager": ws.cell(row=r, column=10).value,
+        "leadId": ws.cell(row=r, column=11).value,
     })
 out["accSurvey"] = {"questions": Q_ORDER, "raw": survey_raw}
 
