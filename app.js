@@ -280,6 +280,7 @@ async function main() {
   document.querySelectorAll(".tab-btn").forEach(btn => {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
+  initFeedbackModal();
 
   renderOverview();
   initTeam();
@@ -1384,6 +1385,32 @@ function renderSurvey(year, manager, question) {
 
   setReportingPeriod("survey", surRange);
 }
+// Feedback testimonial modal (see #feedbackModalOverlay in index.html):
+// opened by clicking a testimonial card whose comment was truncated (>220
+// characters, see renderQ2Q7), so the full text is readable without
+// stretching the card grid. Close handlers (button, clicking outside the
+// box, Escape) are wired once via initFeedbackModal(), called from main().
+function openFeedbackModal(item) {
+  const overlay = document.getElementById("feedbackModalOverlay");
+  if (!overlay) return;
+  document.getElementById("feedbackModalYear").textContent = item.year;
+  const sentimentEl = document.getElementById("feedbackModalSentiment");
+  sentimentEl.textContent = item.sentiment;
+  sentimentEl.className = "sentiment-badge " + item.sentiment.toLowerCase();
+  document.getElementById("feedbackModalText").textContent = item.feedback;
+  overlay.classList.add("open");
+}
+function closeFeedbackModal() {
+  const overlay = document.getElementById("feedbackModalOverlay");
+  if (overlay) overlay.classList.remove("open");
+}
+function initFeedbackModal() {
+  const overlay = document.getElementById("feedbackModalOverlay");
+  if (!overlay) return;
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeFeedbackModal(); });
+  document.getElementById("feedbackModalClose")?.addEventListener("click", closeFeedbackModal);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFeedbackModal(); });
+}
 function renderQ2Q7(year, manager) {
   const spot = DATA.accSurvey.q2q7;
   let raw = DATA.accSurvey.raw;
@@ -1406,15 +1433,29 @@ function renderQ2Q7(year, manager) {
   });
   // Each card's sentiment word (see resolveSentiment) sits next to its year,
   // on the same row -- pulled directly from the "Sentiment" column on the
-  // ACC Survey sheet for each response.
+  // ACC Survey sheet for each response. Cards whose comment got truncated
+  // (>220 characters) are clickable, opening a modal with the full text
+  // (see openFeedbackModal below) -- flatCardItems tracks the full,
+  // untruncated data for each rendered card in DOM order so the click
+  // handlers attached after innerHTML is set can look it back up without
+  // needing to round-trip it through an HTML attribute.
+  const flatCardItems = [];
   const cols = document.getElementById("testimonialCols");
   cols.innerHTML = YEARS.map(y => {
     const items = testimonialsByYear[y] || [];
     return items.map(it => {
       const sentiment = resolveSentiment(it);
-      return `<div class="testimonial"><div class="yr"><span>${y}</span><span class="sentiment-badge ${sentiment.toLowerCase()}">${sentiment}</span></div>&ldquo;${it.feedback.length > 220 ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback}&rdquo;</div>`;
+      const truncated = it.feedback.length > 220;
+      const displayText = truncated ? it.feedback.slice(0, 220) + "&hellip;" : it.feedback;
+      flatCardItems.push({ year: y, sentiment, feedback: it.feedback, truncated });
+      return `<div class="testimonial${truncated ? " clickable" : ""}"><div class="yr"><span>${y}</span><span class="sentiment-badge ${sentiment.toLowerCase()}">${sentiment}</span></div>&ldquo;${displayText}&rdquo;${truncated ? `<span class="read-more">Read full comment</span>` : ""}</div>`;
     }).join("");
   }).join("");
+  [...cols.querySelectorAll(".testimonial")].forEach((el, i) => {
+    const item = flatCardItems[i];
+    if (!item || !item.truncated) return;
+    el.addEventListener("click", () => openFeedbackModal(item));
+  });
 
   // Aggregate sentiment breakdown next to the section title, on a
   // red-to-green scale -- computed across ALL Q7 feedback matching the

@@ -398,6 +398,7 @@ Sentiment (Positive/Neutral/Negative) is pulled directly from a **"Sentiment" co
 - Next to the "Visit Anaheim Team Experience Feedback" title, an aggregate breakdown (e.g. "20% negative, 40% neutral, 40% positive") plus a red-to-green segmented bar (`.sentiment-scale`) shows the overall mix across **all** Q7 feedback currently matching the Year/Services Manager filters -- not just the up-to-20-per-year subset rendered as cards, so it's a true overall picture even when a year has more than 20 responses.
 - Both are fully dynamic: changing the Year or Services Manager filter re-aggregates immediately.
 - Red/amber/green is used **only** in this one spot on the dashboard, as a deliberate, scoped exception to the six-color brand palette described below -- red-to-green is the near-universal, instantly legible convention for sentiment, which the brand's teal/navy tones can't convey as clearly.
+- **Cards with a truncated comment (over 220 characters) are clickable**, marked with a "Read full comment" link and a hover state; clicking opens a modal (`#feedbackModalOverlay` in `index.html`) showing that card's year, sentiment badge, and the full, untruncated text. Shorter comments (already shown in full) aren't clickable, since there's nothing more to reveal. The modal closes via its close button, clicking outside the box, or pressing Escape, and is hidden in print exports.
 
 ## Known data-quality issue
 

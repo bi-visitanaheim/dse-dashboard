@@ -291,6 +291,40 @@ assert(
 assert(doc.getElementById("q2q7SentimentScale").querySelector(".bar"), "Client Survey: aggregate sentiment scale (red-to-green bar) rendered next to the Feedback title");
 assert(/\d+% negative, \d+% neutral, \d+% positive/.test(doc.getElementById("q2q7SentimentScale").textContent), "Client Survey: aggregate sentiment breakdown text shows % negative/neutral/positive");
 {
+  // Testimonial cards with a truncated comment (>220 characters) are
+  // clickable and open a modal with the full, untruncated text -- shorter
+  // comments (already shown in full) shouldn't be clickable, since there's
+  // nothing more to reveal.
+  const clickableCards = [...doc.querySelectorAll("#testimonialCols .testimonial.clickable")];
+  assert(clickableCards.length > 0, "Client Survey: at least one testimonial card with a long comment is marked clickable");
+  assert(clickableCards.every(el => el.querySelector(".read-more")), "Client Survey: clickable testimonial cards show a 'Read full comment' affordance");
+  const nonClickable = [...doc.querySelectorAll("#testimonialCols .testimonial")].filter(el => !el.classList.contains("clickable"));
+  assert(nonClickable.length === 0 || nonClickable.every(el => !el.querySelector(".read-more")), "Client Survey: non-clickable (already-short) testimonial cards have no 'Read full comment' affordance");
+
+  const overlay = doc.getElementById("feedbackModalOverlay");
+  assert(overlay, "Client Survey: feedback modal overlay element exists");
+  assert(!overlay.classList.contains("open"), "Client Survey: feedback modal is closed by default");
+  const card = clickableCards[0];
+  const truncatedText = card.querySelector("p, div")?.textContent || card.textContent;
+  card.dispatchEvent(new window.Event("click", { bubbles: true }));
+  assert(overlay.classList.contains("open"), "Client Survey: clicking a clickable testimonial card opens the modal");
+  const modalText = doc.getElementById("feedbackModalText").textContent;
+  assert(modalText.length > 220, "Client Survey: modal shows the full, untruncated comment");
+  assert(!modalText.includes("…") && !modalText.includes("&hellip;"), "Client Survey: modal text isn't truncated with an ellipsis");
+  assert(["Positive", "Neutral", "Negative"].includes(doc.getElementById("feedbackModalSentiment").textContent.trim()), "Client Survey: modal shows the card's sentiment badge");
+  assert(/^\d{4}$/.test(doc.getElementById("feedbackModalYear").textContent.trim()), "Client Survey: modal shows the card's year");
+
+  // Clicking the close button closes it again.
+  doc.getElementById("feedbackModalClose").dispatchEvent(new window.Event("click", { bubbles: true }));
+  assert(!overlay.classList.contains("open"), "Client Survey: clicking the close button closes the modal");
+
+  // Clicking the overlay background (outside the modal box) also closes it.
+  card.dispatchEvent(new window.Event("click", { bubbles: true }));
+  assert(overlay.classList.contains("open"), "Client Survey: modal reopens for the next assertion");
+  overlay.dispatchEvent(new window.Event("click", { bubbles: true }));
+  assert(!overlay.classList.contains("open"), "Client Survey: clicking outside the modal box (the overlay background) closes the modal");
+}
+{
   // Regression check: a real, clearly negative testimonial ("I don't feel
   // like Visit Anaheim is as customer friendly as they used to be. Never
   // heard a word from our sales person...") was misclassified as Positive --
