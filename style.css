@@ -523,9 +523,10 @@ footer.foot {
      one, not a fix, so it's been removed in favor of just letting auto-fit
      do its job with the extra width this section frees up. */
   .wrap { max-width: none !important; }
-  /* Zoomed out ~15% vs. normal print scale so a full tab's worth of cards,
-     charts, and tables fits without getting cut off at the page edge or
-     squished together. `zoom` (not `transform: scale`) is used because it
+  /* Zoomed out to 65% (85% minus another 20 points) so cards/charts that sit
+     side by side on screen (e.g. a full KPI grid row, or the two charts in a
+     grid-2 panel) stay on the same row in the export instead of wrapping to
+     a second line. `zoom` (not `transform: scale`) is used because it
      reflows layout at the smaller size instead of just visually shrinking a
      full-size layout into a clipped box -- this is what actually buys back
      room for more content per printed page. Supported by Chrome/Edge, which
@@ -533,5 +534,5 @@ footer.foot {
      landscape + the full-width .wrap override above, this is what brings
      every tab's export in line with how Repeat Clients was already printing.
   */
-  body { zoom: 85%; }
+  body { zoom: 65%; }
 }

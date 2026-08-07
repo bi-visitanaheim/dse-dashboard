@@ -387,7 +387,7 @@ The pill in the top-right of the header used to show a single hardcoded date ran
 
 ## Print / Export as PDF: zoomed out ~15%
 
-`@media print { body { zoom: 85%; } }` was added so a full tab's cards, charts, and tables fit on the printed/PDF page without getting cut off at the edge or squished together. `zoom` (not `transform: scale`) was used deliberately -- it reflows the layout at the smaller size rather than just shrinking a full-size layout visually into a clipped box, which is what actually buys back usable room per page. Supported by Chrome/Edge, which is what "Save as PDF" printing runs through in practice.
+`@media print { body { zoom: 65%; } }` (originally 85%, reduced by another 20 points) was added so a full tab's cards, charts, and tables fit on the printed/PDF page without getting cut off at the edge or squished together -- and, at 65%, so that content meant to sit side by side on screen (a full KPI card row, or the two charts in a grid-2 panel) stays on the same row in the export instead of wrapping onto a second line. `zoom` (not `transform: scale`) was used deliberately -- it reflows the layout at the smaller size rather than just shrinking a full-size layout visually into a clipped box, which is what actually buys back usable room per page. Supported by Chrome/Edge, which is what "Save as PDF" printing runs through in practice. Also paired with landscape print orientation and a full-width `.wrap` override -- see the "Print export: fix squishing" section below.
 
 ## Client Survey "Feedback" section: automated sentiment analysis
 

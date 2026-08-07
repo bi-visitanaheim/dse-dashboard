@@ -439,7 +439,7 @@ assert(doc.querySelector('.tab-btn[data-tab="events"]') && doc.querySelector('.t
   let depth = 1, i = openIdx + 1;
   while (depth > 0 && i < css.length) { if (css[i] === "{") depth++; else if (css[i] === "}") depth--; i++; }
   const printBlock = css.slice(startIdx, i);
-  assert(/zoom:\s*85%/.test(printBlock), "Print CSS: @media print block zooms out to 85% (15% smaller)");
+  assert(/zoom:\s*65%/.test(printBlock), "Print CSS: @media print block zooms out to 65% (85% minus another 20 points) so side-by-side content stays on one row");
   assert(/@page\s*\{[^}]*size:\s*landscape/.test(printBlock), "Print CSS: @media print forces landscape orientation");
   assert(/\.wrap\s*\{[^}]*max-width:\s*none/.test(printBlock), "Print CSS: @media print lets .wrap use the full page width");
   // Regression check: an earlier pass forced .kpi-grid to a fixed 3-column
