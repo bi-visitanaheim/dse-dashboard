@@ -280,6 +280,17 @@ assert(!doc.getElementById("sur-kpiGrid").textContent.includes("Met Event Object
 // question that's excluded from these tables = 7 rows.
 assert(doc.querySelectorAll("#sur-yoyValuesTable tbody tr").length === 7, "Client Survey: 7 rows in values table");
 assert(doc.querySelectorAll("#sur-yoyPctTable tbody tr").length === 7, "Client Survey: 7 rows in % change table");
+{
+  // Regression check: the Client Survey program didn't start until October
+  // 2023, so a YTD-cutoff window matching the latest year's latest populated
+  // month (through June, currently) used to exclude 100% of 2023's real Q4
+  // responses, leaving its whole column blank. "Ratings by Year" now uses
+  // each year's own full-year average instead, so 2023 shows a real number.
+  const firstRowCells = [...doc.querySelector("#sur-yoyValuesTable tbody tr").children];
+  const year2023Cell = firstRowCells[1]; // Question, 2023, 2024, 2025, 2026
+  assert(year2023Cell && /\d/.test(year2023Cell.textContent), "Client Survey: 'Ratings by Year' shows a real 2023 average, not blank/dash");
+  assert(!year2023Cell.textContent.includes("&mdash;") && year2023Cell.textContent.trim() !== "—", "Client Survey: 2023 column isn't a dash placeholder");
+}
 assert(doc.querySelectorAll("#sur-yoyValuesTable thead th").length >= 2, "Client Survey: values table header built dynamically from data years");
 assert(doc.querySelectorAll("#testimonialCols .testimonial").length > 0, "Client Survey: Q7 testimonial cards rendered");
 assert(doc.querySelector("#testimonialCols .testimonial .yr"), "Client Survey: testimonial cards show a year title");

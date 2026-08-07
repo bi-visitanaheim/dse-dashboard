@@ -1327,16 +1327,22 @@ function renderSurvey(year, manager, question) {
   // via `all`/`question` above). Years come from whatever's actually in the
   // sheet (2023 through the latest year present), not a hardcoded range, so
   // this keeps working as new years of data get added. Each year's average
-  // is limited to the same Jan-1-through-cutoff window of months (the
-  // cutoff being the latest month with real data in the most recent year),
-  // so every year column is an apples-to-apples YTD comparison rather than
-  // mixing complete past years against a partial current year.
+  // is that year's own full-year average -- not limited to a shared YTD
+  // window like the KPI cards' YoY deltas are. A YTD-consistent window makes
+  // sense for a single current-vs-prior-year delta, but it doesn't for a
+  // multi-year trend table: the Client Survey program didn't start until
+  // October 2023, so a window matching 2026's latest populated month
+  // (currently through June) excludes 100% of 2023's real Q4 responses,
+  // making that whole column blank for no good reason. Full-year averages
+  // fix that -- 2023 now shows its real Oct-Dec average, and every other
+  // year shows the average of whatever data it actually has (which for the
+  // current, still-in-progress year, is simply whatever's been collected
+  // so far -- there's no "future" data to wrongly include).
   const YEARS = getYears(DATA.accSurvey.raw);
-  const surYearlyCutoff = ytdCutoff(all.filter(r => r.year === Math.max(...YEARS) && r.rating !== null), "date");
   const questions = hasQ ? [question] : DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
   const yearlyByQ = questions.map(q => {
     const yearly = {};
-    YEARS.forEach(y => { yearly[y] = mean(ytdRows(all, "date", y, surYearlyCutoff).filter(r => r.question === q), r => r.rating); });
+    YEARS.forEach(y => { yearly[y] = mean(all.filter(r => r.year === y && r.question === q), r => r.rating); });
     return { q, yearly };
   });
   document.querySelector("#sur-yoyValuesTable thead tr").innerHTML =
@@ -1377,11 +1383,27 @@ function renderSurvey(year, manager, question) {
   document.getElementById("sur-analysis3").innerHTML = topMgrRating
     ? `<strong>${topMgrRating.item.m}</strong> has the highest average rating at <strong>${fmt(topMgrRating.v, 2)}</strong>.`
     : "No data available for this period yet.";
-  document.getElementById("sur-yoy-analysis").innerHTML = yoyAnalysisSentence(
-    all.filter(r => questions.includes(r.question)),
-    questions.map(q => ({ label: q, agg: rs => mean(rs.filter(r => r.question === q), r => r.rating) })),
-    year, "date", ["rating"]
-  );
+  // Uses the same full-year averages (yearlyByQ) computed for the "Ratings
+  // by Year" table directly above this sentence, rather than the dashboard-
+  // wide YTD-cutoff yoyAnalysisSentence() helper -- so the prior/latest
+  // values named here always match that table's own numbers exactly instead
+  // of potentially differing (a YTD-windowed comparison vs. this table's
+  // full-year one).
+  {
+    const { prior: surYoyPrior, latest: surYoyLatest } = resolveYoyYears(all, year);
+    let bestQ = null;
+    if (surYoyPrior !== undefined && surYoyLatest !== undefined) {
+      yearlyByQ.forEach(({ q, yearly }) => {
+        const d = pctChange(yearly[surYoyPrior], yearly[surYoyLatest]);
+        if (d !== null && (bestQ === null || Math.abs(d) > Math.abs(bestQ.d))) {
+          bestQ = { q, priorVal: yearly[surYoyPrior], curVal: yearly[surYoyLatest], d };
+        }
+      });
+    }
+    document.getElementById("sur-yoy-analysis").innerHTML = bestQ
+      ? `Year over year, <strong>${bestQ.q}</strong> saw the largest change: <strong>${deltaArrow(bestQ.d)}${pct(bestQ.d)}</strong> (<strong>${fmt(bestQ.priorVal, 2)}</strong> in ${surYoyPrior} to <strong>${fmt(bestQ.curVal, 2)}</strong> in ${surYoyLatest}).`
+      : "No prior-year data available for this selection.";
+  }
 
   setReportingPeriod("survey", surRange);
 }
