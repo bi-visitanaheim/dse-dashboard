@@ -50,16 +50,21 @@ assert(doc.getElementById("footSource").textContent === "Internal Tracking", "Fo
 window.switchTab("overview");
 
 // Header "Reporting period" pill updates dynamically per tab, matching each
-// tab's own KPI card date ranges (not a fixed hardcoded string).
+// tab's own KPI card date ranges (not a fixed hardcoded string). Checked
+// against each tab's own rendered .daterange text directly (not just "does
+// it differ from the last tab") -- two tabs' ranges can legitimately be
+// identical by coincidence depending on what's in the data (e.g. if Team
+// KPIs' latest populated month happens to match Overview's own Planning
+// Visits cutoff month), so inequality between tabs isn't a safe thing to
+// assert on its own.
 {
   const overviewPeriod = doc.getElementById("headerReportingPeriod").innerHTML;
   assert(/\d{4}/.test(overviewPeriod), "Header: Reporting period pill shows a real date range on load (Overview)");
+  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#ov-kpiGrid .kpi-card .daterange").textContent, "Header: Overview's pill matches its own (Planning Visits-driven) card date range");
   window.switchTab("team");
-  const teamPeriod = doc.getElementById("headerReportingPeriod").innerHTML;
-  assert(teamPeriod !== overviewPeriod, "Header: Reporting period pill changes when switching to Team KPIs tab");
+  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#team-kpiGrid .daterange").textContent, "Header: Reporting period pill matches Team KPIs' own card date range after switching tabs");
   window.switchTab("repeat");
-  const repeatPeriod = doc.getElementById("headerReportingPeriod").innerHTML;
-  assert(repeatPeriod !== teamPeriod, "Header: Reporting period pill changes when switching to Repeat Clients tab");
+  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#rep-kpiGrid .daterange").textContent, "Header: Reporting period pill matches Repeat Clients' own card date range after switching tabs");
   window.switchTab("overview");
   assert(doc.getElementById("headerReportingPeriod").innerHTML === overviewPeriod, "Header: Reporting period pill reverts to Overview's own range when switching back");
 }
@@ -69,12 +74,10 @@ window.switchTab("overview");
   // stale. Switch to Repeat Clients, note its pill, change the Year filter
   // without switching tabs, and confirm the pill updates immediately.
   window.switchTab("repeat");
-  const before = doc.getElementById("headerReportingPeriod").innerHTML;
   const repYearSel = doc.getElementById("rep-year");
   repYearSel.value = "2025";
   repYearSel.dispatchEvent(new window.Event("change"));
-  const after = doc.getElementById("headerReportingPeriod").innerHTML;
-  assert(after !== before, "Header: Reporting period pill updates live when a filter changes on the active tab, without switching tabs");
+  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#rep-kpiGrid .daterange").textContent, "Header: Reporting period pill updates live to match the new filter's own card date range, without switching tabs");
   repYearSel.value = "2026";
   repYearSel.dispatchEvent(new window.Event("change"));
   window.switchTab("overview");
