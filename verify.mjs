@@ -259,7 +259,8 @@ assert(!doc.getElementById("rep-clientsTable").closest(".table-scroll"), "Repeat
 // Client Survey
 assert(doc.getElementById("sur-kpiGrid").children.length === 4, "Client Survey: 4 KPI cards");
 assert(doc.querySelector("#sur-kpiGrid").children[0].textContent.includes("The Overall Anaheim Experience Score"), "Client Survey: 'The Overall Anaheim Experience Score' card is first (left of Team Experience Score)");
-assert(doc.querySelector("#sur-kpiGrid").children[1].textContent.includes("Visit Anaheim Team Experience Score"), "Client Survey: Team Experience Score card is second");
+assert(doc.querySelector("#sur-kpiGrid").children[1].textContent.includes("DS&E Manager Experience Score"), "Client Survey: DS&E Manager Experience Score card is second (left of Team Experience Score)");
+assert(doc.querySelector("#sur-kpiGrid").children[2].textContent.includes("Visit Anaheim Team Experience Score"), "Client Survey: Team Experience Score card is third");
 {
   // "VA Survey Questions Rating" reverted to a single uniform bar color
   // (no more lighter-fill highlight for the Overall Anaheim Experience/DS&E
@@ -378,7 +379,7 @@ assert(/\d+% negative, \d+% neutral, \d+% positive/.test(doc.getElementById("q2q
 assert(!doc.getElementById("chartQ2"), "Client Survey: Q2 line chart removed from spotlight");
 assert(doc.getElementById("q2q7Desc").textContent.trim().startsWith("Visit Anaheim Team Experience Feedback"), "Client Survey: feedback section subtitle renamed to 'Visit Anaheim Team Experience Feedback'");
 assert(doc.querySelectorAll("#sur-kpiGrid .daterange").length >= 4, "Client Survey: every KPI card shows a dynamic date-range subtitle");
-assert(doc.querySelectorAll("#sur-kpiGrid").length && [...doc.querySelectorAll("#sur-kpiGrid .kpi-card")][1].textContent.includes("Consists of 6 Questions"), "Client Survey: Team Experience Score card shows 'Consists of 6 Questions' subtext");
+assert(doc.querySelectorAll("#sur-kpiGrid").length && [...doc.querySelectorAll("#sur-kpiGrid .kpi-card")][2].textContent.includes("Consists of 6 Questions"), "Client Survey: Team Experience Score card shows 'Consists of 6 Questions' subtext");
 assert(doc.getElementById("sur-chart2-title").parentElement.querySelector(".tag")?.textContent === "Monthly", "Client Survey: 'Monthly' tag added next to 'VA Team Experience Avg. Score by Month'");
 assert(doc.getElementById("sur-analysis1").querySelectorAll("strong").length > 0, "Client Survey: analysis 1 (by question) has bolded values");
 assert(doc.getElementById("sur-analysis2").querySelectorAll("strong").length > 0, "Client Survey: analysis 2 (by month) has bolded values");
@@ -413,7 +414,7 @@ assert(doc.getElementById("sur-question").children.length > 1, "Client Survey: Q
   qSel.dispatchEvent(new window.Event("change"));
   assert(doc.getElementById("sur-chart1-title").textContent.includes("Overall Anaheim"), "Client Survey: chart title updates to the selected Question");
   assert(doc.querySelectorAll("#sur-yoyValuesTable tbody tr").length === 1, "Client Survey: YoY table narrows to 1 row when a Question is selected");
-  assert(doc.querySelectorAll("#sur-kpiGrid .label")[1].textContent === "The Overall Anaheim Experience Score", "Client Survey: 'Team Experience Score' card relabels/recomputes to the selected Question");
+  assert(doc.querySelectorAll("#sur-kpiGrid .label")[2].textContent === "The Overall Anaheim Experience Score", "Client Survey: 'Team Experience Score' card relabels/recomputes to the selected Question");
   qSel.value = "All";
   qSel.dispatchEvent(new window.Event("change"));
   assert(doc.getElementById("sur-chart1-title").textContent === "VA Survey Questions Rating", "Client Survey: titles revert when Question filter is reset to All");

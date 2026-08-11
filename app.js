@@ -1272,8 +1272,8 @@ function renderSurvey(year, manager, question) {
 
   document.getElementById("sur-kpiGrid").innerHTML = [
     kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2), ytdDeltaText(dOverallScore, v => fmt(v, 2)), deltaClass(dOverallScore.d), surRange),
-    kpiCard(teamScoreLabel, fmt(teamScore, 2), ytdDeltaText(dTeamScore, v => fmt(v, 2)), deltaClass(dTeamScore.d), surRange, "", teamScoreNote),
     kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2), ytdDeltaText(dManagerScore, v => fmt(v, 2)), deltaClass(dManagerScore.d), surRange),
+    kpiCard(teamScoreLabel, fmt(teamScore, 2), ytdDeltaText(dTeamScore, v => fmt(v, 2)), deltaClass(dTeamScore.d), surRange, "", teamScoreNote),
     kpiCard("Survey Respondents", fmt(respondents), ytdDeltaText(dRespondents, fmt), deltaClass(dRespondents.d), surRange)
   ].join("");
 
