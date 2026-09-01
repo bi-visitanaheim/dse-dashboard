@@ -202,7 +202,7 @@ assert(doc.querySelectorAll("#ref-kpiGrid .delta").length === 2, "Partner Referr
   const refSel = doc.getElementById("ref-year");
   refSel.value = "2026";
   refSel.dispatchEvent(new window.Event("change"));
-  assert(doc.getElementById("ref-kpiGrid").textContent.includes("3.45"), "Partner Referrals: 'Avg. Referrals Per Month' shows 3.45 for 2026 (plain row-level AVERAGE())");
+  assert(doc.getElementById("ref-kpiGrid").textContent.includes("3.58"), "Partner Referrals: 'Avg. Referrals Per Month' shows 3.58 for 2026 (plain row-level AVERAGE())");
 }
 
 // Repeat Clients

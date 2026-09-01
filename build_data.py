@@ -49,12 +49,20 @@ out["planningVisits"] = pv
 # =====================================================================
 ws = wb["Partner Referrals"]
 referrals_raw = []
+referrals_skipped = 0
 for r in range(4, ws.max_row + 1):
     d = ws.cell(row=r, column=1).value
     n = ws.cell(row=r, column=2).value
     staff = ws.cell(row=r, column=3).value
-    if d and n is not None:
-        referrals_raw.append({"date": iso(d), "year": d.year, "staff": staff, "count": n})
+    if d is None or n is None:
+        continue
+    if not hasattr(d, "year"):
+        # e.g. a stray text value typed into the date column instead of a
+        # real date -- skip defensively rather than crash the whole build.
+        referrals_skipped += 1
+        print(f"  (skipped Partner Referrals row {r}: date column has non-date value {d!r})")
+        continue
+    referrals_raw.append({"date": iso(d), "year": d.year, "staff": staff, "count": n})
 out["partnerReferrals"] = {"raw": referrals_raw}
 
 # =====================================================================
@@ -263,7 +271,7 @@ with open(OUT_PATH, "w") as f:
 print(f"DONE -> wrote {OUT_PATH}")
 print("Questions:", Q_ORDER)
 print("Planning visits rows:", len(pv))
-print("Referral rows:", len(referrals_raw))
+print("Referral rows:", len(referrals_raw), "skipped:", referrals_skipped)
 print("Survey rows:", len(survey_raw))
 print("Repeat client rows:", len(repeat_raw))
 print("Event rows:", len(events_raw), "skipped:", skipped_bad_dates)
