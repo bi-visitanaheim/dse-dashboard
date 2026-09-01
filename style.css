@@ -313,6 +313,12 @@ table.mini th, table.mini td {
   word-break: break-word;
 }
 table.mini th { color: var(--text-muted); font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: .04em; position: sticky; top: 0; background: var(--card); }
+/* Overview "Department at a Glance" table only: the small "(Month Year)"
+   note next to the Previous Month figure, stating exactly which month that
+   figure is for -- categories don't all share the same latest month (survey/
+   events/referrals data lags planning visits), so this is per-row, not a
+   single static column header. */
+table.mini td .month-note { display: block; color: var(--text-muted); font-size: 10.5px; font-weight: 400; margin-top: 2px; }
 table.mini tr:last-child td { border-bottom: none; }
 table.mini td.up { color: var(--up); font-weight: 700; }
 table.mini td.down { color: var(--down); font-weight: 700; }

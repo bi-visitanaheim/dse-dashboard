@@ -358,6 +358,15 @@ function endOfMonthLabel(year, month) {
   const d = new Date(year, month, 0); // day 0 of next month = last day of `month`
   return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 }
+// "July 2026" -- just the month/year (no day), so the Department at a Glance
+// table's "Previous Month" column can state which month its figure is for.
+// Categories don't all share the same latest month (survey/events/referrals
+// data lags planning visits, etc.), so this is computed per row from that
+// row's own cutoff month rather than assumed to be the same across the table.
+function monthYearLabel(year, month) {
+  if (!month) return "";
+  return new Date(year, month - 1, 1).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+}
 // "YYYY-MM-DD" -> "MM/DD/YYYY", for the Booked Business detail table.
 function mdy(iso) {
   if (!iso) return null;
@@ -533,7 +542,8 @@ function renderOverview() {
   // no manual editing needed month to month. ----
   document.querySelector("#ov-summaryTable tbody").innerHTML = categories.map(c => {
     const d = pctChange(c.pri, c.cur);
-    return `<tr><td>${c.label}</td><td>${endOfMonthLabel(c.curYear, c.cutoff)}</td><td>${c.fmtFn(c.month)}</td><td>${c.fmtFn(c.cur)}</td><td class="${deltaClass(d)}">${d === null ? "&mdash;" : deltaArrow(d) + pct(d)}</td></tr>`;
+    const monthCell = c.cutoff ? `${c.fmtFn(c.month)}<span class="month-note">${monthYearLabel(c.curYear, c.cutoff)}</span>` : c.fmtFn(c.month);
+    return `<tr><td>${c.label}</td><td>${endOfMonthLabel(c.curYear, c.cutoff)}</td><td>${monthCell}</td><td>${c.fmtFn(c.cur)}</td><td class="${deltaClass(d)}">${d === null ? "&mdash;" : deltaArrow(d) + pct(d)}</td></tr>`;
   }).join("");
 
   // ---- narrative insight: summarizes all 12 KPI categories in prose,
