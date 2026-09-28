@@ -199,10 +199,38 @@ assert(doc.getElementById("ref-analysis3").querySelectorAll("strong").length > 0
 assert(doc.getElementById("ref-yoy-analysis").querySelectorAll("strong").length > 0, "Partner Referrals: YoY table analysis sentence has bolded values");
 assert(doc.querySelectorAll("#ref-kpiGrid .delta").length === 2, "Partner Referrals: both cards show a YoY % delta");
 {
+  // As of the September 2026 switch to PartnerReferralsDetail (one row per
+  // individual referral), this is total referrals / distinct months present,
+  // not a row-level average (every row's count is 1, which would always
+  // average to 1.00 and defeat the point of the card -- see renderReferrals).
   const refSel = doc.getElementById("ref-year");
   refSel.value = "2026";
   refSel.dispatchEvent(new window.Event("change"));
-  assert(doc.getElementById("ref-kpiGrid").textContent.includes("3.58"), "Partner Referrals: 'Avg. Referrals Per Month' shows 3.58 for 2026 (plain row-level AVERAGE())");
+  assert(doc.getElementById("ref-kpiGrid").textContent.includes("11.44"), "Partner Referrals: 'Avg. Referrals Per Month' shows 11.44 for 2026 (total referrals / distinct months present)");
+}
+{
+  // Referral Detail table -- added September 2026 alongside the switch to
+  // the PartnerReferralsDetail table as this tab's data source.
+  const refH2s = [...doc.querySelectorAll("#tab-referrals h2")];
+  assert(refH2s[refH2s.length - 1]?.textContent.trim() === "Referral Detail", "Partner Referrals: 'Referral Detail' table section added at the bottom of the tab");
+  assert(
+    doc.querySelector("#ref-detailTable thead").textContent === "Referral IDReferral DateAccount NameFunction NameLead ArrivalLead DepartureUser",
+    "Partner Referrals: Referral Detail table has the 7 requested columns in order"
+  );
+  const refSel = doc.getElementById("ref-year");
+  refSel.value = "2026";
+  refSel.dispatchEvent(new window.Event("change"));
+  const rowsAt2026 = doc.querySelectorAll("#ref-detailTable tbody tr").length;
+  assert(rowsAt2026 > 0, "Partner Referrals: Referral Detail table has rows for 2026");
+  const dates2026 = [...doc.querySelectorAll("#ref-detailTable tbody tr")].map(tr => tr.children[1].textContent);
+  assert(dates2026.every(d => d.endsWith("/2026")), "Partner Referrals: Referral Detail table respects the Year filter (all rows dated 2026)");
+  const sorted = [...dates2026].sort((a, b) => new Date(b) - new Date(a));
+  assert(JSON.stringify(dates2026) === JSON.stringify(sorted), "Partner Referrals: Referral Detail table is sorted most recent Referral Date first");
+  refSel.value = "All";
+  refSel.dispatchEvent(new window.Event("change"));
+  const rowsAtAll = doc.querySelectorAll("#ref-detailTable tbody tr").length;
+  assert(rowsAtAll >= rowsAt2026, "Partner Referrals: Referral Detail table shows more (or equal) rows with Year=All than a single year");
+  assert(doc.getElementById("ref-analysis4").querySelectorAll("strong").length > 0, "Partner Referrals: Referral Detail table has a bolded auto-analysis sentence");
 }
 
 // Repeat Clients
@@ -449,18 +477,38 @@ assert(/has the most survey-type coverage/.test(doc.getElementById("hev-analysis
 // Booked Business
 assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 KPI cards (Total Events card added)");
 assert([...doc.querySelectorAll("#tab-booked h2")].some(h => h.textContent.includes("Hosted Events & Booked Business")), "Booked Business: cross-reference section now lives on this tab");
-assert(doc.querySelectorAll("#hev-bbTable tbody tr").length === 5, "Booked Business: 5 events cross-referenced from Hosted Events");
 assert(doc.querySelectorAll("#hev-bbTable tfoot tr").length === 1, "Booked Business: cross-reference table has a totals row");
+// Booked Business's Year filter defaults to the latest year actually present
+// in the sheet -- 2026 rows were added to this sheet in the September 2026
+// data refresh, so the default moved from 2025 to 2026. Checked here, before
+// any assertion below deliberately changes the selector.
+assert(doc.getElementById("bb-year").value === "2026", "Booked Business: Year filter defaults to the latest year present in the data");
+assert(doc.querySelector("#tab-booked .footnote")?.textContent.includes("always shows 2025 data"), "Booked Business: cross-reference visual has a static footnote explaining it's pinned to 2025");
 {
+  // The eventId join between Event Surveys and Booked Business only holds
+  // for 2025 data (see renderHevBookedLink's comment) -- 2026's two sheets
+  // use non-overlapping ID ranges as of the September 2026 data refresh. Per
+  // explicit direction, this visual is now PINNED to 2025 regardless of the
+  // Booked Business tab's Year filter, so this checks that it shows the same
+  // 5-event result at the default (2026), and stays there even after
+  // switching the Year filter through 2025/2026/All.
+  assert(doc.querySelectorAll("#hev-bbTable tbody tr").length === 5, "Booked Business: cross-reference visual shows 2025's 5 events even though the tab defaults to 2026");
+  assert(doc.getElementById("hev-bb-analysis").textContent.includes("in 2025"), "Booked Business: cross-reference analysis sentence names 2025, not the selected Year");
+  const bbYearSel = doc.getElementById("bb-year");
+  for (const y of ["2025", "2026", "All"]) {
+    bbYearSel.value = y;
+    bbYearSel.dispatchEvent(new window.Event("change"));
+    assert(doc.querySelectorAll("#hev-bbTable tbody tr").length === 5, `Booked Business: cross-reference visual still shows 5 events with Year=${y}`);
+    assert(doc.getElementById("hev-bb-analysis").textContent.includes("in 2025"), `Booked Business: cross-reference analysis sentence still names 2025 with Year=${y}`);
+  }
   const footCells = [...doc.querySelectorAll("#hev-bbTable tfoot td")].map(td => td.textContent);
-  assert(footCells[0].includes("5"), "Booked Business: cross-reference totals row shows the event count");
+  assert(footCells[0].includes("5"), "Booked Business: cross-reference totals row shows the event count for 2025");
+  bbYearSel.value = "2025";
+  bbYearSel.dispatchEvent(new window.Event("change"));
 }
 assert(doc.getElementById("bb-kpiGrid").textContent.includes("Total Events"), "Booked Business: 'Total Events' card present");
 assert(doc.getElementById("bb-kpiGrid").textContent.includes("Events That Generated Leads"), "Booked Business: card renamed to 'Events That Generated Leads'");
 assert(doc.getElementById("bb-kpiGrid").textContent.includes("Definite Leads Percentage"), "Booked Business: card renamed to 'Definite Leads Percentage'");
-// Booked Business's Year filter defaults to the latest year actually present
-// in the sheet (currently 2025, since 2026 rows haven't been added yet).
-assert(doc.getElementById("bb-year").value === "2025", "Booked Business: Year filter defaults to the latest year present in the data");
 assert(!doc.getElementById("bb-chart3"), "Booked Business: 'Conversion Window - % of Leads' chart removed");
 assert(doc.querySelector("#bb-conversionTable thead").textContent.includes("2-3 Months"), "Booked Business: conversion table columns renamed to month brackets");
 assert(doc.querySelectorAll("#bb-conversionTable tbody tr").length > 0, "Booked Business: conversion table has rows");
@@ -489,21 +537,25 @@ assert(doc.getElementById("bb-analysis3").querySelectorAll("strong").length > 0,
 assert(doc.getElementById("bb-analysis4").querySelectorAll("strong").length > 0, "Booked Business: 'Events That Generated Leads Detail' table has a bolded auto-analysis sentence");
 {
   // Regression check: Total Events with Year = All used to double-count
-  // years the Booked Business sheet doesn't have data for yet (35 instead of
-  // the correct 28, since Event Surveys has years 2023-2026 on file but
-  // Booked Business currently only has 2025). "All" should scope to years
-  // actually present in Booked Business, so it should match the single-year
-  // 2025 figure exactly (both tabs currently only have 2025 data).
+  // years the Booked Business sheet doesn't have data for yet -- "All" should
+  // scope to years actually present in Booked Business, not every year Event
+  // Surveys has on file. Booked Business now has both 2025 and 2026 (as of
+  // the September 2026 data refresh), so All should equal the sum of the two
+  // per-year figures, not just the 2025 figure alone as it did when Booked
+  // Business only had one year of data.
   const bbYearSel = doc.getElementById("bb-year");
   bbYearSel.value = "2025";
   bbYearSel.dispatchEvent(new window.Event("change"));
-  const totalEvents2025 = doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent;
+  const totalEvents2025 = Number(doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent.replace(/,/g, ""));
+  bbYearSel.value = "2026";
+  bbYearSel.dispatchEvent(new window.Event("change"));
+  const totalEvents2026 = Number(doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent.replace(/,/g, ""));
   bbYearSel.value = "All";
   bbYearSel.dispatchEvent(new window.Event("change"));
-  const totalEventsAll = doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent;
-  assert(totalEventsAll === totalEvents2025, `Booked Business: 'Total Events' with Year=All (${totalEventsAll}) matches 2025-only (${totalEvents2025}), not inflated by other Event Surveys years`);
-  assert(totalEventsAll === "28", "Booked Business: 'Total Events' with Year=All correctly reads 28, not 35");
-  bbYearSel.value = "2025";
+  const totalEventsAll = Number(doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent.replace(/,/g, ""));
+  assert(totalEventsAll === totalEvents2025 + totalEvents2026, `Booked Business: 'Total Events' with Year=All (${totalEventsAll}) matches 2025 (${totalEvents2025}) + 2026 (${totalEvents2026}), not inflated by other Event Surveys years`);
+  assert(totalEvents2025 === 28 && totalEvents2026 === 7 && totalEventsAll === 35, "Booked Business: 'Total Events' reads 28 (2025) / 7 (2026) / 35 (All)");
+  bbYearSel.value = "2026";
   bbYearSel.dispatchEvent(new window.Event("change"));
 }
 

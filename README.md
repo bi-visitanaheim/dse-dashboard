@@ -91,21 +91,25 @@ Notes:
 
 ## Data source mapping (Partner Referrals tab)
 
-Confirmed against the actual workbook headers. Every card, chart, and table on this tab reads from the single "Partner Referrals" sheet, and every one of them responds live to the Year filter (which reads from that sheet's "Date" column):
+**As of the September 2026 rebuild, this tab reads from the "PartnerReferralsDetail" table** (sheet "Partner Referrals Details"), not the old "Partner Referrals" sheet. The old sheet was pre-aggregated (one row per date/staff, with a count column); the new one is one row per individual referral. `build_data.py` maps each row to: `referralId` (Referral ID), `date`/`year` (Referral Date), `accountName` (Account Name), `functionName` (Function Name), `leadArrival`/`leadDeparture` (Lead Arrival/Lead Departure), and both `user` and `staff` (User -- kept under both keys so the existing chart/card logic, written against `staff`, didn't need to change). `count` is always `1` per row (each row already is one referral).
+
+Every card, chart, and table on this tab responds live to the Year filter (which reads from the Referral Date column):
 
 | Visual | Column(s) | Aggregation |
 |---|---|---|
-| Partner Referrals card | Partner Referrals | Sum, for the selected Year |
-| Avg. Referrals Per Month card | Partner Referrals | Plain AVERAGE() of the Partner Referrals count column for the selected Year (a row-level average, not summed-by-month first) -- confirmed against the live value (3.45 for 2026). Renamed from "Avg. Referrals per Entry" |
-| "Partner Referrals by Staff" chart | Staff (x-axis); Partner Referrals (y-axis) | Sum per staff member, for the selected Year |
-| "Partner Referrals by Month" chart | Date (x-axis); Partner Referrals (y-axis) | Sum per month, for the selected Year |
-| "Monthly Referrals by Staff" chart | Date (x-axis); Partner Referrals (y-axis); Staff (legend/series) | Sum per staff member per month, for the selected Year |
-| Year-over-Year table | Partner Referrals | Sum per year, Selected Year vs. the year immediately before it |
+| Partner Referrals card | Referral ID (count of rows, via the `count`=1 field) | Sum, for the selected Year |
+| Avg. Referrals Per Month card | Referral ID, Referral Date | Total referrals ÷ distinct calendar months present, for the selected Year. Row-level AVERAGE() no longer applies now that each row is one referral (every row's count is 1, which would always average to 1.00) -- renamed math, same card name ("Avg. Referrals Per Month") |
+| "Partner Referrals by Staff" chart | User (x-axis); Referral ID (y-axis) | Count per user, for the selected Year |
+| "Partner Referrals by Month" chart | Referral Date (x-axis); Referral ID (y-axis) | Count per month, for the selected Year |
+| "Monthly Referrals by Staff" chart | Referral Date (x-axis); Referral ID (y-axis); User (legend/series) | Count per user per month, for the selected Year |
+| Year-over-Year table | Referral ID | Count per year, Selected Year vs. the year immediately before it |
+| **Referral Detail table** (added Sept 2026, bottom of tab) | Referral ID, Referral Date, Account Name, Function Name, Lead Arrival, Lead Departure, User | One row per referral, for the selected Year, sorted by Referral Date descending (most recent first) |
 
 Notes:
 
 - The **Year filter defaults to 2026** on page load (falls back to "All" if 2026 isn't in the data yet), same as Team KPIs.
 - Click-to-highlight on this tab works across all three charts, but along two different, independent dimensions: clicking a bar in "Partner Referrals by Staff" selects a **staff member** (fades that person's non-matching bar there, and fades every other staff member's stacked segments in "Monthly Referrals by Staff"); clicking a bar in "Partner Referrals by Month" or "Monthly Referrals by Staff" selects a **month** (fades non-matching months in both of those charts). The two selections are independent and can be combined (e.g., a specific staff member in a specific month). "Partner Referrals by Staff" has no month dimension and "Partner Referrals by Month" has no staff dimension, so each selection only visibly affects the two charts that share that dimension.
+- The Referral Detail table isn't part of the click-to-highlight system above -- it just follows the Year filter, same as everything else on the tab.
 
 ## Data source mapping (Repeat Clients tab)
 
@@ -196,7 +200,7 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 | Definite Leads card | Lead ID | Distinct count, filtered to Lead Status = "Definite" |
 | Definite Leads Percentage card | Lead ID | Definite Leads ÷ Leads Generated, shown as a percentage |
 | Avg. Conversion Window card | Days of Lead Created from Event | Average; displayed in days, or in months (÷30) once the average passes 90 days |
-| "Hosted Events & Booked Business" cross-reference | Event (chart/table); Event ID (Survey Respondents); Satisfaction Score (Avg. Satisfaction Score); Booked Business's Lead ID (Leads Generated) | Only shows events that have a matching Booked Business record; Leads Generated is a distinct count of Lead ID. Totals row: Event = count of events, Survey Respondents/Leads Generated = sum, Avg. Satisfaction Score = average |
+| "Hosted Events & Booked Business" cross-reference | Event (chart/table); Event ID (Survey Respondents); Satisfaction Score (Avg. Satisfaction Score); Booked Business's Lead ID (Leads Generated) | Only shows events that have a matching Booked Business record; Leads Generated is a distinct count of Lead ID. Totals row: Event = count of events, Survey Respondents/Leads Generated = sum, Avg. Satisfaction Score = average. **Pinned to 2025 regardless of this tab's Year filter as of the September 2026 rebuild** -- see the note below |
 | "Leads Generated by Event" chart | Event Name (x-axis); Lead ID (y-axis) | Distinct count per event, top 10 |
 | "Leads Generated by Lead Status" chart | Lead ID (values); Lead Status (legend) | Distinct count per status |
 | "Conversion Window by Event — Detail" table | Event (rows); Days of Lead Created from Event (bucketed) | Distinct count of Lead ID per bracket, per the DAX measure in the code comment above this table's render logic |
@@ -204,9 +208,10 @@ Confirmed against the actual workbook headers. Every card, chart, and table on t
 
 Notes:
 
-- The **Year filter now defaults to the latest year of data actually present in the Booked Business sheet** (currently 2025, since 2026 rows haven't been added yet) -- previously this was hardcoded to "2026, falling back to All," which meant it landed on "All" instead of a single year. Defaulting to the latest year present means it'll show 2025 specifically today, and will move to 2026 on its own once 2026 rows are added.
+- The **Year filter defaults to the latest year of data actually present in the Booked Business sheet** -- previously this was hardcoded to "2026, falling back to All." 2026 rows were added to this sheet in the September 2026 data refresh, so the default is now **2026** (it'll keep moving forward on its own as later years are added).
 - **"Total Events"** is carried over from the Hosted Events tab and reads the separate "Event Surveys" sheet (distinct count of Event ID). It only follows this tab's **Year** filter (matched against that sheet's own Event Date year) -- it does **not** follow the Lead Status or Event Name filters, since Lead Status doesn't exist on the Event Surveys sheet, and the two sheets label events differently (e.g. "Ducks vs. Stars" vs. "2025 March Ducks vs. Dallas Stars" -- see the cross-reference row above), so an Event Name selected here wouldn't reliably match a name on the other sheet.
 - **The "Hosted Events & Booked Business" cross-reference section moved here from the Hosted Events tab**, directly beneath the KPI cards, per direction. It gained a **totals row** at the bottom of its table.
+- **This cross-reference is pinned to 2025, regardless of the Year filter, as of the September 2026 rebuild.** The eventId join between Event Surveys and Booked Business only holds for 2025 data (see `renderHevBookedLink`'s code comment) -- 2026's rows in the two sheets use non-overlapping eventId ranges (Event Surveys: small integers; Booked Business: 4-digit IDs), so this visual would show 0 events by default now that the tab's Year filter defaults to 2026. Per explicit direction, it's locked to 2025 instead (a static footnote above the chart tells viewers why), and only the Lead Status/Event Name filters still affect it. Revisit once 2026 event IDs are reconciled between the two sheets.
 - **"Definite Rate" is now "Definite Leads Percentage."**
 - **"Leads Generated by Event"** is a distinct count of **Lead ID** per event (matching the chart's own name and the existing "Leads Generated" KPI card), not a distinct count of Event ID -- an Event ID count would always be 1 per event bar, which wouldn't be a meaningful chart. Flagging this since the column was given as "Event ID" but the behavior implemented matches "Leads Generated." It's also grouped from the un-deduped rows now (see next note) so every event with leads shows up.
 - **Fixed a bug**: "Leads Generated by Event" and "Conversion Window by Event — Detail" were silently dropping any event whose leads were *all* shared with another event, because they grouped from a Lead-ID-deduped-across-all-events list -- a lead touching 2 events only "belonged" to whichever one listed it first. Both now group from the full rows and take a distinct Lead ID count *within* each event's own rows, so every event that generated leads is now included (this can make an event's count add up to more than the tab-wide "Leads Generated" total, which is deduped globally on purpose).

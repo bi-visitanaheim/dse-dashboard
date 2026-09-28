@@ -478,10 +478,11 @@ function renderOverview() {
   // Department at a Glance summary table below -- see README.md
   // "Data source mapping" for the exact table/column/date-field each of
   // these pulls from. curYear/priYear default to 2026/2025 except the two
-  // Booked-Business-driven categories, which track BB_CUR/BB_PRI (see note
-  // above -- that sheet doesn't have 2026 event dates yet). "team" marks the
-  // 4 categories driven by the events team's own data (vs. the services
-  // team's data for everything else), used for the card color-coding below.
+  // Booked-Business-driven categories, which track BB_CUR/BB_PRI (computed
+  // dynamically from whatever years are actually present in that sheet --
+  // see BB_CUR above). "team" marks the 4 categories driven by the events
+  // team's own data (vs. the services team's data for everything else),
+  // used for the card color-coding below.
   const categories = [
     { label: "Partners Visited", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
     { label: "Planning Visits", cur: visitsCur, pri: visitsPri, month: visitsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
@@ -818,12 +819,15 @@ function renderReferrals(year) {
   const total = sum(rows, r => r.count);
   const byStaff = groupBy(rows, r => r.staff);
   const staffTotals = [...byStaff.entries()].map(([staff, rs]) => ({ staff, total: sum(rs, r => r.count) })).sort((a, b) => b.total - a.total);
-  // "Avg. Referrals Per Month" (renamed from "Avg. Referrals per Entry") is a
-  // plain AVERAGE() of the "Partner Referrals" count column for the selected
-  // year, matching the live value (3.45 for 2026) -- confirmed this is a
-  // straight row-level average, not first summed-by-month. Dynamic with the
-  // Year filter via `rows` above.
-  const avgPerMonth = rows.length ? total / rows.length : null;
+  // "Avg. Referrals Per Month" = total referrals divided by the number of
+  // distinct calendar months present in the selected period. As of the
+  // September 2026 switch to the PartnerReferralsDetail table, the source
+  // data is one row per individual referral (not pre-aggregated by
+  // date/staff like the old sheet was), so a plain row-level average would
+  // always equal 1.00 (every row's count is 1) -- this must divide by month
+  // count instead, not row count, to mean anything.
+  const monthsInRange = new Set(rows.map(r => monthKey(r.date))).size;
+  const avgPerMonth = monthsInRange ? total / monthsInRange : null;
   // Dynamic date-range subtitle -- dynamic with the Year filter via `rows`.
   const refRange = rangeLabel(rows, "date");
 
@@ -831,7 +835,10 @@ function renderReferrals(year) {
   // (see ytdYoyMetric).
   const { prior: refPrior, latest: refLatest } = resolveYoyYears(all, year);
   const dTotalRef = ytdYoyMetric(all, "date", refLatest, refPrior, null, rs => sum(rs, r => r.count));
-  const dAvgRef = ytdYoyMetric(all, "date", refLatest, refPrior, null, rs => rs.length ? sum(rs, r => r.count) / rs.length : null);
+  const dAvgRef = ytdYoyMetric(all, "date", refLatest, refPrior, null, rs => {
+    const months = new Set(rs.map(r => monthKey(r.date))).size;
+    return months ? sum(rs, r => r.count) / months : null;
+  });
 
   document.getElementById("ref-kpiGrid").innerHTML = [
     kpiCard("Partner Referrals", fmt(total), ytdDeltaText(dTotalRef, fmt), deltaClass(dTotalRef.d), refRange),
@@ -916,6 +923,20 @@ function renderReferrals(year) {
       : "No data available for this period yet.";
   }
   document.getElementById("ref-yoy-analysis").innerHTML = yoyAnalysisSentence(all, [{ label: "Partner Referrals", fn: r => r.count }], year, "date", null);
+
+  // Referral Detail table -- one row per individual referral from the
+  // PartnerReferralsDetail table (sheet "Partner Referrals Details"), added
+  // September 2026 when this tab switched to that table as its source.
+  // Respects the tab's Year filter like every other visual here; sorted most
+  // recent Referral Date first, matching the pattern used by the other
+  // detail tables on this dashboard (Booked Business, Repeat Clients).
+  document.querySelector("#ref-detailTable tbody").innerHTML = [...rows]
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""))
+    .map(r => `<tr><td>${r.referralId ?? "&mdash;"}</td><td>${mdy(r.date) || "&mdash;"}</td><td>${r.accountName || "&mdash;"}</td><td>${r.functionName || "&mdash;"}</td><td>${mdy(r.leadArrival) || "&mdash;"}</td><td>${mdy(r.leadDeparture) || "&mdash;"}</td><td>${r.user || "&mdash;"}</td></tr>`)
+    .join("");
+  document.getElementById("ref-analysis4").innerHTML = rows.length
+    ? `<strong>${fmt(rows.length)}</strong> individual referrals are listed below for <strong>${year === "All" ? "all years" : year}</strong>, most recent first.`
+    : "No data available for this period yet.";
 
   setReportingPeriod("referrals", refRange);
 }
@@ -1688,27 +1709,30 @@ function renderEvents(year, category, eventName) {
 }
 
 // Cross-reference: eventSurveys and bookedBusiness share the same eventId
-// namespace (names differ between the two sheets, e.g. "Ducks vs. Stars" in
-// Event Surveys is "2025 March Ducks vs. Dallas Stars" in Booked Business).
-// Uses the same unique-lead-per-event convention as the rest of this tab
-// (dedupeBy leadId) -- a handful of leads span more than one event in the
-// source data and get attributed to whichever event they list first, so this
-// shows 5 of the 6 ID-matching events (the 6th's leads all attribute
-// elsewhere). Now dynamic with the Booked Business tab's Year/Lead
-// Status/Event Name filters (previously always showed all years).
+// namespace FOR 2025 DATA ONLY (names differ between the two sheets, e.g.
+// "Ducks vs. Stars" in Event Surveys is "2025 March Ducks vs. Dallas Stars"
+// in Booked Business). Uses the same unique-lead-per-event convention as the
+// rest of this tab (dedupeBy leadId) -- a handful of leads span more than one
+// event in the source data and get attributed to whichever event they list
+// first, so 2025 shows 5 of the 6 ID-matching events (the 6th's leads all
+// attribute elsewhere). As of the September 2026 data refresh, 2026's rows in
+// the two sheets use non-overlapping eventId ranges (Event Surveys: small
+// integers; Booked Business: 4-digit IDs), so this table has zero matches for
+// 2026 specifically -- this is a source-data gap, not a bug in the join logic
+// below. Per explicit direction, this visual is therefore PINNED to 2025
+// regardless of the Booked Business tab's Year filter (a static footnote in
+// the HTML explains this to viewers) until 2026 IDs are reconciled -- only
+// Lead Status/Event Name stay dynamic with the tab's filters.
 function renderHevBookedLink(year, status, eventName) {
-  // Same "All" scoping fix as the Total Events card: when Year = All, the
-  // Event Surveys side only counts years that actually exist in the Booked
-  // Business sheet (currently just 2025), not every year Event Surveys has
-  // on file, so this cross-reference's "total events" figure always agrees
-  // with the Total Events KPI card above it.
-  const bbYearsPresent = getYears(DATA.bookedBusiness.raw);
+  // `year` (the Booked Business tab's Year filter) is intentionally unused
+  // below -- see the PINNED comment above.
+  const HEV_BB_LOCKED_YEAR = "2025";
   let es = DATA.eventSurveys.raw;
-  es = (year && year !== "All") ? es.filter(r => r.year === Number(year)) : es.filter(r => bbYearsPresent.includes(r.year));
+  es = es.filter(r => r.year === Number(HEV_BB_LOCKED_YEAR));
   const totalEventsForYear = distinctCount(es, r => r.eventId);
 
   let bbRaw = DATA.bookedBusiness.raw;
-  if (year && year !== "All") bbRaw = bbRaw.filter(r => r.year === Number(year));
+  bbRaw = bbRaw.filter(r => r.year === Number(HEV_BB_LOCKED_YEAR));
   if (status && status !== "All") bbRaw = bbRaw.filter(r => r.leadStatus === status);
   if (eventName && eventName !== "All") bbRaw = bbRaw.filter(r => r.eventName === eventName);
   const bb = dedupeBy(bbRaw, r => r.leadId);
@@ -1747,7 +1771,7 @@ function renderHevBookedLink(year, status, eventName) {
   document.querySelector("#hev-bbTable tfoot").innerHTML =
     `<tr><td>Total (${fmt(rows.length)} events)</td><td>${fmt(sum(rows, r => r.respondents))}</td><td>${pct(mean(rows, r => r.satisfaction))}</td><td>${fmt(sum(rows, r => r.leads))}</td></tr>`;
 
-  const yearLabel = (year && year !== "All") ? year : (bbYearsPresent.length ? bbYearsPresent.join("/") : "all years");
+  const yearLabel = HEV_BB_LOCKED_YEAR;
   // Subtitle sentence removed per direction -- the auto-analysis sentence
   // below the table now covers this same information dynamically.
   document.getElementById("hev-bbDesc").innerHTML = "";

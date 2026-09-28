@@ -44,25 +44,44 @@ for r in range(4, ws.max_row + 1):
 out["planningVisits"] = pv
 
 # =====================================================================
-# Partner Referrals -- raw rows (date, staff, count) so the front end
-# can slice by year / staff the same way the Power BI page does
-# =====================================================================
-ws = wb["Partner Referrals"]
+# Partner Referrals -- as of the September 2026 rebuild, pulls from the
+# "PartnerReferralsDetail" table (sheet "Partner Referrals Details") instead
+# of the old "Partner Referrals" sheet. That old sheet was pre-aggregated
+# (one row per date/staff with a count); this one is one row per individual
+# referral, so "count" is just 1 per row -- kept as a field (rather than
+# refactoring every SUM(r.count) on the front end into a row count) so
+# app.js's existing chart/card logic didn't need to change. "staff" is kept
+# as the field name the front end already reads, sourced from this table's
+# "User" column instead of the old sheet's "Staff" column. New columns not
+# used by the existing visuals (referralId, accountName, functionName,
+# leadArrival, leadDeparture) are captured too, for the new Referral Detail
+# table added to the bottom of the Partner Referrals tab.
+ws = wb["Partner Referrals Details"]
 referrals_raw = []
 referrals_skipped = 0
-for r in range(4, ws.max_row + 1):
-    d = ws.cell(row=r, column=1).value
-    n = ws.cell(row=r, column=2).value
-    staff = ws.cell(row=r, column=3).value
-    if d is None or n is None:
+for r in range(2, ws.max_row + 1):
+    rid = ws.cell(row=r, column=1).value
+    d = ws.cell(row=r, column=2).value
+    if rid is None:
         continue
     if not hasattr(d, "year"):
         # e.g. a stray text value typed into the date column instead of a
         # real date -- skip defensively rather than crash the whole build.
         referrals_skipped += 1
-        print(f"  (skipped Partner Referrals row {r}: date column has non-date value {d!r})")
+        print(f"  (skipped Partner Referrals Details row {r}: Referral Date column has non-date value {d!r})")
         continue
-    referrals_raw.append({"date": iso(d), "year": d.year, "staff": staff, "count": n})
+    referrals_raw.append({
+        "referralId": rid,
+        "date": iso(d),
+        "year": d.year,
+        "accountName": ws.cell(row=r, column=3).value,
+        "functionName": ws.cell(row=r, column=4).value,
+        "leadArrival": iso(ws.cell(row=r, column=5).value),
+        "leadDeparture": iso(ws.cell(row=r, column=6).value),
+        "user": ws.cell(row=r, column=7).value,
+        "staff": ws.cell(row=r, column=7).value,
+        "count": 1,
+    })
 out["partnerReferrals"] = {"raw": referrals_raw}
 
 # =====================================================================
