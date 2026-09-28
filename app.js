@@ -119,8 +119,12 @@ function rangeLabelFiltered(rows, dateField, checkFields) {
   return rangeLabel(valid, dateField);
 }
 function getYears(arr) { return [...new Set(arr.map(r => r.year).filter(Boolean))].sort(); }
+// "Select All" is the display label for every filter's all-inclusive option
+// dashboard-wide (value stays "All" so existing filter logic/tests don't need
+// to change, only the visible text).
+const SELECT_ALL_OPTION = `<option value="All">Select All</option>`;
 function populateYearSelect(sel, years, onChange) {
-  sel.innerHTML = `<option value="All">All</option>` + years.map(y => `<option value="${y}">${y}</option>`).join("");
+  sel.innerHTML = SELECT_ALL_OPTION + years.map(y => `<option value="${y}">${y}</option>`).join("");
   sel.value = "All";
   sel.onchange = onChange;
 }
@@ -443,6 +447,12 @@ function renderOverview() {
   const eventSatCur = mean(evsCurR, r => r.satisfaction), eventSatPri = mean(evsPriR, r => r.satisfaction);
   const leadsCurYtd = distinctCount(bbCurR, r => r.leadId), leadsPriYtd = distinctCount(bbPriR, r => r.leadId);
   const convWinCur = mean(bbCurR, r => r.daysFromLeadCreatedToEvent), convWinPri = mean(bbPriR, r => r.daysFromLeadCreatedToEvent);
+  // Room Nights/Economic Impact/Attendees are LEAD-level values (see
+  // build_data.py / Booked Business tab) -- dedupe by Lead ID within each YTD
+  // window before summing, same convention as "Leads Generated" above.
+  const roomNightsCur = sum(dedupeBy(bbCurR, r => r.leadId), r => r.roomNights), roomNightsPri = sum(dedupeBy(bbPriR, r => r.leadId), r => r.roomNights);
+  const economicImpactCur = sum(dedupeBy(bbCurR, r => r.leadId), r => r.economicImpact), economicImpactPri = sum(dedupeBy(bbPriR, r => r.leadId), r => r.economicImpact);
+  const attendeesCur = sum(dedupeBy(bbCurR, r => r.leadId), r => r.attendeesCount), attendeesPri = sum(dedupeBy(bbPriR, r => r.leadId), r => r.attendeesCount);
 
   // Previous-month-only values (same single latest month as each category's
   // own YTD cutoff above) -- feeds the Department at a Glance summary table.
@@ -458,6 +468,9 @@ function renderOverview() {
   const eventSatMonth = mean(evsMonthR, r => r.satisfaction);
   const leadsMonth = distinctCount(bbMonthR, r => r.leadId);
   const convWinMonth = mean(bbMonthR, r => r.daysFromLeadCreatedToEvent);
+  const roomNightsMonth = sum(dedupeBy(bbMonthR, r => r.leadId), r => r.roomNights);
+  const economicImpactMonth = sum(dedupeBy(bbMonthR, r => r.leadId), r => r.economicImpact);
+  const attendeesMonth = sum(dedupeBy(bbMonthR, r => r.leadId), r => r.attendeesCount);
 
   // priValueText is the same prior-year YTD figure shown in the "Year-to-Date"
   // column of the Department at a Glance table below, just surfaced inline
@@ -467,7 +480,7 @@ function renderOverview() {
   // for the 4 cards driven by the events team's data.
   function cardWithDelta(label, valueText, cur, pri, priYear, priValueText, dateRange, cardClass) {
     const d = pctChange(pri, cur);
-    const text = d === null ? null : `${deltaArrow(d)}${pct(d)} (${priValueText} in ${priYear}) vs ${priYear} YTD`;
+    const text = d === null ? null : `${deltaArrow(d)}${pct(d)} vs. ${priYear} YTD`;
     return kpiCard(label, valueText, text, deltaClass(d), dateRange, cardClass);
   }
   // Once the average lead conversion window passes 90 days, months reads
@@ -495,13 +508,16 @@ function renderOverview() {
     { label: "VA Hosted Events", cur: hostedEventsCur, pri: hostedEventsPri, month: hostedEventsMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "events" },
     { label: "VA Event Satisfaction Score", cur: eventSatCur, pri: eventSatPri, month: eventSatMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "events" },
     { label: `${BB_CUR} Leads Generated From VA Events`, cur: leadsCurYtd, pri: leadsPriYtd, month: leadsMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v), team: "events" },
-    { label: `${BB_CUR} Avg. Lead Conversion Window`, cur: convWinCur, pri: convWinPri, month: convWinMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: convWinFmt, team: "events" }
+    { label: `${BB_CUR} Avg. Lead Conversion Window`, cur: convWinCur, pri: convWinPri, month: convWinMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: convWinFmt, team: "events" },
+    { label: `${BB_CUR} Room Nights`, cur: roomNightsCur, pri: roomNightsPri, month: roomNightsMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v), team: "events" },
+    { label: `${BB_CUR} Economic Impact`, cur: economicImpactCur, pri: economicImpactPri, month: economicImpactMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => (v === null ? "&mdash;" : "$" + fmt(v)), team: "events" },
+    { label: `${BB_CUR} Attendees`, cur: attendeesCur, pri: attendeesPri, month: attendeesMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v), team: "events" }
   ];
 
   document.getElementById("ov-kpiGrid").innerHTML =
     categories.map((c, i) => {
       const d = pctChange(c.pri, c.cur);
-      const text = d === null ? null : `${deltaArrow(d)}${pct(d)} (${c.fmtFn(c.pri)} in ${c.priYear}) vs ${c.priYear} YTD`;
+      const text = d === null ? null : `${deltaArrow(d)}${pct(d)} vs. ${c.priYear} YTD`;
       const cardClass = `selectable${c.team === "events" ? " events-team" : ""}`;
       return kpiCard(c.label, c.fmtFn(c.cur), text, deltaClass(d), ytdRangeLabel(c.curYear, c.cutoff), cardClass, null, `data-cat-index="${i}"`);
     }).join("");
@@ -556,6 +572,7 @@ function renderOverview() {
   const dRef = pctChange(totalReferralsPri, totalReferralsCur), dRate = pctChange(ratePri, rateCur), dTeamScore = pctChange(teamScorePri, teamScoreCur);
   const dHostedEvents = pctChange(hostedEventsPri, hostedEventsCur), dEventSat = pctChange(eventSatPri, eventSatCur);
   const dLeads = pctChange(leadsPriYtd, leadsCurYtd), dConvWin = pctChange(convWinPri, convWinCur);
+  const dRoomNights = pctChange(roomNightsPri, roomNightsCur), dEconomicImpact = pctChange(economicImpactPri, economicImpactCur), dAttendees = pctChange(attendeesPri, attendeesCur);
 
   // Strictly factual: states each of the 12 KPI categories' YTD figure and
   // YoY delta, grouped by theme for readability. No interpretation,
@@ -564,6 +581,7 @@ function renderOverview() {
   paras.push(`<p>Year to date through ${endOfMonthLabel(CUR, pvCutoff)}, the team logged <strong>${fmt(partnersCur)}</strong> partner visits${deltaSpan(dPartners)}, <strong>${fmt(visitsCur)}</strong> planning visits${deltaSpan(dVisits)}, <strong>${fmt(convCur)}</strong> convention groups serviced${deltaSpan(dConv)}, <strong>${fmt(inHouseCur)}</strong> in-house groups serviced${deltaSpan(dInHouse)}, and <strong>${fmt(clientsCur)}</strong> clients serviced${deltaSpan(dClients)}.</p>`);
   paras.push(`<p>Partner referrals reached <strong>${fmt(totalReferralsCur)}</strong>${deltaSpan(dRef)}, the repeat account rate is <strong>${pct(rateCur)}</strong>${deltaSpan(dRate)}, and the Visit Anaheim team experience rating is <strong>${fmt(teamScoreCur, 2)}/10</strong>${deltaSpan(dTeamScore)}.</p>`);
   paras.push(`<p>The team hosted <strong>${fmt(hostedEventsCur)}</strong> surveyed VA events${deltaSpan(dHostedEvents)} at an average <strong>${pct(eventSatCur)}</strong> satisfaction score${deltaSpan(dEventSat)}, generating <strong>${fmt(leadsCurYtd)}</strong> leads${deltaSpan(dLeads)} with an average lead conversion window of <strong>${convWinFmt(convWinCur)}</strong>${deltaSpan(dConvWin)}.</p>`);
+  paras.push(`<p>Booked business generated <strong>${fmt(roomNightsCur)}</strong> room nights${deltaSpan(dRoomNights)}, <strong>${economicImpactCur === null ? "&mdash;" : "$" + fmt(economicImpactCur)}</strong> in economic impact${deltaSpan(dEconomicImpact)}, and <strong>${fmt(attendeesCur)}</strong> attendees${deltaSpan(dAttendees)}.</p>`);
   OV_FULL_NARRATIVE = paras.join("");
   document.getElementById("ov-insights").innerHTML = OV_FULL_NARRATIVE;
 
@@ -753,10 +771,15 @@ function ytdYoyMetric(allRows, dateField, curYear, priYear, cutoffCheckFields, m
   return { curVal, priVal, d: pctChange(priVal, curVal), curYear, priYear, cutoff };
 }
 // Renders a ytdYoyMetric result as the same delta-text format Overview's
-// cards use: "▲ 12.3% (45 in 2025) vs 2025 YTD".
+// cards use: "▲ 12.3% vs. 2025 YTD". (Prior to September 2026 this also
+// repeated the prior-year figure and year inline -- e.g. "(45 in 2025) vs
+// 2025 YTD" -- which named the comparison year twice and read as confusing/
+// duplicated; simplified per direction to state the % change and the single
+// comparison-year reference only. fmtFn is kept as a parameter so callers
+// don't need to change, even though it's no longer used in the string itself.)
 function ytdDeltaText(res, fmtFn) {
   if (!res || res.d === null || res.priYear === undefined) return null;
-  return `${deltaArrow(res.d)}${pct(res.d)} (${fmtFn(res.priVal)} in ${res.priYear}) vs ${res.priYear} YTD`;
+  return `${deltaArrow(res.d)}${pct(res.d)} vs. ${res.priYear} YTD`;
 }
 // Same YoY prior/latest-year resolution as renderYoyTable, but returns
 // whichever metric moved the most (by absolute % change) -- feeds the
@@ -806,15 +829,28 @@ function renderYoyTable(tableId, rows, metrics, selectedYear, dateField, cutoffC
 // =====================================================================
 function initReferrals() {
   const sel = document.getElementById("ref-year");
+  const mgrSel = document.getElementById("ref-manager");
+  function applyFilters() { renderReferrals(sel.value, mgrSel.value); }
   const years = getYears(DATA.partnerReferrals.raw);
-  populateYearSelect(sel, years, () => renderReferrals(sel.value));
+  populateYearSelect(sel, years, applyFilters);
+  // "Service Manager" filters on the same DS&E staff member field the
+  // Referral Detail table's "User" column and the "Partner Referrals by
+  // Staff" chart already use (see build_data.py -- the Partner Referrals
+  // Details sheet doesn't have its own separate Service Manager column; the
+  // "User" on each referral IS the DS&E service manager who logged it, per
+  // the old sheet's report title "Partner Referrals by Manager").
+  const managers = [...new Set(DATA.partnerReferrals.raw.map(r => r.staff).filter(Boolean))].sort();
+  mgrSel.innerHTML = SELECT_ALL_OPTION + managers.map(m => `<option value="${m}">${m}</option>`).join("");
+  mgrSel.value = "All";
+  mgrSel.onchange = applyFilters;
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
   const defaultYear = years.includes(2026) ? "2026" : "All";
   sel.value = defaultYear;
-  renderReferrals(defaultYear);
+  renderReferrals(defaultYear, "All");
 }
-function renderReferrals(year) {
-  const all = DATA.partnerReferrals.raw;
+function renderReferrals(year, manager) {
+  let all = DATA.partnerReferrals.raw;
+  if (manager && manager !== "All") all = all.filter(r => r.staff === manager);
   const rows = byYear(all, year);
   const total = sum(rows, r => r.count);
   const byStaff = groupBy(rows, r => r.staff);
@@ -948,32 +984,38 @@ function initRepeat() {
   const yearSel = document.getElementById("rep-year");
   const acctSel = document.getElementById("rep-account");
   const mgrSel = document.getElementById("rep-manager");
+  const leadSel = document.getElementById("rep-lead");
   const repeatSel = document.getElementById("rep-repeat");
-  function applyFilters() { renderRepeat(yearSel.value, acctSel.value, mgrSel.value, repeatSel.value); }
+  function applyFilters() { renderRepeat(yearSel.value, acctSel.value, mgrSel.value, repeatSel.value, leadSel.value); }
   const years = getYears(DATA.repeatingClients.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const accounts = [...new Set(DATA.repeatingClients.raw.map(r => r.accountName).filter(Boolean))].sort();
-  acctSel.innerHTML = `<option value="All">All</option>` + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
+  acctSel.innerHTML = SELECT_ALL_OPTION + accounts.map(a => `<option value="${a}">${a}</option>`).join("");
   acctSel.value = "All";
   acctSel.onchange = applyFilters;
   const managers = [...new Set(DATA.repeatingClients.raw.map(r => r.servicesManager).filter(Boolean))].sort();
-  mgrSel.innerHTML = `<option value="All">All</option>` + managers.map(m => `<option value="${m}">${m}</option>`).join("");
+  mgrSel.innerHTML = SELECT_ALL_OPTION + managers.map(m => `<option value="${m}">${m}</option>`).join("");
   mgrSel.value = "All";
   mgrSel.onchange = applyFilters;
+  const leads = [...new Set(DATA.repeatingClients.raw.map(r => r.leadName).filter(Boolean))].sort();
+  leadSel.innerHTML = SELECT_ALL_OPTION + leads.map(l => `<option value="${l}">${l}</option>`).join("");
+  leadSel.value = "All";
+  leadSel.onchange = applyFilters;
   // "Repeat" filter on the Repeat Business Yes/No column.
-  repeatSel.innerHTML = `<option value="All">All</option><option value="Yes">Yes</option><option value="No">No</option>`;
+  repeatSel.innerHTML = SELECT_ALL_OPTION + `<option value="Yes">Yes</option><option value="No">No</option>`;
   repeatSel.value = "All";
   repeatSel.onchange = applyFilters;
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
   const defaultYear = years.includes(2026) ? "2026" : "All";
   yearSel.value = defaultYear;
-  renderRepeat(defaultYear, "All", "All", "All");
+  renderRepeat(defaultYear, "All", "All", "All", "All");
 }
-function renderRepeat(year, accountName, manager, repeatFilter) {
+function renderRepeat(year, accountName, manager, repeatFilter, leadName) {
   let rows = byYear(DATA.repeatingClients.raw, year);
   if (accountName && accountName !== "All") rows = rows.filter(r => r.accountName === accountName);
   if (manager && manager !== "All") rows = rows.filter(r => r.servicesManager === manager);
   if (repeatFilter && repeatFilter !== "All") rows = rows.filter(r => r.repeat === repeatFilter);
+  if (leadName && leadName !== "All") rows = rows.filter(r => r.leadName === leadName);
   // "Total Clients Serviced" = distinct count of Lead ID (not raw row count) --
   // matches the sheet's grain 1:1 today (no duplicate Lead IDs), but this is
   // the correct, future-proof formula per spec.
@@ -983,10 +1025,24 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
   const repeatYes = rows.filter(r => r.repeat === "Yes").length;
   // Repeat Client % = DIVIDE(Repeat Clients Count, COUNTROWS('RepeatingBusiness'), 0)
   const rate = totalRows ? repeatYes / totalRows : null;
+  // New Accounts/Clients -- the mirror image of Repeat Accounts/Repeat
+  // Account Percentage above: every booking row NOT marked Repeat Business =
+  // "Yes" is new business (row/booking count, not deduped by account -- same
+  // per-booking counting convention used dashboard-wide on this tab).
+  const newCount = totalRows - repeatYes;
+  const newRate = totalRows ? newCount / totalRows : null;
   const accountsServiced = distinctCount(rows, r => r.accountId);
   const acctCounts = groupBy(rows, r => r.accountId);
-  // Repeat Accounts Count = COUNTROWS(FILTER(VALUES('RepeatingBusiness'[Account ID]), CALCULATE(COUNTROWS('RepeatingBusiness')) > 1))
-  const accountsWithRepeatBookings = [...acctCounts.values()].filter(v => v.length > 1).length;
+  // "Accounts with Future Bookings" (renamed & redefined September 2026 from
+  // "Accounts w/ Repeat Bookings", which counted DISTINCT ACCOUNTS that had
+  // more than one booking -- i.e. it grouped by account). Per direction, this
+  // now instead reflects confirmed FORWARD business: every individual
+  // Definite-status booking whose meeting start date is still ahead of today,
+  // counted per booking/row (an account with 3 upcoming programs counts as 3,
+  // not 1) rather than deduped down to one count per account.
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const futureBookingRows = rows.filter(r => r.status === "Definite" && r.startDate && r.startDate >= todayIso);
+  const accountsWithFutureBookings = futureBookingRows.length;
 
   // Dynamic date-range subtitle -- dynamic with the Year/Account/Manager filters via `rows`.
   const repRange = rangeLabel(rows, "startDate");
@@ -998,21 +1054,25 @@ function renderRepeat(year, accountName, manager, repeatFilter) {
   const repYoyBase = DATA.repeatingClients.raw
     .filter(r => !accountName || accountName === "All" || r.accountName === accountName)
     .filter(r => !manager || manager === "All" || r.servicesManager === manager)
-    .filter(r => !repeatFilter || repeatFilter === "All" || r.repeat === repeatFilter);
+    .filter(r => !repeatFilter || repeatFilter === "All" || r.repeat === repeatFilter)
+    .filter(r => !leadName || leadName === "All" || r.leadName === leadName);
   const { prior: repPrior, latest: repLatest } = resolveYoyYears(repYoyBase, year);
   function repYoy(metricFn) { return ytdYoyMetric(repYoyBase, "startDate", repLatest, repPrior, null, metricFn); }
   const dTotalClients = repYoy(rs => distinctCount(rs, r => r.leadId));
   const dTotalAccounts = repYoy(rs => distinctCount(rs, r => r.accountId));
   const dRepeatAccounts = repYoy(rs => rs.filter(r => r.repeat === "Yes").length);
   const dRepeatRate = repYoy(rs => rs.length ? rs.filter(r => r.repeat === "Yes").length / rs.length : null);
-  const dAcctsRepeatBookings = repYoy(rs => { const ac = groupBy(rs, r => r.accountId); return [...ac.values()].filter(v => v.length > 1).length; });
+  const dNewAccounts = repYoy(rs => rs.length - rs.filter(r => r.repeat === "Yes").length);
+  const dNewRate = repYoy(rs => rs.length ? (rs.length - rs.filter(r => r.repeat === "Yes").length) / rs.length : null);
 
   document.getElementById("rep-kpiGrid").innerHTML = [
     kpiCard("Total Clients Serviced", fmt(totalClientsServiced), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
     kpiCard("Total Accounts Serviced", fmt(accountsServiced), ytdDeltaText(dTotalAccounts, fmt), deltaClass(dTotalAccounts.d), repRange),
     kpiCard("Repeat Accounts", fmt(repeatYes), ytdDeltaText(dRepeatAccounts, fmt), deltaClass(dRepeatAccounts.d), repRange),
     kpiCard("Repeat Account Percentage", pct(rate), ytdDeltaText(dRepeatRate, pct), deltaClass(dRepeatRate.d), repRange),
-    kpiCard("Accounts w/ Repeat Bookings", fmt(accountsWithRepeatBookings), ytdDeltaText(dAcctsRepeatBookings, fmt), deltaClass(dAcctsRepeatBookings.d), repRange)
+    kpiCard("New Accounts/Clients", fmt(newCount), ytdDeltaText(dNewAccounts, fmt), deltaClass(dNewAccounts.d), repRange),
+    kpiCard("New Account Percentage", pct(newRate), ytdDeltaText(dNewRate, pct), deltaClass(dNewRate.d), repRange),
+    kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today")
   ].join("");
 
   const byMgr = groupBy(rows, r => r.servicesManager);
@@ -1243,14 +1303,14 @@ function initSurvey() {
   const years = getYears(DATA.accSurvey.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const managers = [...new Set(DATA.accSurvey.raw.map(r => r.manager).filter(Boolean))].sort();
-  mgrSel.innerHTML = `<option value="All">All</option>` + managers.map(m => `<option value="${m}">${m}</option>`).join("");
+  mgrSel.innerHTML = SELECT_ALL_OPTION + managers.map(m => `<option value="${m}">${m}</option>`).join("");
   mgrSel.value = "All";
   mgrSel.onchange = applyFilters;
   // Question filter -- every rated question (excludes Q7, the open-ended
   // feedback question, which isn't a rating and belongs to the separate
   // "Feedback" section instead).
   const questionOpts = DATA.accSurvey.questions.filter(q => q !== DATA.accSurvey.q2q7.q7Text);
-  qSel.innerHTML = `<option value="All">All</option>` + questionOpts.map(q => `<option value="${q}">${q}</option>`).join("");
+  qSel.innerHTML = SELECT_ALL_OPTION + questionOpts.map(q => `<option value="${q}">${q}</option>`).join("");
   qSel.value = "All";
   qSel.onchange = applyFilters;
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
@@ -1543,11 +1603,11 @@ function initEvents() {
   const years = getYears(DATA.eventSurveys.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const cats = [...new Set(DATA.eventSurveys.raw.map(r => r.category).filter(Boolean))].sort();
-  catSel.innerHTML = `<option value="All">All</option>` + cats.map(c => `<option value="${c}">${c}</option>`).join("");
+  catSel.innerHTML = SELECT_ALL_OPTION + cats.map(c => `<option value="${c}">${c}</option>`).join("");
   catSel.value = "All";
   catSel.onchange = applyFilters;
   const evts = [...new Set(DATA.eventSurveys.raw.map(r => r.event).filter(Boolean))].sort();
-  evtSel.innerHTML = `<option value="All">All</option>` + evts.map(e => `<option value="${e}">${e}</option>`).join("");
+  evtSel.innerHTML = SELECT_ALL_OPTION + evts.map(e => `<option value="${e}">${e}</option>`).join("");
   evtSel.value = "All";
   evtSel.onchange = applyFilters;
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
@@ -1788,17 +1848,22 @@ function initBooked() {
   const yearSel = document.getElementById("bb-year");
   const statusSel = document.getElementById("bb-status");
   const evtSel = document.getElementById("bb-event");
-  function applyFilters() { renderBooked(yearSel.value, statusSel.value, evtSel.value); }
+  const mgrSel = document.getElementById("bb-manager");
+  function applyFilters() { renderBooked(yearSel.value, statusSel.value, evtSel.value, mgrSel.value); }
   const years = getYears(DATA.bookedBusiness.raw);
   populateYearSelect(yearSel, years, applyFilters);
   const statuses = [...new Set(DATA.bookedBusiness.raw.map(r => r.leadStatus).filter(Boolean))].sort();
-  statusSel.innerHTML = `<option value="All">All</option>` + statuses.map(s => `<option value="${s}">${s}</option>`).join("");
+  statusSel.innerHTML = SELECT_ALL_OPTION + statuses.map(s => `<option value="${s}">${s}</option>`).join("");
   statusSel.value = "All";
   statusSel.onchange = applyFilters;
   const evts = [...new Set(DATA.bookedBusiness.raw.map(r => r.eventName).filter(Boolean))].sort();
-  evtSel.innerHTML = `<option value="All">All</option>` + evts.map(e => `<option value="${e}">${e}</option>`).join("");
+  evtSel.innerHTML = SELECT_ALL_OPTION + evts.map(e => `<option value="${e}">${e}</option>`).join("");
   evtSel.value = "All";
   evtSel.onchange = applyFilters;
+  const managers = [...new Set(DATA.bookedBusiness.raw.map(r => r.salesManager).filter(Boolean))].sort();
+  mgrSel.innerHTML = SELECT_ALL_OPTION + managers.map(m => `<option value="${m}">${m}</option>`).join("");
+  mgrSel.value = "All";
+  mgrSel.onchange = applyFilters;
   // Defaults to the latest year of data actually present in the Booked
   // Business sheet (rather than a hardcoded 2026), since this sheet tends to
   // lag behind the others.
@@ -1806,10 +1871,11 @@ function initBooked() {
   yearSel.value = defaultYear;
   applyFilters();
 }
-function renderBooked(year, status, eventName) {
+function renderBooked(year, status, eventName, salesManager) {
   let rows = byYear(DATA.bookedBusiness.raw, year);
   if (status !== "All") rows = rows.filter(r => r.leadStatus === status);
   if (eventName && eventName !== "All") rows = rows.filter(r => r.eventName === eventName);
+  if (salesManager && salesManager !== "All") rows = rows.filter(r => r.salesManager === salesManager);
 
   // "Total Events" is brought over from the Hosted Events tab's card of the
   // same name -- it reads the separate "Event Surveys" sheet, so it only
@@ -1844,6 +1910,16 @@ function renderBooked(year, status, eventName) {
     : avgConversionWindow > 90 ? fmt(avgConversionWindow / 30, 1) + " months"
     : fmt(avgConversionWindow) + " days";
 
+  // Room Nights (Requested Rooms), Economic Impact (EIC Booked), and
+  // Attendees (Room Attendees) -- added to the sheet September 2026. All 3
+  // are LEAD-level values (repeated on every attendee row under that lead),
+  // confirmed against the source workbook, so they're summed over
+  // uniqueLeadRows (same dedupe used for Definite Leads above) rather than
+  // over every attendee row, which would multiply-count them.
+  const roomNights = sum(uniqueLeadRows, r => r.roomNights);
+  const economicImpact = sum(uniqueLeadRows, r => r.economicImpact);
+  const attendeesTotal = sum(uniqueLeadRows, r => r.attendeesCount);
+
   // Dynamic date-range subtitle -- dynamic with the Year/Status/Event filters via `rows`.
   const bbRange = rangeLabel(rows, "eventStartDate");
 
@@ -1859,12 +1935,16 @@ function renderBooked(year, status, eventName) {
   let bbYoyBase = DATA.bookedBusiness.raw;
   if (status !== "All") bbYoyBase = bbYoyBase.filter(r => r.leadStatus === status);
   if (eventName && eventName !== "All") bbYoyBase = bbYoyBase.filter(r => r.eventName === eventName);
+  if (salesManager && salesManager !== "All") bbYoyBase = bbYoyBase.filter(r => r.salesManager === salesManager);
   function bbYoy(metricFn) { return ytdYoyMetric(bbYoyBase, "eventStartDate", bbCurYear, bbPriYear, null, metricFn); }
   const dDistinctEvents = bbYoy(rs => distinctCount(rs, r => r.eventId));
   const dLeadsGen = bbYoy(rs => distinctCount(rs, r => r.leadId));
   const dDefiniteLeads = bbYoy(rs => dedupeBy(rs, r => r.leadId).filter(r => r.leadStatus === "Definite").length);
   const dDefiniteRate = bbYoy(rs => { const uniq = dedupeBy(rs, r => r.leadId); const leads = distinctCount(rs, r => r.leadId); return leads ? uniq.filter(r => r.leadStatus === "Definite").length / leads : null; });
   const dConvWindow = bbYoy(rs => mean(rs, r => r.daysFromLeadCreatedToEvent));
+  const dRoomNights = bbYoy(rs => sum(dedupeBy(rs, r => r.leadId), r => r.roomNights));
+  const dEconomicImpact = bbYoy(rs => sum(dedupeBy(rs, r => r.leadId), r => r.economicImpact));
+  const dAttendeesTotal = bbYoy(rs => sum(dedupeBy(rs, r => r.leadId), r => r.attendeesCount));
   const convWinFmtBB = v => (v === null ? "&mdash;" : v > 90 ? fmt(v / 30, 1) + " months" : fmt(v) + " days");
 
   // Hosted Events and Booked Business both represent the events team's own
@@ -1876,7 +1956,10 @@ function renderBooked(year, status, eventName) {
     kpiCard("Leads Generated", fmt(leadsGenerated), ytdDeltaText(dLeadsGen, fmt), deltaClass(dLeadsGen.d), bbRange, "events-team"),
     kpiCard("Definite Leads", fmt(definiteLeads), ytdDeltaText(dDefiniteLeads, fmt), deltaClass(dDefiniteLeads.d), bbRange, "events-team"),
     kpiCard("Definite Leads Percentage", pct(definiteRate), ytdDeltaText(dDefiniteRate, pct), deltaClass(dDefiniteRate.d), bbRange, "events-team"),
-    kpiCard("Avg. Conversion Window", convWindowText, ytdDeltaText(dConvWindow, convWinFmtBB), deltaClass(dConvWindow.d), bbRange, "events-team")
+    kpiCard("Avg. Conversion Window", convWindowText, ytdDeltaText(dConvWindow, convWinFmtBB), deltaClass(dConvWindow.d), bbRange, "events-team"),
+    kpiCard("Room Nights", fmt(roomNights), ytdDeltaText(dRoomNights, fmt), deltaClass(dRoomNights.d), bbRange, "events-team"),
+    kpiCard("Economic Impact", economicImpact === null ? "&mdash;" : "$" + fmt(economicImpact), ytdDeltaText(dEconomicImpact, v => "$" + fmt(v)), deltaClass(dEconomicImpact.d), bbRange, "events-team"),
+    kpiCard("Attendees", fmt(attendeesTotal), ytdDeltaText(dAttendeesTotal, fmt), deltaClass(dAttendeesTotal.d), bbRange, "events-team")
   ].join("");
 
   // Grouped from the full (non-deduped) rows, not uniqueLeadRows -- a lead
@@ -1957,7 +2040,7 @@ function renderBooked(year, status, eventName) {
 
   document.querySelector("#bb-detailTable tbody").innerHTML = [...uniqueLeadRows]
     .sort((a, b) => (b.eventStartDate || "").localeCompare(a.eventStartDate || ""))
-    .map(r => `<tr><td>${r.eventName}</td><td>${r.accountName}</td><td>${r.leadName}</td><td>${mdy(r.eventStartDate) || "&mdash;"}</td><td>${mdy(r.leadCreatedDate) || "&mdash;"}</td></tr>`)
+    .map(r => `<tr><td>${r.eventName}</td><td>${r.accountName}</td><td>${r.leadName}</td><td>${r.salesManager || "&mdash;"}</td><td>${fmt(r.roomNights)}</td><td>${r.economicImpact === null || r.economicImpact === undefined ? "&mdash;" : "$" + fmt(r.economicImpact)}</td><td>${fmt(r.attendeesCount)}</td><td>${mdy(r.eventStartDate) || "&mdash;"}</td><td>${mdy(r.leadCreatedDate) || "&mdash;"}</td></tr>`)
     .join("");
 
   // Auto-analysis sentences (bolded values) -- neither chart on this tab is

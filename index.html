@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Destination Services &amp; Events Dashboard | Visit Anaheim</title>
+<title>Destination Experience and Events Dashboard | Visit Anaheim</title>
 <link rel="stylesheet" href="style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
@@ -16,7 +16,7 @@
       <img class="brand-logo" src="logo.png" alt="Visit Anaheim" onerror="this.style.display='none'" />
       <div>
         <p class="brand-eyebrow">Visit Anaheim &middot; Internal KPI Dashboard</p>
-        <h1>Destination Services &amp; Events Dashboard</h1>
+        <h1>Destination Experience and Events Dashboard</h1>
         <p class="sub" id="headerSub">Planning visits, partner referrals, repeat business, events supported, booked business, and survey feedback.</p>
       </div>
     </div>
@@ -99,6 +99,7 @@
     <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year <select id="ref-year"></select></label>
+      <label>Service Manager <select id="ref-manager"></select></label>
     </div>
     <div class="kpi-grid" id="ref-kpiGrid"></div>
     <div class="grid-2">
@@ -139,6 +140,7 @@
       <label>Year (meeting start) <select id="rep-year"></select></label>
       <label>Account Name <select id="rep-account"></select></label>
       <label>Services Manager <select id="rep-manager"></select></label>
+      <label>Lead <select id="rep-lead"></select></label>
       <label>Repeat <select id="rep-repeat"></select></label>
     </div>
     <div class="kpi-grid" id="rep-kpiGrid"></div>
@@ -274,6 +276,7 @@
       <label>Year <select id="bb-year"></select></label>
       <label>Lead Status <select id="bb-status"></select></label>
       <label>Event Name <select id="bb-event"></select></label>
+      <label>Sales Manager <select id="bb-manager"></select></label>
     </div>
     <div class="kpi-grid" id="bb-kpiGrid"></div>
     <section class="panel">
@@ -311,7 +314,7 @@
     <section class="panel">
       <h2>Events That Generated Leads Detail</h2>
       <div class="table-scroll">
-        <table class="mini" id="bb-detailTable"><thead><tr><th>Event</th><th>Account</th><th>Lead</th><th>Event Start Date</th><th>Lead Created Date</th></tr></thead><tbody></tbody></table>
+        <table class="mini" id="bb-detailTable"><thead><tr><th>Event</th><th>Account</th><th>Lead</th><th>Sales Manager</th><th>Room Nights</th><th>Economic Impact</th><th>Attendees</th><th>Event Start Date</th><th>Lead Created Date</th></tr></thead><tbody></tbody></table>
       </div>
       <p class="desc auto-analysis" id="bb-analysis4"></p>
     </section>

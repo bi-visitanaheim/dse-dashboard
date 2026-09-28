@@ -230,6 +230,11 @@ out["events"] = {"raw": events_raw, "skippedInvalidDates": skipped_bad_dates}
 # Booked Business -- grain is one row per ATTENDEE under a LEAD under an
 # EVENT. "Leads Generated" on the Power BI page counts unique Lead IDs,
 # not attendee rows -- matched by cross-checking against the live report.
+# As of the September 2026 rebuild, 3 new columns were added to the sheet:
+# Requested Rooms (18), EIC Booked (19, "Economic Impact"), and Room
+# Attendees (20, "Attendees") -- captured here as roomNights/economicImpact/
+# attendeesCount. "Sales Manager" (column 13, salesManager) already existed
+# and now also drives the tab's new Sales Manager filter.
 # =====================================================================
 ws = wb["Booked Business"]
 booked_raw = []
@@ -257,6 +262,9 @@ for r in range(4, ws.max_row + 1):
         "leadStatus": ws.cell(row=r, column=15).value,
         "leadCreatedDate": iso(ws.cell(row=r, column=16).value),
         "daysFromLeadCreatedToEvent": ws.cell(row=r, column=17).value,
+        "roomNights": ws.cell(row=r, column=18).value,
+        "economicImpact": ws.cell(row=r, column=19).value,
+        "attendeesCount": ws.cell(row=r, column=20).value,
     })
 out["bookedBusiness"] = {"raw": booked_raw}
 
