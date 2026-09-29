@@ -508,6 +508,14 @@ This section documents a third batch of changes made in the same overall Septemb
 
 **Client Survey: bolded y-axis labels, renamed chart, matching subtitle.** "VA Survey Questions Rating" (`sur-chart1`, a horizontal bar chart) now bolds its y-axis question labels for easier scanning. "VA Team Experience Avg. Score by Month" is renamed **"Avg. Rating by Month"** and gains a new subtitle, "Averaged across all six rated questions, grouped by the date on each response." -- mirroring the existing subtitle on "Avg. Rating by DS&E Manager" ("...grouped by the manager named on each response.").
 
+## September 2026 rebuild, part 4: KPI row layout tweaks
+
+**Booked Business: Room Nights/Economic Impact/Attendees moved to their own second KPI row.** These 3 cards now render into a separate grid (`bb-kpiGrid2`, below `bb-kpiGrid`'s original 6 cards), guaranteeing they appear on their own row regardless of screen width, instead of relying on the auto-fit grid's natural wrap point.
+
+**Repeat Clients: "Accounts with Future Bookings" moved to the first card in the "By Client" row.** Previously the last of the 6 "By Client" cards; now the first, ahead of Total Clients Serviced/Repeat Clients/Repeat Client Percentage/New Clients/New Client Percentage.
+
+**Repeat Clients: "By Account" subhead renamed to "By Accounts"** (plural, matching "By Client" as the paired subhead). "By Client" itself was unchanged (already renamed from "By Client / Booking" in part 3).
+
 ## Known deployment issue (fixed)
 
 The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.

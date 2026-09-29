@@ -590,13 +590,15 @@ assert(!doc.getElementById("hev-analysis5").textContent.includes("event/survey-t
 assert(/has the most survey-type coverage/.test(doc.getElementById("hev-analysis5").innerHTML), "Hosted Events: 'Event Survey Detail' analysis names the top event by survey-type coverage");
 
 // Booked Business
-// Back to 9 KPI cards -- Room Nights/Economic Impact/Attendees were re-added
-// per direction, on this tab only (not Overview), as simple sums matching
-// the "Events That Generated Leads Detail" table's own subtotal row below.
-assert(doc.getElementById("bb-kpiGrid").children.length === 9, "Booked Business: 9 KPI cards (Room Nights/Economic Impact/Attendees cards re-added)");
-assert(doc.getElementById("bb-kpiGrid").textContent.includes("Room Nights"), "Booked Business: 'Room Nights' KPI card present");
-assert(doc.getElementById("bb-kpiGrid").textContent.includes("Economic Impact"), "Booked Business: 'Economic Impact' KPI card present");
-assert(doc.getElementById("bb-kpiGrid").textContent.includes("Attendees"), "Booked Business: 'Attendees' KPI card present");
+// Room Nights/Economic Impact/Attendees were re-added per direction, on this
+// tab only (not Overview), as simple sums matching the "Events That
+// Generated Leads Detail" table's own subtotal row below -- and now render
+// into their own second-row grid (bb-kpiGrid2), below the 6 core cards.
+assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 core KPI cards in the first row");
+assert(doc.getElementById("bb-kpiGrid2").children.length === 3, "Booked Business: 3 KPI cards (Room Nights/Economic Impact/Attendees) in the second row");
+assert(doc.getElementById("bb-kpiGrid2").textContent.includes("Room Nights"), "Booked Business: 'Room Nights' KPI card present");
+assert(doc.getElementById("bb-kpiGrid2").textContent.includes("Economic Impact"), "Booked Business: 'Economic Impact' KPI card present");
+assert(doc.getElementById("bb-kpiGrid2").textContent.includes("Attendees"), "Booked Business: 'Attendees' KPI card present");
 assert(doc.getElementById("bb-manager").children.length > 1, "Booked Business: new 'Sales Manager' filter populated");
 assert(doc.getElementById("bb-eventstatus").children.length > 1, "Booked Business: new 'Event Status' filter populated");
 {
@@ -662,8 +664,8 @@ assert(doc.getElementById("bb-event").children.length > 1, "Booked Business: eve
 assert(doc.querySelectorAll("#bb-detailTable tbody tr").length > 0, "Booked Business: detail table has rows");
 assert(doc.querySelector("#bb-detailTable thead").textContent.trim() === "EventAccountLeadSales ManagerRoom NightsEconomic ImpactAttendeesEvent Start DateLead Created Date", "Booked Business: detail table has Sales Manager/Room Nights/Economic Impact/Attendees columns");
 assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#bb-detailTable tbody tr td:nth-child(8)").textContent), "Booked Business: dates formatted MM/DD/YYYY");
-assert(doc.querySelectorAll("#bb-kpiGrid .kpi-card.events-team").length === 9, "Booked Business: all 9 KPI cards get the blue events-team accent");
-assert(doc.querySelectorAll("#bb-kpiGrid .daterange").length === 9, "Booked Business: every KPI card shows a dynamic date-range subtitle");
+assert(doc.querySelectorAll("#bb-kpiGrid .kpi-card.events-team").length + doc.querySelectorAll("#bb-kpiGrid2 .kpi-card.events-team").length === 9, "Booked Business: all 9 KPI cards (across both rows) get the blue events-team accent");
+assert(doc.querySelectorAll("#bb-kpiGrid .daterange").length + doc.querySelectorAll("#bb-kpiGrid2 .daterange").length === 9, "Booked Business: every KPI card (across both rows) shows a dynamic date-range subtitle");
 assert(doc.querySelectorAll("#bb-detailTable tfoot tr").length === 1, "Booked Business: 'Events That Generated Leads Detail' table has a subtotal row");
 {
   const footCells = [...doc.querySelectorAll("#bb-detailTable tfoot td")].map(td => td.textContent);

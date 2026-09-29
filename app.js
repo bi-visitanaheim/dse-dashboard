@@ -1129,12 +1129,12 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
     kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange)
   ].join("");
   document.getElementById("rep-kpiGrid-clients").innerHTML = [
+    kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today"),
     kpiCard("Total Clients Serviced", fmt(totalRows), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
     kpiCard("Repeat Clients", fmt(repeatClientsCount), ytdDeltaText(dRepeatClients, fmt), deltaClass(dRepeatClients.d), repRange),
     kpiCard("Repeat Client Percentage", pct(repeatClientRate), ytdDeltaText(dRepeatClientRate, pct), deltaClass(dRepeatClientRate.d), repRange),
     kpiCard("New Clients", fmt(newClientsCount), ytdDeltaText(dNewClients, fmt), deltaClass(dNewClients.d), repRange),
-    kpiCard("New Client Percentage", pct(newClientRate), ytdDeltaText(dNewClientRate, pct), deltaClass(dNewClientRate.d), repRange),
-    kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today")
+    kpiCard("New Client Percentage", pct(newClientRate), ytdDeltaText(dNewClientRate, pct), deltaClass(dNewClientRate.d), repRange)
   ].join("");
 
   const byMgr = groupBy(rows, r => r.servicesManager);
@@ -2060,7 +2060,11 @@ function renderBooked(year, status, eventName, salesManager, eventStatus) {
     kpiCard("Leads Generated", fmt(leadsGenerated), ytdDeltaText(dLeadsGen, fmt), deltaClass(dLeadsGen.d), bbRange, "events-team"),
     kpiCard("Definite Leads", fmt(definiteLeads), ytdDeltaText(dDefiniteLeads, fmt), deltaClass(dDefiniteLeads.d), bbRange, "events-team"),
     kpiCard("Definite Leads Percentage", pct(definiteRate), ytdDeltaText(dDefiniteRate, pct), deltaClass(dDefiniteRate.d), bbRange, "events-team"),
-    kpiCard("Avg. Conversion Window", convWindowText, ytdDeltaText(dConvWindow, convWinFmtBB), deltaClass(dConvWindow.d), bbRange, "events-team"),
+    kpiCard("Avg. Conversion Window", convWindowText, ytdDeltaText(dConvWindow, convWinFmtBB), deltaClass(dConvWindow.d), bbRange, "events-team")
+  ].join("");
+  // Room Nights/Economic Impact/Attendees render into their own second-row
+  // grid (bb-kpiGrid2), below the 6 core cards above, per direction.
+  document.getElementById("bb-kpiGrid2").innerHTML = [
     kpiCard("Room Nights", fmt(roomNightsTotal), ytdDeltaText(dRoomNights, fmt), deltaClass(dRoomNights.d), bbRange, "events-team"),
     kpiCard("Economic Impact", "$" + fmt(economicImpactTotal), ytdDeltaText(dEconomicImpact, v => "$" + fmt(v)), deltaClass(dEconomicImpact.d), bbRange, "events-team"),
     kpiCard("Attendees", fmt(attendeesTotal), ytdDeltaText(dAttendees, fmt), deltaClass(dAttendees.d), bbRange, "events-team")
