@@ -84,7 +84,7 @@ window.switchTab("overview");
   window.switchTab("team");
   assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#team-kpiGrid .daterange").textContent, "Header: Reporting period pill matches Team KPIs' own card date range after switching tabs");
   window.switchTab("repeat");
-  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#rep-kpiGrid .daterange").textContent, "Header: Reporting period pill matches Repeat Clients' own card date range after switching tabs");
+  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#rep-kpiGrid-accounts .daterange").textContent, "Header: Reporting period pill matches Repeat Clients' own card date range after switching tabs");
   window.switchTab("overview");
   assert(doc.getElementById("headerReportingPeriod").innerHTML === overviewPeriod, "Header: Reporting period pill reverts to Overview's own range when switching back");
 }
@@ -97,7 +97,7 @@ window.switchTab("overview");
   const repYearSel = doc.getElementById("rep-year");
   repYearSel.value = "2025";
   repYearSel.dispatchEvent(new window.Event("change"));
-  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#rep-kpiGrid .daterange").textContent, "Header: Reporting period pill updates live to match the new filter's own card date range, without switching tabs");
+  assert(doc.getElementById("headerReportingPeriod").textContent === doc.querySelector("#rep-kpiGrid-accounts .daterange").textContent, "Header: Reporting period pill updates live to match the new filter's own card date range, without switching tabs");
   repYearSel.value = "2026";
   repYearSel.dispatchEvent(new window.Event("change"));
   window.switchTab("overview");
@@ -111,23 +111,27 @@ assert(doc.getElementById("printTabTitle").textContent === "Booked Business", "P
 window.switchTab("overview");
 
 // Overview
-// 15 categories as of the September 2026 rebuild (12 original + Room Nights/
-// Economic Impact/Attendees added from the Booked Business tab's new columns).
-assert(doc.getElementById("ov-kpiGrid").children.length === 15, "Overview: 15 KPI cards (12 original + Room Nights/Economic Impact/Attendees)");
-assert(doc.getElementById("ov-insights").querySelectorAll("p").length === 4, "Overview: 4 narrative paragraphs (added a 4th for Room Nights/Economic Impact/Attendees)");
+// Back to 12 categories: Room Nights/Economic Impact/Attendees (briefly
+// added here in an earlier pass) were removed per direction -- those 3
+// fields belong only on the Booked Business tab's "Events That Generated
+// Leads Detail" table, not as Overview or Booked Business KPI cards.
+assert(doc.getElementById("ov-kpiGrid").children.length === 12, "Overview: 12 KPI cards (Room Nights/Economic Impact/Attendees removed again)");
+assert(!doc.getElementById("ov-kpiGrid").textContent.includes("Room Nights"), "Overview: 'Room Nights' card removed");
+assert(!doc.getElementById("ov-kpiGrid").textContent.includes("Economic Impact"), "Overview: 'Economic Impact' card removed");
+assert(doc.getElementById("ov-insights").querySelectorAll("p").length === 3, "Overview: 3 narrative paragraphs");
 assert(doc.querySelectorAll("#ov-kpiGrid .delta").length > 0, "Overview: cards show YoY deltas");
 assert(doc.querySelectorAll("#ov-insights .delta-inline").length > 0, "Overview: narrative has bold/colored inline deltas");
 assert(doc.getElementById("ov-desc").textContent.trim() === "", "Overview: stale 'above data cards reflect...' subtitle sentence removed (each card shows its own date range now)");
 assert(doc.getElementById("ov-kpiGrid").textContent.includes("Repeat Account %"), "Overview: card renamed to Repeat Account % (was Repeat Client %)");
-assert(doc.querySelectorAll("#ov-summaryTable tbody tr").length === 15, "Overview: Department at a Glance summary table has all 15 categories");
+assert(doc.querySelectorAll("#ov-summaryTable tbody tr").length === 12, "Overview: Department at a Glance summary table has all 12 categories");
 assert(doc.querySelector("#ov-summaryTable tbody tr").children.length === 5, "Overview: summary table rows have Category/Month/Previous Month/YTD/YoY% columns");
 assert(!doc.getElementById("ov-summaryTable").closest(".table-scroll"), "Overview: Department at a Glance table no longer wrapped in a scrolling container");
-assert(doc.querySelectorAll("#ov-kpiGrid .daterange").length === 15, "Overview: every KPI card shows its YTD date range");
-assert(doc.querySelectorAll("#ov-kpiGrid .kpi-card.events-team").length === 7, "Overview: 7 events-team cards get the blue accent (4 original + Room Nights/Economic Impact/Attendees)");
+assert(doc.querySelectorAll("#ov-kpiGrid .daterange").length === 12, "Overview: every KPI card shows its YTD date range");
+assert(doc.querySelectorAll("#ov-kpiGrid .kpi-card.events-team").length === 4, "Overview: 4 events-team cards get the blue accent");
 assert(
-  ["VA Hosted Events", "VA Event Satisfaction Score", "Leads Generated From VA Events", "Avg. Lead Conversion Window", "Room Nights", "Economic Impact", "Attendees"]
+  ["VA Hosted Events", "VA Event Satisfaction Score", "Leads Generated From VA Events", "Avg. Lead Conversion Window"]
     .every(label => [...doc.querySelectorAll("#ov-kpiGrid .kpi-card.events-team .label")].some(el => el.textContent.includes(label))),
-  "Overview: the correct 7 cards (Hosted Events, Event Satisfaction, Leads Generated, Conversion Window, Room Nights, Economic Impact, Attendees) are the events-team ones"
+  "Overview: the correct 4 cards (Hosted Events, Event Satisfaction, Leads Generated, Conversion Window) are the events-team ones"
 );
 assert(doc.querySelector("#ov-kpiGrid").children[0].querySelector(".label").textContent === "Partners Visited", "Overview: cards reordered, Partners Visited first");
 assert([...doc.querySelectorAll("#ov-kpiGrid .kpi-card")].every(el => el.classList.contains("selectable")), "Overview: every KPI card is clickable/selectable");
@@ -142,7 +146,7 @@ assert([...doc.querySelectorAll("#ov-kpiGrid .kpi-card")].every(el => el.classLi
   cards[2].dispatchEvent(new window.Event("click"));
   const visibleAfter = [...doc.querySelectorAll("#ov-summaryTable tbody tr")].filter(tr => tr.style.display !== "none");
   assert(!cards[2].classList.contains("selected"), "Overview: clicking the same card again clears the highlight");
-  assert(visibleAfter.length === 15, "Overview: clicking the same card again shows all 15 rows again");
+  assert(visibleAfter.length === 12, "Overview: clicking the same card again shows all 12 rows again");
 }
 {
   // The narrative above the table is also dynamic with card selection: a
@@ -269,34 +273,65 @@ assert(doc.querySelectorAll("#ref-kpiGrid .delta").length === 2, "Partner Referr
 }
 
 // Repeat Clients
-// 7 KPI cards as of the September 2026 rebuild: Total Clients Serviced, Total
-// Accounts Serviced, Repeat Accounts, Repeat Account Percentage, New
-// Accounts/Clients, New Account Percentage (mirrors Repeat), and Accounts
-// with Future Bookings (renamed/redefined from Accounts w/ Repeat Bookings).
-assert(doc.getElementById("rep-kpiGrid").children.length === 7, "Repeat Clients: 7 KPI cards (added New Accounts/Clients + New Account Percentage; renamed Accounts w/ Repeat Bookings)");
-assert(doc.getElementById("rep-kpiGrid").textContent.includes("Accounts with Future Bookings"), "Repeat Clients: card renamed to 'Accounts with Future Bookings'");
-assert(!doc.getElementById("rep-kpiGrid").textContent.includes("Accounts w/ Repeat Bookings"), "Repeat Clients: old 'Accounts w/ Repeat Bookings' label removed");
-assert(doc.getElementById("rep-kpiGrid").textContent.includes("New Accounts/Clients"), "Repeat Clients: 'New Accounts/Clients' card added");
-assert(doc.getElementById("rep-kpiGrid").textContent.includes("New Account Percentage"), "Repeat Clients: 'New Account Percentage' card added");
+// Redesigned into two clearly separated card groups so a repeat ACCOUNT
+// (distinct account) is never confused with a repeat CLIENT (individual
+// booking): "By Account" (5 cards: Total Accounts Serviced, Repeat Accounts,
+// Repeat Account Percentage, New Accounts, New Account Percentage) and
+// "By Client / Booking" (3 cards: Repeat Clients, Repeat Client Percentage,
+// Accounts with Future Bookings). "Total Clients Serviced" was removed per
+// direction.
+assert(doc.getElementById("rep-kpiGrid-accounts").children.length === 5, "Repeat Clients: 5 'By Account' KPI cards");
+assert(doc.getElementById("rep-kpiGrid-clients").children.length === 3, "Repeat Clients: 3 'By Client / Booking' KPI cards");
+assert(!doc.getElementById("tab-repeat").textContent.includes("Total Clients Serviced"), "Repeat Clients: 'Total Clients Serviced' card removed");
+assert(doc.getElementById("rep-kpiGrid-accounts").textContent.includes("Repeat Accounts"), "Repeat Clients: 'Repeat Accounts' (distinct-account count) card present");
+assert(doc.getElementById("rep-kpiGrid-accounts").textContent.includes("New Accounts"), "Repeat Clients: card renamed to 'New Accounts' (was 'New Accounts/Clients')");
+assert(!doc.getElementById("tab-repeat").textContent.includes("New Accounts/Clients"), "Repeat Clients: old 'New Accounts/Clients' label removed");
+assert(doc.getElementById("rep-kpiGrid-clients").textContent.includes("Repeat Clients"), "Repeat Clients: 'Repeat Clients' (booking-level count) card present");
+assert(doc.getElementById("rep-kpiGrid-clients").textContent.includes("Accounts with Future Bookings"), "Repeat Clients: 'Accounts with Future Bookings' card present");
 assert(doc.querySelectorAll("#rep-clientsTable tbody tr").length > 0, "Repeat Clients: clients table has rows");
-assert(doc.getElementById("rep-account").children.length > 1, "Repeat Clients: account name filter populated");
+
+// Account Name and Lead are now searchable text inputs (paired with a
+// <datalist>), not plain <select>s, so the user can type to search instead
+// of scrolling a long dropdown.
+assert(doc.getElementById("rep-account").tagName === "INPUT", "Repeat Clients: Account Name filter is a searchable text input");
+assert(doc.getElementById("rep-account-options").children.length > 1, "Repeat Clients: Account Name datalist populated");
+assert(doc.getElementById("rep-lead").tagName === "INPUT", "Repeat Clients: Lead filter is a searchable text input");
+assert(doc.getElementById("rep-lead-options").children.length > 1, "Repeat Clients: Lead datalist populated");
 assert(doc.getElementById("rep-manager").children.length > 1, "Repeat Clients: services manager filter populated");
-assert(doc.getElementById("rep-lead").children.length > 1, "Repeat Clients: new 'Lead' filter populated");
+{
+  // Typing a complete, valid account name (as if picked from the datalist)
+  // narrows every visual on the tab; clearing the box back to empty restores
+  // the unfiltered view (same as picking "Select All" on every other filter).
+  const acctInput = doc.getElementById("rep-account");
+  const someAccount = data.repeatingClients.raw.find(r => r.accountName)?.accountName;
+  assert(someAccount, "Repeat Clients: source data has a real account name to test the searchable filter with");
+  const beforeAccounts = doc.querySelector("#rep-kpiGrid-accounts .kpi-card .value").textContent;
+  acctInput.value = someAccount;
+  acctInput.dispatchEvent(new window.Event("input"));
+  const afterAccounts = doc.querySelector("#rep-kpiGrid-accounts .kpi-card .value").textContent;
+  assert(Number(afterAccounts.replace(/,/g, "")) <= Number(beforeAccounts.replace(/,/g, "")), "Repeat Clients: typing a valid Account Name narrows the KPI cards");
+  acctInput.value = "";
+  acctInput.dispatchEvent(new window.Event("input"));
+  // A partial, incomplete value (still mid-typing) should NOT filter yet.
+  acctInput.value = someAccount.slice(0, 2);
+  acctInput.dispatchEvent(new window.Event("input"));
+  const midTyping = doc.querySelector("#rep-kpiGrid-accounts .kpi-card .value").textContent;
+  assert(midTyping === beforeAccounts, "Repeat Clients: a partial/incomplete Account Name doesn't filter mid-typing");
+  acctInput.value = "";
+  acctInput.dispatchEvent(new window.Event("input"));
+}
 assert(doc.querySelectorAll("#rep-yoyTable tbody tr").length === 2, "Repeat Clients: Year over Year table has Clients + Accounts rows");
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Clients"), "Repeat Clients: YoY table has a Clients row");
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Accounts"), "Repeat Clients: YoY table has an Accounts row");
-// All 7 cards show exactly one .daterange div each -- the 6 YoY-driven cards
-// show their date range there, and the Future Bookings card (which has no
-// YTD-style YoY delta -- see renderRepeat) shows an explanatory note there
-// instead, via the same kpiCard() "note" slot.
-assert(doc.querySelectorAll("#rep-kpiGrid .daterange").length === 7, "Repeat Clients: every KPI card shows a dynamic date-range subtitle (or, for Future Bookings, an explanatory note)");
-assert(doc.getElementById("rep-repeat").children.length === 3, "Repeat Clients: new 'Repeat' filter populated (All/Yes/No)");
+assert(doc.querySelectorAll("#rep-kpiGrid-accounts .daterange").length === 5, "Repeat Clients: every 'By Account' card shows a dynamic date-range subtitle");
+assert(doc.querySelectorAll("#rep-kpiGrid-clients .daterange").length === 3, "Repeat Clients: every 'By Client / Booking' card shows a dynamic date-range subtitle (or, for Future Bookings, an explanatory note)");
+assert(doc.getElementById("rep-repeat").children.length === 3, "Repeat Clients: 'Repeat (5-yr)' filter populated (All/Yes/No)");
 {
   const repeatSel = doc.getElementById("rep-repeat");
-  const before = doc.querySelector("#rep-kpiGrid .kpi-card .value").textContent;
+  const before = doc.querySelector("#rep-kpiGrid-clients .kpi-card .value").textContent;
   repeatSel.value = "Yes";
   repeatSel.dispatchEvent(new window.Event("change"));
-  const afterYes = doc.querySelector("#rep-kpiGrid .kpi-card .value").textContent;
+  const afterYes = doc.querySelector("#rep-kpiGrid-clients .kpi-card .value").textContent;
   assert(Number(afterYes.replace(/,/g, "")) <= Number(before.replace(/,/g, "")), "Repeat Clients: 'Repeat' filter narrows the KPI cards when set to Yes");
   repeatSel.value = "All";
   repeatSel.dispatchEvent(new window.Event("change"));
@@ -306,20 +341,46 @@ assert(doc.getElementById("rep-analysis2").querySelectorAll("strong").length > 0
 assert(doc.getElementById("rep-yoy-analysis").querySelectorAll("strong").length > 0, "Repeat Clients: YoY table analysis sentence has bolded values");
 assert(!doc.getElementById("tab-repeat").textContent.includes("proxy for repeat-booking depth"), "Repeat Clients: 'Bookings = how many times...' subsentence removed from Accounts table");
 assert(doc.getElementById("rep-analysis3").querySelectorAll("strong").length > 0, "Repeat Clients: Accounts table has a bolded auto-analysis sentence");
-// 6 of the 7 cards show a YoY delta -- Accounts with Future Bookings is a
-// point-in-time pipeline snapshot (bookings still ahead of *today*), which
-// doesn't have a meaningful "same YTD window last year" comparison, so it
-// intentionally has no delta (see renderRepeat).
-assert(doc.querySelectorAll("#rep-kpiGrid .delta").length === 6, "Repeat Clients: 6 of 7 cards show a YoY % delta (Accounts with Future Bookings has none)");
+// Accounts with Future Bookings is a point-in-time pipeline snapshot
+// (bookings still ahead of *today*), which doesn't have a meaningful "same
+// YTD window last year" comparison, so it intentionally has no delta.
+assert(doc.querySelectorAll("#rep-kpiGrid-accounts .delta").length === 5, "Repeat Clients: all 5 'By Account' cards show a YoY % delta");
+assert(doc.querySelectorAll("#rep-kpiGrid-clients .delta").length === 2, "Repeat Clients: 2 of 3 'By Client / Booking' cards show a YoY % delta (Accounts with Future Bookings has none)");
 // Regression check: every analysis sentence on this tab now states the
 // latest available month of data (not a year-to-date/whole-period total).
 assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis1").innerHTML), "Repeat Clients: analysis 1 states the latest month, not a YTD/whole-period total");
 assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis2").innerHTML), "Repeat Clients: analysis 2 states the latest month, not a YTD/whole-period total");
 assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis3").innerHTML), "Repeat Clients: analysis 3 states the latest month, not a YTD/whole-period total");
-// Accounts table: new Lead/Start Date/End Date columns, positioned before Attendance.
-assert(doc.querySelector("#rep-clientsTable thead").textContent.trim() === "AccountLeadStart DateEnd DateAttendancePeak RoomRepeat?BookingsServices Manager", "Repeat Clients: Accounts table has Lead/Start Date/End Date columns before Attendance");
+// Accounts table: new Lead/Start Date/End Date columns, positioned before
+// Attendance; "Repeat (5-yr)?" reflects the computed 5-year-window flag.
+assert(doc.querySelector("#rep-clientsTable thead").textContent.trim() === "AccountLeadStart DateEnd DateAttendancePeak RoomRepeat (5-yr)?BookingsServices Manager", "Repeat Clients: Accounts table has Lead/Start Date/End Date columns before Attendance, and a 5-yr-aware Repeat? column");
 assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#rep-clientsTable tbody tr td:nth-child(3)").textContent), "Repeat Clients: Accounts table Start Date formatted MM/DD/YYYY");
 assert(!doc.getElementById("rep-clientsTable").closest(".table-scroll"), "Repeat Clients: Accounts table no longer wrapped in a scrolling container");
+{
+  // 5-year lookback definition of "repeat" (September 2026): a booking only
+  // counts as repeat if the same account has another booking within the
+  // trailing 5 years of it -- not "ever booked before" (the sheet's raw,
+  // lifetime Repeat Business flag). Verify the computed flag actually
+  // differs from the raw sheet column for at least one row where the gap
+  // is genuinely more than 5 years (proves this is a real recompute, not
+  // just a pass-through of the existing column).
+  assert(typeof window.computeFiveYearRepeatFlags === "function", "Repeat Clients: computeFiveYearRepeatFlags() is available for testing");
+  const rows = data.repeatingClients.raw.map(r => ({ ...r }));
+  window.computeFiveYearRepeatFlags(rows);
+  assert(rows.every(r => typeof r.isRepeat5yr === "boolean"), "Repeat Clients: every row gets a computed isRepeat5yr boolean");
+  const testRows = [
+    { accountId: "acct-test-5yr", startDate: "2010-01-01" },
+    { accountId: "acct-test-5yr", startDate: "2026-01-01" }
+  ];
+  window.computeFiveYearRepeatFlags(testRows);
+  assert(testRows[1].isRepeat5yr === false, "Repeat Clients: a booking 16 years after this account's only other booking does NOT count as repeat (5-yr window)");
+  const testRows2 = [
+    { accountId: "acct-test-5yr-2", startDate: "2023-01-01" },
+    { accountId: "acct-test-5yr-2", startDate: "2026-01-01" }
+  ];
+  window.computeFiveYearRepeatFlags(testRows2);
+  assert(testRows2[1].isRepeat5yr === true, "Repeat Clients: a booking 3 years after this account's other booking DOES count as repeat (within the 5-yr window)");
+}
 {
   // Regression check: selecting a completed past year (2025, since 2026 is
   // the latest year present in this sheet) should switch all 3 analysis
@@ -527,14 +588,28 @@ assert(!doc.getElementById("hev-analysis5").textContent.includes("event/survey-t
 assert(/has the most survey-type coverage/.test(doc.getElementById("hev-analysis5").innerHTML), "Hosted Events: 'Event Survey Detail' analysis names the top event by survey-type coverage");
 
 // Booked Business
-// 9 KPI cards as of the September 2026 rebuild: the original 6 plus Room
-// Nights (Requested Rooms), Economic Impact (EIC Booked), and Attendees
-// (Room Attendees) -- all 3 newly added to the source sheet.
-assert(doc.getElementById("bb-kpiGrid").children.length === 9, "Booked Business: 9 KPI cards (added Room Nights/Economic Impact/Attendees)");
-assert(doc.getElementById("bb-kpiGrid").textContent.includes("Room Nights"), "Booked Business: 'Room Nights' card added");
-assert(doc.getElementById("bb-kpiGrid").textContent.includes("Economic Impact"), "Booked Business: 'Economic Impact' card added");
-assert(doc.getElementById("bb-kpiGrid").textContent.includes("Attendees"), "Booked Business: 'Attendees' card added");
+// Back to 6 KPI cards -- Room Nights/Economic Impact/Attendees (briefly
+// added here in an earlier pass) were removed per direction; they now only
+// appear as columns in the "Events That Generated Leads Detail" table below.
+assert(doc.getElementById("bb-kpiGrid").children.length === 6, "Booked Business: 6 KPI cards (Room Nights/Economic Impact/Attendees cards removed again)");
+assert(!doc.getElementById("bb-kpiGrid").textContent.includes("Room Nights"), "Booked Business: 'Room Nights' KPI card removed (kept only as a detail-table column)");
+assert(!doc.getElementById("bb-kpiGrid").textContent.includes("Economic Impact"), "Booked Business: 'Economic Impact' KPI card removed (kept only as a detail-table column)");
 assert(doc.getElementById("bb-manager").children.length > 1, "Booked Business: new 'Sales Manager' filter populated");
+assert(doc.getElementById("bb-eventstatus").children.length > 1, "Booked Business: new 'Event Status' filter populated");
+{
+  // Event Status filter narrows rows on the Booked Business sheet's own
+  // "Event Status" column (distinct from "Lead Status").
+  const statuses = [...new Set(data.bookedBusiness.raw.map(r => r.eventStatus).filter(Boolean))];
+  assert(statuses.length > 0, "Booked Business: source data has real Event Status values to filter by");
+  const esSel = doc.getElementById("bb-eventstatus");
+  const before = doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent;
+  esSel.value = statuses[0];
+  esSel.dispatchEvent(new window.Event("change"));
+  const after = doc.querySelector("#bb-kpiGrid .kpi-card .value").textContent;
+  assert(Number(after.replace(/,/g, "")) <= Number(before.replace(/,/g, "")) || after !== before, "Booked Business: Event Status filter narrows the tab");
+  esSel.value = "All";
+  esSel.dispatchEvent(new window.Event("change"));
+}
 assert([...doc.querySelectorAll("#tab-booked h2")].some(h => h.textContent.includes("Hosted Events & Booked Business")), "Booked Business: cross-reference section now lives on this tab");
 assert(doc.querySelectorAll("#hev-bbTable tfoot tr").length === 1, "Booked Business: cross-reference table has a totals row");
 // Booked Business's Year filter defaults to the latest year actually present
@@ -584,8 +659,8 @@ assert(doc.getElementById("bb-event").children.length > 1, "Booked Business: eve
 assert(doc.querySelectorAll("#bb-detailTable tbody tr").length > 0, "Booked Business: detail table has rows");
 assert(doc.querySelector("#bb-detailTable thead").textContent.trim() === "EventAccountLeadSales ManagerRoom NightsEconomic ImpactAttendeesEvent Start DateLead Created Date", "Booked Business: detail table has Sales Manager/Room Nights/Economic Impact/Attendees columns");
 assert(/^\d{2}\/\d{2}\/\d{4}$/.test(doc.querySelector("#bb-detailTable tbody tr td:nth-child(8)").textContent), "Booked Business: dates formatted MM/DD/YYYY");
-assert(doc.querySelectorAll("#bb-kpiGrid .kpi-card.events-team").length === 9, "Booked Business: all 9 KPI cards get the blue events-team accent");
-assert(doc.querySelectorAll("#bb-kpiGrid .daterange").length === 9, "Booked Business: every KPI card shows a dynamic date-range subtitle");
+assert(doc.querySelectorAll("#bb-kpiGrid .kpi-card.events-team").length === 6, "Booked Business: all 6 KPI cards get the blue events-team accent");
+assert(doc.querySelectorAll("#bb-kpiGrid .daterange").length === 6, "Booked Business: every KPI card shows a dynamic date-range subtitle");
 assert(doc.getElementById("bb-analysis1").querySelectorAll("strong").length > 0, "Booked Business: analysis 1 (Leads Generated by Event) has bolded values");
 assert(doc.getElementById("bb-analysis2").querySelectorAll("strong").length > 0, "Booked Business: analysis 2 (Leads Generated by Lead Status) has bolded values");
 assert(doc.getElementById("hev-bb-analysis").textContent.includes("Out of the"), "Booked Business: cross-reference visual has the dynamic 'Out of the X events...' analysis sentence");

@@ -171,7 +171,7 @@ header.top p.sub {
   text-transform: uppercase;
   letter-spacing: .04em;
 }
-.filter-row select {
+.filter-row select, .filter-row input.searchable-filter {
   font-family: var(--font-body);
   font-size: 13.5px;
   font-weight: 600;
@@ -183,8 +183,32 @@ header.top p.sub {
   border: 1px solid var(--border);
   background: var(--card);
 }
+/* Searchable filters (Repeat Clients: Account Name, Lead) -- a plain text
+   input paired with a <datalist>, so the browser gives native type-to-search/
+   autocomplete behavior instead of a plain dropdown. Typing "Select All" or
+   clearing the box back to empty means no filter, same as picking "Select
+   All" on every other (select-based) filter on the dashboard. */
+.filter-row input.searchable-filter {
+  min-width: 180px;
+}
+.filter-row input.searchable-filter::placeholder { color: var(--text-muted); opacity: .8; }
 
 /* ---------- KPI cards ---------- */
+/* Section subheads (Repeat Clients: "By Account" / "By Client / Booking") --
+   groups KPI cards that count distinct accounts separately from cards that
+   count individual client bookings, so the two concepts (repeat ACCOUNT vs.
+   repeat CLIENT) read as clearly different things rather than one flat list. */
+.kpi-subhead {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -356,12 +380,17 @@ table.mini tfoot td { border-top: 2px solid var(--navy); border-bottom: none; fo
   line-height: 1.3;
 }
 /* "Events That Generated Leads Detail" (Booked Business tab): Event, Account,
-   and Lead names can run long -- wrap them instead of forcing the table into
-   horizontal scroll. */
-#bb-detailTable th:nth-child(1), #bb-detailTable td:nth-child(1),
-#bb-detailTable th:nth-child(2), #bb-detailTable td:nth-child(2),
-#bb-detailTable th:nth-child(3), #bb-detailTable td:nth-child(3) {
+   and Lead *values* can run long -- wrap them instead of forcing the table
+   into horizontal scroll. Their *headers*, though, are single words ("Event",
+   "Account", "Lead", "Attendees") that shouldn't wrap onto two lines just
+   because the column is narrow -- kept on one line via the th-only rule
+   below. Room Nights/Economic Impact/Sales Manager are 2-word headers, left
+   to wrap normally. */
+#bb-detailTable td:nth-child(1), #bb-detailTable td:nth-child(2), #bb-detailTable td:nth-child(3) {
   white-space: normal;
+}
+#bb-detailTable th:nth-child(1), #bb-detailTable th:nth-child(2), #bb-detailTable th:nth-child(3), #bb-detailTable th:nth-child(7) {
+  white-space: nowrap;
 }
 
 /* ---------- Insight narrative ---------- */

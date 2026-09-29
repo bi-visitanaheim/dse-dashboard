@@ -138,15 +138,20 @@
     <div class="tab-toolbar"><button class="export-btn" onclick="window.print()">Export as PDF</button></div>
     <div class="filter-row">
       <label>Year (meeting start) <select id="rep-year"></select></label>
-      <label>Account Name <select id="rep-account"></select></label>
+      <label>Account Name <input list="rep-account-options" id="rep-account" class="searchable-filter" placeholder="Select All" autocomplete="off" /><datalist id="rep-account-options"></datalist></label>
       <label>Services Manager <select id="rep-manager"></select></label>
-      <label>Lead <select id="rep-lead"></select></label>
-      <label>Repeat <select id="rep-repeat"></select></label>
+      <label>Lead <input list="rep-lead-options" id="rep-lead" class="searchable-filter" placeholder="Select All" autocomplete="off" /><datalist id="rep-lead-options"></datalist></label>
+      <label>Repeat (5-yr) <select id="rep-repeat"></select></label>
     </div>
-    <div class="kpi-grid" id="rep-kpiGrid"></div>
+    <p class="desc"><strong>Repeat client</strong> = an individual booking from an account that has another booking within the trailing 5 years (counted per booking). <strong>Repeat account</strong> = a distinct account with at least one such repeat booking. A booking from an account last seen 12+ years ago no longer counts as repeat.</p>
+    <h3 class="kpi-subhead">By Account <span class="tag">Distinct accounts</span></h3>
+    <div class="kpi-grid" id="rep-kpiGrid-accounts"></div>
+    <h3 class="kpi-subhead">By Client / Booking <span class="tag">Individual bookings</span></h3>
+    <div class="kpi-grid" id="rep-kpiGrid-clients"></div>
     <div class="grid-2">
       <section class="panel">
         <h2>Repeat vs. New by Services Manager</h2>
+        <p class="desc">Counts individual client bookings (rows), not distinct accounts.</p>
         <div class="chart-box"><canvas id="rep-chart1"></canvas></div>
         <p class="desc auto-analysis" id="rep-analysis1"></p>
       </section>
@@ -164,7 +169,7 @@
     </section>
     <section class="panel">
       <h2>Accounts</h2>
-      <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Lead</th><th>Start Date</th><th>End Date</th><th>Attendance</th><th>Peak Room</th><th>Repeat?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
+      <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Lead</th><th>Start Date</th><th>End Date</th><th>Attendance</th><th>Peak Room</th><th>Repeat (5-yr)?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
       <p class="desc auto-analysis" id="rep-analysis3"></p>
     </section>
   </section>
@@ -277,6 +282,7 @@
       <label>Lead Status <select id="bb-status"></select></label>
       <label>Event Name <select id="bb-event"></select></label>
       <label>Sales Manager <select id="bb-manager"></select></label>
+      <label>Event Status <select id="bb-eventstatus"></select></label>
     </div>
     <div class="kpi-grid" id="bb-kpiGrid"></div>
     <section class="panel">
