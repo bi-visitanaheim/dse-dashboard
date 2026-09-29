@@ -966,29 +966,18 @@ function renderReferrals(year, manager) {
 // =====================================================================
 // REPEAT CLIENTS
 // =====================================================================
-// Time-bound "repeat" definition (Sept 2026): the sheet's own "Repeat
-// Business" column is a lifetime "has this account EVER booked before" flag,
-// which credits repeat status forever, even after a 12+ year gap. Per
-// direction, this instead computes a rolling 5-year window: a booking counts
-// as repeat only if the same Account ID has another booking whose Start Date
-// falls within the 5 years immediately before THIS booking's own Start Date.
-// Computed once, dashboard-wide, from the full unfiltered dataset (so a
-// booking's classification doesn't shift depending on which Year/Account/
-// Manager/Lead filters happen to be selected) and cached as `isRepeat5yr` on
-// each row -- every "repeat" calculation on this tab reads that flag instead
-// of the raw sheet column from here on.
-function computeFiveYearRepeatFlags(rows) {
-  const byAccount = groupBy(rows.filter(r => r.startDate), r => r.accountId);
-  byAccount.forEach(acctRows => {
-    const sorted = [...acctRows].sort((a, b) => a.startDate.localeCompare(b.startDate));
-    sorted.forEach((r, i) => {
-      const cutoff = new Date(r.startDate);
-      cutoff.setFullYear(cutoff.getFullYear() - 5);
-      const cutoffIso = cutoff.toISOString().slice(0, 10);
-      r.isRepeat5yr = sorted.some((other, j) => j !== i && other.startDate >= cutoffIso && other.startDate < r.startDate);
-    });
-  });
-  rows.forEach(r => { if (r.isRepeat5yr === undefined) r.isRepeat5yr = false; });
+// "Repeat" definition (per direction, reverted from the earlier rolling
+// 5-year window back to the sheet's own raw "Repeat Business" column):
+// each row's `repeat` field ("Yes"/"No" from that column) is read directly,
+// keyed two different ways depending on the metric --
+//   Repeat Accounts: distinct Account ID with >=1 row where Repeat Business = Yes.
+//   Repeat Clients:  individual bookings (Lead ID) where that row's own
+//                    Repeat Business = Yes (Lead ID is already 1:1 with rows
+//                    in this sheet, so this is just a row-level flag).
+// Cached as `isRepeatFlag` on each row so every "repeat" calculation on this
+// tab reads the same boolean.
+function computeRepeatFlags(rows) {
+  rows.forEach(r => { r.isRepeatFlag = r.repeat === "Yes"; });
 }
 // Resolves a searchable text-input filter (Account Name, Lead) against the
 // full list of valid values: an exact (case-insensitive) match -- whether
@@ -1009,7 +998,7 @@ function resolveFilterValue(validValues, typed) {
 // per manager, independent of every other filter on the tab.
 let repChart1Mode = "clients";
 function initRepeat() {
-  computeFiveYearRepeatFlags(DATA.repeatingClients.raw);
+  computeRepeatFlags(DATA.repeatingClients.raw);
   const chart1Toggle = document.getElementById("rep-chart1-toggle");
   if (chart1Toggle) {
     chart1Toggle.querySelectorAll(".toggle-btn").forEach(btn => {
@@ -1043,8 +1032,8 @@ function initRepeat() {
   leadList.innerHTML = leads.map(l => `<option value="${l}"></option>`).join("");
   leadInput.value = "";
   leadInput.addEventListener("input", applyFilters);
-  // "Repeat" filter, now on the computed 5-year-window flag (see
-  // computeFiveYearRepeatFlags) rather than the sheet's raw lifetime flag.
+  // "Repeat" filter, on the sheet's own raw "Repeat Business" column value
+  // (see computeRepeatFlags).
   repeatSel.innerHTML = SELECT_ALL_OPTION + `<option value="Yes">Yes</option><option value="No">No</option>`;
   repeatSel.value = "All";
   repeatSel.onchange = applyFilters;
@@ -1062,7 +1051,7 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   let rows = byYear(DATA.repeatingClients.raw, year);
   if (accountName !== "All") rows = rows.filter(r => r.accountName === accountName);
   if (manager && manager !== "All") rows = rows.filter(r => r.servicesManager === manager);
-  if (repeatFilter && repeatFilter !== "All") rows = rows.filter(r => (r.isRepeat5yr ? "Yes" : "No") === repeatFilter);
+  if (repeatFilter && repeatFilter !== "All") rows = rows.filter(r => (r.isRepeatFlag ? "Yes" : "No") === repeatFilter);
   if (leadName !== "All") rows = rows.filter(r => r.leadName === leadName);
 
   const totalRows = rows.length;
@@ -1070,17 +1059,20 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   const acctCounts = groupBy(rows, r => r.accountId);
 
   // ---- By Account (distinct Account ID) -- "repeat ACCOUNT" ----
-  const repeatAccountIds = new Set(rows.filter(r => r.isRepeat5yr).map(r => r.accountId));
+  const repeatAccountIds = new Set(rows.filter(r => r.isRepeatFlag).map(r => r.accountId));
   const repeatAccountsCount = repeatAccountIds.size;
   const repeatAccountRate = accountsServiced ? repeatAccountsCount / accountsServiced : null;
   const newAccountsCount = accountsServiced - repeatAccountsCount;
   const newAccountRate = accountsServiced ? newAccountsCount / accountsServiced : null;
 
   // ---- By Client/Booking (individual rows) -- "repeat CLIENT" ----
-  const repeatClientsCount = rows.filter(r => r.isRepeat5yr).length;
+  // No longer a separate KPI card group (removed per direction, since Lead
+  // ID is already unique per row on this sheet, so there's no duplicate-Lead
+  // concept of "repeat" at that grain) -- these two values are still used by
+  // the doughnut chart's outer ring and the "repeat vs new" analysis
+  // sentence below.
+  const repeatClientsCount = rows.filter(r => r.isRepeatFlag).length;
   const repeatClientRate = totalRows ? repeatClientsCount / totalRows : null;
-  const newClientsCount = totalRows - repeatClientsCount;
-  const newClientRate = totalRows ? newClientsCount / totalRows : null;
 
   // "Accounts with Future Bookings" -- confirmed FORWARD business: every
   // individual Definite-status booking whose meeting start date is still
@@ -1100,28 +1092,32 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   const repYoyBase = DATA.repeatingClients.raw
     .filter(r => accountName === "All" || r.accountName === accountName)
     .filter(r => !manager || manager === "All" || r.servicesManager === manager)
-    .filter(r => !repeatFilter || repeatFilter === "All" || (r.isRepeat5yr ? "Yes" : "No") === repeatFilter)
+    .filter(r => !repeatFilter || repeatFilter === "All" || (r.isRepeatFlag ? "Yes" : "No") === repeatFilter)
     .filter(r => leadName === "All" || r.leadName === leadName);
   const { prior: repPrior, latest: repLatest } = resolveYoyYears(repYoyBase, year);
   function repYoy(metricFn) { return ytdYoyMetric(repYoyBase, "startDate", repLatest, repPrior, null, metricFn); }
-  function repeatAcctIds(rs) { return new Set(rs.filter(r => r.isRepeat5yr).map(r => r.accountId)); }
+  function repeatAcctIds(rs) { return new Set(rs.filter(r => r.isRepeatFlag).map(r => r.accountId)); }
   const dTotalAccounts = repYoy(rs => distinctCount(rs, r => r.accountId));
   const dRepeatAccounts = repYoy(rs => repeatAcctIds(rs).size);
   const dRepeatAccountRate = repYoy(rs => { const total = distinctCount(rs, r => r.accountId); return total ? repeatAcctIds(rs).size / total : null; });
   const dNewAccounts = repYoy(rs => distinctCount(rs, r => r.accountId) - repeatAcctIds(rs).size);
   const dNewAccountRate = repYoy(rs => { const total = distinctCount(rs, r => r.accountId); return total ? (total - repeatAcctIds(rs).size) / total : null; });
+  // "Total Clients Serviced" is the only "By Client" metric still shown as a
+  // card (moved into "By Accounts," ahead of "Total Accounts Serviced," per
+  // direction) -- Repeat Clients/Repeat Client %/New Clients/New Client %
+  // cards were removed since Lead ID is already unique per row on this
+  // sheet, so there's no duplicate-Lead-ID concept of "repeat" at that
+  // grain. repeatClientsCount/repeatClientRate above are still used by the
+  // doughnut chart and the repeat-vs-new analysis sentence.
   const dTotalClients = repYoy(rs => rs.length);
-  const dRepeatClients = repYoy(rs => rs.filter(r => r.isRepeat5yr).length);
-  const dRepeatClientRate = repYoy(rs => rs.length ? rs.filter(r => r.isRepeat5yr).length / rs.length : null);
-  const dNewClients = repYoy(rs => rs.length - rs.filter(r => r.isRepeat5yr).length);
-  const dNewClientRate = repYoy(rs => rs.length ? (rs.length - rs.filter(r => r.isRepeat5yr).length) / rs.length : null);
 
-  // Two clearly separated KPI groups (see the "By Account" / "By Client /
-  // Booking" subheads in index.html) so a REPEAT ACCOUNT (a distinct account
-  // that has repeat business) never gets confused with a REPEAT CLIENT (an
-  // individual repeat booking/engagement) -- the two numbers are usually
+  // Two clearly separated KPI groups (see the "By Accounts" subhead in
+  // index.html) so a REPEAT ACCOUNT (a distinct account that has repeat
+  // business) never gets confused with a REPEAT CLIENT (an individual
+  // repeat booking/engagement) -- the two numbers are usually
   // different and answer different questions.
   document.getElementById("rep-kpiGrid-accounts").innerHTML = [
+    kpiCard("Total Clients Serviced", fmt(totalRows), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
     kpiCard("Total Accounts Serviced", fmt(accountsServiced), ytdDeltaText(dTotalAccounts, fmt), deltaClass(dTotalAccounts.d), repRange),
     kpiCard("Repeat Accounts", fmt(repeatAccountsCount), ytdDeltaText(dRepeatAccounts, fmt), deltaClass(dRepeatAccounts.d), repRange),
     kpiCard("Repeat Account Percentage", pct(repeatAccountRate), ytdDeltaText(dRepeatAccountRate, pct), deltaClass(dRepeatAccountRate.d), repRange),
@@ -1129,24 +1125,17 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
     kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange),
     kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today")
   ].join("");
-  document.getElementById("rep-kpiGrid-clients").innerHTML = [
-    kpiCard("Total Clients Serviced", fmt(totalRows), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
-    kpiCard("Repeat Clients", fmt(repeatClientsCount), ytdDeltaText(dRepeatClients, fmt), deltaClass(dRepeatClients.d), repRange),
-    kpiCard("Repeat Client Percentage", pct(repeatClientRate), ytdDeltaText(dRepeatClientRate, pct), deltaClass(dRepeatClientRate.d), repRange),
-    kpiCard("New Clients", fmt(newClientsCount), ytdDeltaText(dNewClients, fmt), deltaClass(dNewClients.d), repRange),
-    kpiCard("New Client Percentage", pct(newClientRate), ytdDeltaText(dNewClientRate, pct), deltaClass(dNewClientRate.d), repRange)
-  ].join("");
 
   const byMgr = groupBy(rows, r => r.servicesManager);
   const mgrs = [...byMgr.keys()];
   // "Clients" mode counts individual bookings (rows) per manager, same as
   // before. "Accounts" mode instead counts DISTINCT accounts per manager --
   // an account is "repeat" here if any of its bookings under that manager
-  // carries the isRepeat5yr flag, mirroring the By Account KPI cards' logic.
+  // carries the isRepeatFlag flag, mirroring the By Account KPI cards' logic.
   function mgrRepeatNewAccountCounts(mgrRows) {
     const byAcct = groupBy(mgrRows, r => r.accountId);
     let repeatN = 0, newN = 0;
-    byAcct.forEach(acctRows => { if (acctRows.some(r => r.isRepeat5yr)) repeatN++; else newN++; });
+    byAcct.forEach(acctRows => { if (acctRows.some(r => r.isRepeatFlag)) repeatN++; else newN++; });
     return { repeatN, newN };
   }
   const rep1DescEl = document.getElementById("rep-chart1-desc");
@@ -1173,8 +1162,8 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
         datasets: [
           // Zero-count segments are suppressed (formatter) so a "0" label
           // never floats on top of a zero-width bar next to a real segment.
-          { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.isRepeat5yr).length), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } },
-          { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => !r.isRepeat5yr).length), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } }
+          { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.isRepeatFlag).length), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } },
+          { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => !r.isRepeatFlag).length), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } }
         ]
       },
       options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true } } }
@@ -1203,10 +1192,10 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
     .slice(0, 30);
   // "Lead" (Lead Name), "Start Date"/"End Date" (Meeting Dates Preferred
   // Start/End -- startDate/endDate, see build_data.py) inserted before
-  // Attendance, per direction. "Repeat (5-yr)?" reflects the computed
-  // 5-year-window flag, not the sheet's raw lifetime Repeat Business value.
+  // Attendance, per direction. "Repeat?" reflects the sheet's own raw
+  // "Repeat Business" column value directly (see computeRepeatFlags above).
   document.querySelector("#rep-clientsTable tbody").innerHTML = withBookings.map(r =>
-    `<tr><td>${r.accountName}</td><td>${r.leadName || "&mdash;"}</td><td>${mdy(r.startDate) || "&mdash;"}</td><td>${mdy(r.endDate) || "&mdash;"}</td><td>${fmt(r.attendance)}</td><td>${fmt(r.peakRoom)}</td><td>${r.isRepeat5yr ? "Yes" : "No"}</td><td>${r.bookings}</td><td>${r.servicesManager}</td></tr>`
+    `<tr><td>${r.accountName}</td><td>${r.leadName || "&mdash;"}</td><td>${mdy(r.startDate) || "&mdash;"}</td><td>${mdy(r.endDate) || "&mdash;"}</td><td>${fmt(r.attendance)}</td><td>${fmt(r.peakRoom)}</td><td>${r.isRepeatFlag ? "Yes" : "No"}</td><td>${r.bookings}</td><td>${r.servicesManager}</td></tr>`
   ).join("");
 
   // Year over Year table (same pattern as Partner Referrals' YoY table):
@@ -1218,7 +1207,7 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   let yoyRows = DATA.repeatingClients.raw;
   if (accountName !== "All") yoyRows = yoyRows.filter(r => r.accountName === accountName);
   if (manager && manager !== "All") yoyRows = yoyRows.filter(r => r.servicesManager === manager);
-  if (repeatFilter && repeatFilter !== "All") yoyRows = yoyRows.filter(r => (r.isRepeat5yr ? "Yes" : "No") === repeatFilter);
+  if (repeatFilter && repeatFilter !== "All") yoyRows = yoyRows.filter(r => (r.isRepeatFlag ? "Yes" : "No") === repeatFilter);
   if (leadName !== "All") yoyRows = yoyRows.filter(r => r.leadName === leadName);
   const yoyMetrics = [
     { label: "Clients", agg: rs => rs.filter(r => r.leadId !== null && r.leadId !== undefined).length },
@@ -1274,9 +1263,9 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
       : "No data available for this period yet.";
 
     const monthTotal = repLatestRows.length;
-    const monthRepeatClients = repLatestRows.filter(r => r.isRepeat5yr).length;
+    const monthRepeatClients = repLatestRows.filter(r => r.isRepeatFlag).length;
     const monthAccounts = distinctCount(repLatestRows, r => r.accountId);
-    const monthRepeatAccounts = new Set(repLatestRows.filter(r => r.isRepeat5yr).map(r => r.accountId)).size;
+    const monthRepeatAccounts = new Set(repLatestRows.filter(r => r.isRepeatFlag).map(r => r.accountId)).size;
     document.getElementById("rep-analysis2").innerHTML = repLatestMonth
       ? `In <strong>${monthLabel(repLatestMonth)}</strong>, of the <strong>${fmt(monthTotal)}</strong> client bookings, <strong>${fmt(monthRepeatClients)}</strong> were repeat clients (<strong>${pct(monthTotal ? monthRepeatClients / monthTotal : null)}</strong>), across <strong>${fmt(monthAccounts)}</strong> accounts served, of which <strong>${fmt(monthRepeatAccounts)}</strong> are repeat accounts (<strong>${pct(monthAccounts ? monthRepeatAccounts / monthAccounts : null)}</strong>).`
       : "No data available for this period yet.";

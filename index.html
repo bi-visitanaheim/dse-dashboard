@@ -30,7 +30,7 @@
     <button class="tab-btn active" data-tab="overview">Overview</button>
     <button class="tab-btn" data-tab="team">Team KPIs</button>
     <button class="tab-btn" data-tab="referrals">Partner Referrals</button>
-    <button class="tab-btn" data-tab="repeat">Repeat Clients</button>
+    <button class="tab-btn" data-tab="repeat">Repeat ACC Accounts</button>
     <button class="tab-btn" data-tab="survey">Client Survey</button>
     <button class="tab-btn" data-tab="events">Hosted Events</button>
     <button class="tab-btn" data-tab="booked">Booked Business</button>
@@ -141,14 +141,12 @@
       <label>Account Name <input list="rep-account-options" id="rep-account" class="searchable-filter" placeholder="Select All" autocomplete="off" /><datalist id="rep-account-options"></datalist></label>
       <label>Services Manager <select id="rep-manager"></select></label>
       <label>Lead <input list="rep-lead-options" id="rep-lead" class="searchable-filter" placeholder="Select All" autocomplete="off" /><datalist id="rep-lead-options"></datalist></label>
-      <label>Repeat (5-yr) <select id="rep-repeat"></select></label>
+      <label>Repeat <select id="rep-repeat"></select></label>
     </div>
-    <p class="desc"><strong>Repeat client</strong> = an individual booking from an account that has another booking within the trailing 5 years (counted per booking).</p>
-    <p class="desc"><strong>Repeat account</strong> = a distinct account with at least one such repeat booking. A booking from an account last seen 12+ years ago no longer counts as repeat.</p>
+    <p class="desc"><strong>Repeat client</strong> = an individual booking (Lead ID) whose "Repeat Business" value on the sheet is Yes.</p>
+    <p class="desc"><strong>Repeat account</strong> = a distinct account (Account ID) with at least one booking whose "Repeat Business" value on the sheet is Yes.</p>
     <h3 class="kpi-subhead">By Accounts</h3>
     <div class="kpi-grid" id="rep-kpiGrid-accounts"></div>
-    <h3 class="kpi-subhead">By Client</h3>
-    <div class="kpi-grid" id="rep-kpiGrid-clients"></div>
     <div class="grid-2">
       <section class="panel">
         <div class="panel-header-row">
@@ -176,8 +174,8 @@
       <p class="desc auto-analysis" id="rep-yoy-analysis"></p>
     </section>
     <section class="panel">
-      <h2>Accounts</h2>
-      <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Lead</th><th>Start Date</th><th>End Date</th><th>Attendance</th><th>Peak Room</th><th>Repeat (5-yr)?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
+      <h2>Accounts &amp; Clients</h2>
+      <table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Lead</th><th>Start Date</th><th>End Date</th><th>Attendance</th><th>Peak Room</th><th>Repeat?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table>
       <p class="desc auto-analysis" id="rep-analysis3"></p>
     </section>
   </section>

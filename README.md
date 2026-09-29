@@ -516,6 +516,31 @@ This section documents a third batch of changes made in the same overall Septemb
 
 **Repeat Clients: "By Account" subhead renamed to "By Accounts"** (plural, matching "By Client" as the paired subhead). "By Client" itself was unchanged (already renamed from "By Client / Booking" in part 3).
 
+## September 2026 rebuild, part 5: "Repeat" reverted to the sheet's raw column; layout tweaks; table renamed
+
+**Repeat Accounts/Repeat Clients: reverted from the computed 5-year rolling window back to the sheet's raw "Repeat Business" column.** Parts 2's `computeFiveYearRepeatFlags()` (a rolling 5-year lookback recomputed from each booking's own Start Date) is **superseded** by this change, per explicit direction. The tab now reads the "Repeat Business" column (`repeat`, "Yes"/"No") directly via a much simpler `computeRepeatFlags()`, which just sets `r.isRepeatFlag = r.repeat === "Yes"` on every row -- no date-window computation. The two KPI cards read this flag at two different grains, same as before:
+
+- **Repeat Accounts** (By Accounts): distinct **Account ID** with &ge;1 row (within the current filters) where `repeat === "Yes"`.
+- **Repeat Clients** (By Client): count of individual booking rows (**Lead ID** -- already 1:1 with rows on this sheet, so a distinct-Lead-ID count and a row count are the same number) where that row's own `repeat === "Yes"`.
+
+Every other "repeat" calculation on the tab (both charts, the Accounts & Clients table's "Repeat?" column, the Repeat filter, the YoY table, and all 3 auto-analysis sentences) now reads the same `isRepeatFlag` boolean, so the whole tab is internally consistent. The Repeat filter's visible label changed from "Repeat (5-yr)" to **"Repeat"**, and the table column from "Repeat (5-yr)?" to **"Repeat?"**. The two definition sentences above the KPI grids were rewritten to describe the raw-column match instead of the 5-year window. (Historical note: parts 2/3/4 of this rebuild, and the "Repeat Clients redesign" section above, describe the interim 5-year-window design -- that design is no longer in effect as of this part.)
+
+**Repeat Clients subheads: tag text removed.** "By Accounts" and "By Client" no longer show the small "Distinct accounts" / "Individual bookings" tag next to the heading.
+
+**Repeat Clients: "Accounts with Future Bookings" moved into "By Accounts," as the last card.** It's no longer part of the "By Client" group -- it now sits at the end of the 6-card "By Accounts" row (still with no YoY delta, for the same reason as before -- a "bookings still ahead of today" snapshot has no meaningful prior-year comparison).
+
+**"Accounts" table renamed to "Accounts & Clients."** Same table/columns, `id="rep-clientsTable"` unchanged -- only the panel's `<h2>` heading changed.
+
+**Booked Business: Room Nights/Economic Impact/Attendees moved to their own second KPI row.** Renders into a separate grid (`bb-kpiGrid2`) below the 6 core cards, so they always appear on their own row.
+
+## September 2026 rebuild, part 6: tab renamed, "By Client" card group removed
+
+**Tab renamed.** "Repeat Clients" is now **"Repeat ACC Accounts"** (the nav button text only -- internal IDs like `tab-repeat`, `rep-year`, etc. are unchanged).
+
+**"By Client" KPI card group removed entirely**, per direction: since Lead ID is already unique per row on the "Repeating ACC Clients Services" sheet (confirmed -- 118 rows, 118 distinct Lead IDs), there's no duplicate-Lead-ID concept of "repeat" at that grain, so a separate client-level repeat/new card group didn't add meaningful information beyond the account-level one. The `rep-kpiGrid-clients` grid and its subhead were deleted from `index.html`; `renderRepeat()` no longer renders the Repeat Clients/Repeat Client Percentage/New Clients/New Client Percentage cards (their underlying values -- `repeatClientsCount`/`repeatClientRate` -- are still computed and still feed the doughnut chart's outer ring and the repeat-vs-new analysis sentence, which were unaffected).
+
+**"Total Clients Serviced" survived the removal**, moved into the "By Accounts" group as its **first** card (ahead of "Total Accounts Serviced"). "By Accounts" is now a single 7-card row: Total Clients Serviced, Total Accounts Serviced, Repeat Accounts, Repeat Account Percentage, New Accounts, New Account Percentage, Accounts with Future Bookings (last).
+
 ## Known deployment issue (fixed)
 
 The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.
