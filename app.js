@@ -1126,10 +1126,10 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
     kpiCard("Repeat Accounts", fmt(repeatAccountsCount), ytdDeltaText(dRepeatAccounts, fmt), deltaClass(dRepeatAccounts.d), repRange),
     kpiCard("Repeat Account Percentage", pct(repeatAccountRate), ytdDeltaText(dRepeatAccountRate, pct), deltaClass(dRepeatAccountRate.d), repRange),
     kpiCard("New Accounts", fmt(newAccountsCount), ytdDeltaText(dNewAccounts, fmt), deltaClass(dNewAccounts.d), repRange),
-    kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange)
+    kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange),
+    kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today")
   ].join("");
   document.getElementById("rep-kpiGrid-clients").innerHTML = [
-    kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today"),
     kpiCard("Total Clients Serviced", fmt(totalRows), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
     kpiCard("Repeat Clients", fmt(repeatClientsCount), ytdDeltaText(dRepeatClients, fmt), deltaClass(dRepeatClients.d), repRange),
     kpiCard("Repeat Client Percentage", pct(repeatClientRate), ytdDeltaText(dRepeatClientRate, pct), deltaClass(dRepeatClientRate.d), repRange),
