@@ -273,18 +273,18 @@ assert(doc.querySelectorAll("#ref-kpiGrid .delta").length === 2, "Partner Referr
 }
 
 // Repeat ACC Accounts (tab renamed from "Repeat Clients")
-// Single KPI card group under "By Accounts" (7 cards): Total Clients
+// Single KPI card group under "By Accounts" (6 cards): Total Clients
 // Serviced (moved here from the removed "By Client" group, positioned first
 // -- ahead of Total Accounts Serviced), Total Accounts Serviced, Repeat
-// Accounts, Repeat Account Percentage, New Accounts, New Account Percentage,
-// and Accounts with Future Bookings as the last card. The separate "By
-// Client" card group (Repeat Clients/Repeat Client %/New Clients/New Client
-// %) was removed entirely per direction, since Lead ID is already unique
-// per row on this sheet -- there's no duplicate-Lead-ID concept of "repeat"
-// at that grain.
+// Accounts, Repeat Account Percentage, New Accounts, New Account Percentage.
+// The separate "By Client" card group (Repeat Clients/Repeat Client %/New
+// Clients/New Client %) was removed entirely per direction, since Lead ID
+// is already unique per row on this sheet -- there's no duplicate-Lead-ID
+// concept of "repeat" at that grain. "Accounts with Future Bookings" was
+// also removed per direction (no longer shown anywhere on this tab).
 assert([...doc.querySelectorAll(".tab-btn")].some(b => b.textContent.trim() === "Repeat ACC Accounts"), "Tab renamed from 'Repeat Clients' to 'Repeat ACC Accounts'");
 assert(!doc.getElementById("rep-kpiGrid-clients"), "Repeat ACC Accounts: separate 'By Client' KPI grid removed");
-assert(doc.getElementById("rep-kpiGrid-accounts").children.length === 7, "Repeat ACC Accounts: 7 'By Accounts' KPI cards");
+assert(doc.getElementById("rep-kpiGrid-accounts").children.length === 6, "Repeat ACC Accounts: 6 'By Accounts' KPI cards");
 assert(doc.getElementById("rep-kpiGrid-accounts").textContent.includes("Total Clients Serviced"), "Repeat ACC Accounts: 'Total Clients Serviced' card present in 'By Accounts'");
 assert(doc.getElementById("rep-kpiGrid-accounts").children[0].textContent.includes("Total Clients Serviced"), "Repeat ACC Accounts: 'Total Clients Serviced' is the first card, ahead of 'Total Accounts Serviced'");
 assert(doc.getElementById("rep-kpiGrid-accounts").children[1].textContent.includes("Total Accounts Serviced"), "Repeat ACC Accounts: 'Total Accounts Serviced' is the second card");
@@ -293,9 +293,10 @@ assert(doc.getElementById("rep-kpiGrid-accounts").textContent.includes("New Acco
 assert(!doc.getElementById("tab-repeat").textContent.includes("New Accounts/Clients"), "Repeat ACC Accounts: old 'New Accounts/Clients' label removed");
 assert(!doc.getElementById("rep-kpiGrid-accounts").textContent.includes("Repeat Clients"), "Repeat ACC Accounts: 'Repeat Clients' card removed");
 assert(!doc.getElementById("rep-kpiGrid-accounts").textContent.includes("New Clients"), "Repeat ACC Accounts: 'New Clients' card removed");
-assert(doc.getElementById("rep-kpiGrid-accounts").textContent.includes("Accounts with Future Bookings"), "Repeat ACC Accounts: 'Accounts with Future Bookings' card present as the last 'By Accounts' card");
-assert(doc.getElementById("rep-kpiGrid-accounts").children[doc.getElementById("rep-kpiGrid-accounts").children.length - 1].textContent.includes("Accounts with Future Bookings"), "Repeat ACC Accounts: 'Accounts with Future Bookings' is the last (rightmost) card in 'By Accounts'");
+assert(!doc.getElementById("tab-repeat").textContent.includes("Accounts with Future Bookings"), "Repeat ACC Accounts: 'Accounts with Future Bookings' card removed");
 assert(!doc.querySelector("#tab-repeat h3.kpi-subhead .tag"), "Repeat ACC Accounts: 'Distinct accounts'/'Individual bookings' tag text removed from subheads");
+assert(!doc.getElementById("tab-repeat").textContent.includes("Repeat client</strong> ="), "Repeat ACC Accounts: 'Repeat client' definition sentence removed");
+assert(doc.getElementById("tab-repeat").innerHTML.includes("<strong>Repeat account</strong>"), "Repeat ACC Accounts: 'Repeat account' definition sentence still present");
 assert(doc.querySelectorAll("#rep-clientsTable tbody tr").length > 0, "Repeat ACC Accounts: Accounts & Clients table has rows");
 
 // Account Name and Lead are now searchable text inputs (paired with a
@@ -331,7 +332,7 @@ assert(doc.getElementById("rep-manager").children.length > 1, "Repeat Clients: s
 assert(doc.querySelectorAll("#rep-yoyTable tbody tr").length === 2, "Repeat Clients: Year over Year table has Clients + Accounts rows");
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Clients"), "Repeat Clients: YoY table has a Clients row");
 assert(doc.querySelector("#rep-yoyTable tbody").textContent.includes("Accounts"), "Repeat Clients: YoY table has an Accounts row");
-assert(doc.querySelectorAll("#rep-kpiGrid-accounts .daterange").length === 7, "Repeat ACC Accounts: every 'By Accounts' card shows a dynamic date-range subtitle (or, for Future Bookings, an explanatory note)");
+assert(doc.querySelectorAll("#rep-kpiGrid-accounts .daterange").length === 6, "Repeat ACC Accounts: every 'By Accounts' card shows a dynamic date-range subtitle");
 assert(doc.getElementById("rep-repeat").children.length === 3, "Repeat ACC Accounts: 'Repeat' filter populated (All/Yes/No)");
 {
   const repeatSel = doc.getElementById("rep-repeat");
@@ -348,10 +349,7 @@ assert(doc.getElementById("rep-analysis2").querySelectorAll("strong").length > 0
 assert(doc.getElementById("rep-yoy-analysis").querySelectorAll("strong").length > 0, "Repeat ACC Accounts: YoY table analysis sentence has bolded values");
 assert(!doc.getElementById("tab-repeat").textContent.includes("proxy for repeat-booking depth"), "Repeat ACC Accounts: 'Bookings = how many times...' subsentence removed from Accounts & Clients table");
 assert(doc.getElementById("rep-analysis3").querySelectorAll("strong").length > 0, "Repeat ACC Accounts: Accounts & Clients table has a bolded auto-analysis sentence");
-// Accounts with Future Bookings is a point-in-time pipeline snapshot
-// (bookings still ahead of *today*), which doesn't have a meaningful "same
-// YTD window last year" comparison, so it intentionally has no delta.
-assert(doc.querySelectorAll("#rep-kpiGrid-accounts .delta").length === 6, "Repeat ACC Accounts: 6 of 7 'By Accounts' cards show a YoY % delta (Accounts with Future Bookings has none)");
+assert(doc.querySelectorAll("#rep-kpiGrid-accounts .delta").length === 6, "Repeat ACC Accounts: all 6 'By Accounts' cards show a YoY % delta");
 // Regression check: every analysis sentence on this tab now states the
 // latest available month of data (not a year-to-date/whole-period total).
 assert(/^In <strong>[A-Za-z]{3} \d{2}<\/strong>,/.test(doc.getElementById("rep-analysis1").innerHTML), "Repeat Clients: analysis 1 states the latest month, not a YTD/whole-period total");

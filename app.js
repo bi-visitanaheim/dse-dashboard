@@ -5,9 +5,9 @@
    reverse-engineered by comparing computed values against the numbers
    shown live in that report. Reads data.json (built by build_data.py). */
 
-// Visit Anaheim "ReBrand Teal" palette, pulled directly from the
-// department's own Power BI theme file (RebrandTheme.json).
-// Restricted to the six approved brand colors only (navy, teal, teal-light,
+// VA Branded design system -- Escapism (teal) family, the approved
+// corporate/BI accent palette, plus the Dark/Light functional colors.
+// Restricted to these six approved colors only (navy, teal, teal-light,
 // pale, near-black text, off-white bg). Grid/muted are opacity tints of
 // those same colors, not new hues.
 const COLORS = {
@@ -18,7 +18,7 @@ const COLORS = {
 };
 const YEAR_PALETTE = { 2023: "#B4D9E3", 2024: "#77C7C9", 2025: "#43A3A3", 2026: "#125C60" };
 
-Chart.defaults.font.family = "'Sharp Sans Disp No2','Sharp Sans Display No2','Segoe UI',Arial,sans-serif";
+Chart.defaults.font.family = "'Sharp Sans Disp No2','Sharp Sans Display No2','Proxima Nova',system-ui,sans-serif";
 Chart.defaults.color = COLORS.muted;
 Chart.defaults.borderColor = COLORS.grid;
 
@@ -1074,14 +1074,6 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   const repeatClientsCount = rows.filter(r => r.isRepeatFlag).length;
   const repeatClientRate = totalRows ? repeatClientsCount / totalRows : null;
 
-  // "Accounts with Future Bookings" -- confirmed FORWARD business: every
-  // individual Definite-status booking whose meeting start date is still
-  // ahead of today, counted per booking/row (an account with 3 upcoming
-  // programs counts as 3, not 1). Unrelated to the repeat/new split above.
-  const todayIso = new Date().toISOString().slice(0, 10);
-  const futureBookingRows = rows.filter(r => r.status === "Definite" && r.startDate && r.startDate >= todayIso);
-  const accountsWithFutureBookings = futureBookingRows.length;
-
   // Dynamic date-range subtitle -- dynamic with the Year/Account/Manager/Lead filters via `rows`.
   const repRange = rangeLabel(rows, "startDate");
 
@@ -1122,8 +1114,7 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
     kpiCard("Repeat Accounts", fmt(repeatAccountsCount), ytdDeltaText(dRepeatAccounts, fmt), deltaClass(dRepeatAccounts.d), repRange),
     kpiCard("Repeat Account Percentage", pct(repeatAccountRate), ytdDeltaText(dRepeatAccountRate, pct), deltaClass(dRepeatAccountRate.d), repRange),
     kpiCard("New Accounts", fmt(newAccountsCount), ytdDeltaText(dNewAccounts, fmt), deltaClass(dNewAccounts.d), repRange),
-    kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange),
-    kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today")
+    kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange)
   ].join("");
 
   const byMgr = groupBy(rows, r => r.servicesManager);
