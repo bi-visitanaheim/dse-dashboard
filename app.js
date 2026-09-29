@@ -1003,8 +1003,24 @@ function resolveFilterValue(validValues, typed) {
   const match = validValues.find(v => v.toLowerCase() === t.toLowerCase());
   return match || "All";
 }
+// Local toggle state for the "Repeat vs. New by Services Manager" chart only
+// (rep-chart1) -- lets that one visual switch between counting distinct
+// repeat/new ACCOUNTS per manager and counting repeat/new CLIENT bookings
+// per manager, independent of every other filter on the tab.
+let repChart1Mode = "clients";
 function initRepeat() {
   computeFiveYearRepeatFlags(DATA.repeatingClients.raw);
+  const chart1Toggle = document.getElementById("rep-chart1-toggle");
+  if (chart1Toggle) {
+    chart1Toggle.querySelectorAll(".toggle-btn").forEach(btn => {
+      btn.onclick = () => {
+        if (btn.classList.contains("active")) return;
+        repChart1Mode = btn.dataset.mode;
+        chart1Toggle.querySelectorAll(".toggle-btn").forEach(b => b.classList.toggle("active", b === btn));
+        applyFilters();
+      };
+    });
+  }
   const yearSel = document.getElementById("rep-year");
   const acctInput = document.getElementById("rep-account");
   const acctList = document.getElementById("rep-account-options");
@@ -1063,6 +1079,8 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   // ---- By Client/Booking (individual rows) -- "repeat CLIENT" ----
   const repeatClientsCount = rows.filter(r => r.isRepeat5yr).length;
   const repeatClientRate = totalRows ? repeatClientsCount / totalRows : null;
+  const newClientsCount = totalRows - repeatClientsCount;
+  const newClientRate = totalRows ? newClientsCount / totalRows : null;
 
   // "Accounts with Future Bookings" -- confirmed FORWARD business: every
   // individual Definite-status booking whose meeting start date is still
@@ -1092,8 +1110,11 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   const dRepeatAccountRate = repYoy(rs => { const total = distinctCount(rs, r => r.accountId); return total ? repeatAcctIds(rs).size / total : null; });
   const dNewAccounts = repYoy(rs => distinctCount(rs, r => r.accountId) - repeatAcctIds(rs).size);
   const dNewAccountRate = repYoy(rs => { const total = distinctCount(rs, r => r.accountId); return total ? (total - repeatAcctIds(rs).size) / total : null; });
+  const dTotalClients = repYoy(rs => rs.length);
   const dRepeatClients = repYoy(rs => rs.filter(r => r.isRepeat5yr).length);
   const dRepeatClientRate = repYoy(rs => rs.length ? rs.filter(r => r.isRepeat5yr).length / rs.length : null);
+  const dNewClients = repYoy(rs => rs.length - rs.filter(r => r.isRepeat5yr).length);
+  const dNewClientRate = repYoy(rs => rs.length ? (rs.length - rs.filter(r => r.isRepeat5yr).length) / rs.length : null);
 
   // Two clearly separated KPI groups (see the "By Account" / "By Client /
   // Booking" subheads in index.html) so a REPEAT ACCOUNT (a distinct account
@@ -1108,26 +1129,57 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
     kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange)
   ].join("");
   document.getElementById("rep-kpiGrid-clients").innerHTML = [
+    kpiCard("Total Clients Serviced", fmt(totalRows), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
     kpiCard("Repeat Clients", fmt(repeatClientsCount), ytdDeltaText(dRepeatClients, fmt), deltaClass(dRepeatClients.d), repRange),
     kpiCard("Repeat Client Percentage", pct(repeatClientRate), ytdDeltaText(dRepeatClientRate, pct), deltaClass(dRepeatClientRate.d), repRange),
+    kpiCard("New Clients", fmt(newClientsCount), ytdDeltaText(dNewClients, fmt), deltaClass(dNewClients.d), repRange),
+    kpiCard("New Client Percentage", pct(newClientRate), ytdDeltaText(dNewClientRate, pct), deltaClass(dNewClientRate.d), repRange),
     kpiCard("Accounts with Future Bookings", fmt(accountsWithFutureBookings), null, "flat", null, null, "Confirmed (Definite) bookings on record with a start date still ahead of today")
   ].join("");
 
   const byMgr = groupBy(rows, r => r.servicesManager);
   const mgrs = [...byMgr.keys()];
-  makeChart("rep-chart1", {
-    type: "bar",
-    data: {
-      labels: mgrs,
-      datasets: [
-        // Zero-count segments are suppressed (formatter) so a "0" label
-        // never floats on top of a zero-width bar next to a real segment.
-        { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.isRepeat5yr).length), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } },
-        { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => !r.isRepeat5yr).length), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } }
-      ]
-    },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true } } }
-  });
+  // "Clients" mode counts individual bookings (rows) per manager, same as
+  // before. "Accounts" mode instead counts DISTINCT accounts per manager --
+  // an account is "repeat" here if any of its bookings under that manager
+  // carries the isRepeat5yr flag, mirroring the By Account KPI cards' logic.
+  function mgrRepeatNewAccountCounts(mgrRows) {
+    const byAcct = groupBy(mgrRows, r => r.accountId);
+    let repeatN = 0, newN = 0;
+    byAcct.forEach(acctRows => { if (acctRows.some(r => r.isRepeat5yr)) repeatN++; else newN++; });
+    return { repeatN, newN };
+  }
+  const rep1DescEl = document.getElementById("rep-chart1-desc");
+  if (repChart1Mode === "accounts") {
+    if (rep1DescEl) rep1DescEl.textContent = "Counts distinct accounts, not individual bookings.";
+    const counts = mgrs.map(m => mgrRepeatNewAccountCounts(byMgr.get(m)));
+    makeChart("rep-chart1", {
+      type: "bar",
+      data: {
+        labels: mgrs,
+        datasets: [
+          { label: "Repeat", data: counts.map(c => c.repeatN), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } },
+          { label: "New", data: counts.map(c => c.newN), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } }
+        ]
+      },
+      options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true } } }
+    });
+  } else {
+    if (rep1DescEl) rep1DescEl.textContent = "Counts individual client bookings (rows), not distinct accounts.";
+    makeChart("rep-chart1", {
+      type: "bar",
+      data: {
+        labels: mgrs,
+        datasets: [
+          // Zero-count segments are suppressed (formatter) so a "0" label
+          // never floats on top of a zero-width bar next to a real segment.
+          { label: "Repeat", data: mgrs.map(m => byMgr.get(m).filter(r => r.isRepeat5yr).length), backgroundColor: COLORS.navy, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } },
+          { label: "New", data: mgrs.map(m => byMgr.get(m).filter(r => !r.isRepeat5yr).length), backgroundColor: COLORS.teal, borderRadius: 4, datalabels: { color: "#ffffff", anchor: "center", align: "center", formatter: (v) => v ? v : "" } }
+        ]
+      },
+      options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { position: "bottom" } }, scales: { x: { stacked: true, beginAtZero: true }, y: { stacked: true } } }
+    });
+  }
   makeChart("rep-chart2", {
     type: "doughnut",
     data: {
@@ -1198,14 +1250,15 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
 
     document.getElementById("rep-analysis2").innerHTML = `In <strong>${year}</strong>, of the <strong>${fmt(totalRows)}</strong> client bookings, <strong>${fmt(repeatClientsCount)}</strong> were repeat clients (<strong>${pct(repeatClientRate)}</strong>), across <strong>${fmt(accountsServiced)}</strong> accounts served, of which <strong>${fmt(repeatAccountsCount)}</strong> are repeat accounts (<strong>${pct(repeatAccountRate)}</strong>).`;
 
-    // Accounts table: the account with the most bookings across the whole
-    // selected year (acctCounts is already this tab's full filtered set).
-    const topAccountYear = topEntry(
-      [...acctCounts.entries()].map(([id, rs]) => ({ name: rs[0].accountName, count: rs.length })),
-      x => x.count
-    );
-    document.getElementById("rep-analysis3").innerHTML = topAccountYear
-      ? `In <strong>${year}</strong>, <strong>${topAccountYear.item.name}</strong> had the most bookings, with <strong>${fmt(topAccountYear.v)}</strong>.`
+    // Accounts table: how many DISTINCT accounts are tied for the most
+    // bookings across the whole selected year (acctCounts is already this
+    // tab's full filtered set), and what that top booking count is -- not
+    // just naming one account, since ties are common at low booking counts.
+    const acctBookingCountsYear = [...acctCounts.entries()].map(([id, rs]) => rs.length);
+    const topBookingsYear = acctBookingCountsYear.length ? Math.max(...acctBookingCountsYear) : 0;
+    const topAccountsYearN = acctBookingCountsYear.filter(c => c === topBookingsYear).length;
+    document.getElementById("rep-analysis3").innerHTML = topBookingsYear > 0
+      ? `In <strong>${year}</strong>, <strong>${fmt(topAccountsYearN)}</strong> account${topAccountsYearN === 1 ? "" : "s"} had the most bookings, with <strong>${fmt(topBookingsYear)}</strong> booking${topBookingsYear === 1 ? "" : "s"} each.`
       : "No data available for this period yet.";
   } else {
     const repMonths = [...new Set(rows.map(r => monthKey(r.startDate)))].sort();
@@ -1228,16 +1281,16 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
       ? `In <strong>${monthLabel(repLatestMonth)}</strong>, of the <strong>${fmt(monthTotal)}</strong> client bookings, <strong>${fmt(monthRepeatClients)}</strong> were repeat clients (<strong>${pct(monthTotal ? monthRepeatClients / monthTotal : null)}</strong>), across <strong>${fmt(monthAccounts)}</strong> accounts served, of which <strong>${fmt(monthRepeatAccounts)}</strong> are repeat accounts (<strong>${pct(monthAccounts ? monthRepeatAccounts / monthAccounts : null)}</strong>).`
       : "No data available for this period yet.";
 
-    // Accounts table: the account with the most bookings recorded in the
-    // latest month specifically (row count for that account within that
-    // month), not its all-time/whole-period bookings total.
+    // Accounts table: how many distinct accounts are tied for the most
+    // bookings recorded in the latest month specifically (row count for
+    // that account within that month), not their all-time/whole-period
+    // bookings total.
     const monthAcctCounts = groupBy(repLatestRows, r => r.accountId);
-    const topAccountMonth = topEntry(
-      [...monthAcctCounts.entries()].map(([id, rs]) => ({ name: rs[0].accountName, count: rs.length })),
-      x => x.count
-    );
-    document.getElementById("rep-analysis3").innerHTML = (repLatestMonth && topAccountMonth)
-      ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${topAccountMonth.item.name}</strong> had the most bookings, with <strong>${fmt(topAccountMonth.v)}</strong>.`
+    const acctBookingCountsMonth = [...monthAcctCounts.values()].map(rs => rs.length);
+    const topBookingsMonth = acctBookingCountsMonth.length ? Math.max(...acctBookingCountsMonth) : 0;
+    const topAccountsMonthN = acctBookingCountsMonth.filter(c => c === topBookingsMonth).length;
+    document.getElementById("rep-analysis3").innerHTML = (repLatestMonth && topBookingsMonth > 0)
+      ? `In <strong>${monthLabel(repLatestMonth)}</strong>, <strong>${fmt(topAccountsMonthN)}</strong> account${topAccountsMonthN === 1 ? "" : "s"} had the most bookings, with <strong>${fmt(topBookingsMonth)}</strong> booking${topBookingsMonth === 1 ? "" : "s"} each.`
       : "No data available for this period yet.";
   }
 
@@ -1402,10 +1455,16 @@ function renderSurvey(year, manager, question) {
   ].join("");
 
   document.getElementById("sur-chart1-title").innerHTML = "VA Survey Questions Rating" + titleSuffix;
-  document.getElementById("sur-chart2-title").innerHTML = "VA Team Experience Avg. Score by Month" + titleSuffix + ` <span class="tag">Monthly</span>`;
+  document.getElementById("sur-chart2-title").innerHTML = "Avg. Rating by Month" + titleSuffix + ` <span class="tag">Monthly</span>`;
   document.getElementById("sur-chart3-title").innerHTML = "Avg. Rating by DS&amp;E Manager" + titleSuffix;
   document.getElementById("sur-yoyValues-title").innerHTML = "Ratings by Year" + titleSuffix;
   document.getElementById("sur-yoyPct-title").innerHTML = "Year-over-Year % Change" + titleSuffix;
+  const sur2DescEl = document.getElementById("sur-chart2-desc");
+  if (sur2DescEl) {
+    sur2DescEl.textContent = hasQ
+      ? `Averaged for "${question}" only, grouped by the date on each response.`
+      : "Averaged across all six rated questions, grouped by the date on each response.";
+  }
   document.getElementById("sur-chart3-desc").textContent = hasQ
     ? `Averaged for "${question}" only, grouped by the manager named on each response.`
     : "Averaged across all six rated questions, grouped by the manager named on each response.";
@@ -1423,7 +1482,7 @@ function renderSurvey(year, manager, question) {
       // Bold, larger data labels so they're easy to read at a glance.
       datalabels: { font: { size: 13, weight: "700" }, color: COLORS.text }
     }] },
-    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 10 } } }
+    options: { indexAxis: "y", responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { min: 0, max: 10 }, y: { ticks: { font: { weight: "700" } } } } }
   });
 
   const byMonth = groupBy(filteredRows, r => monthKey(r.date));
@@ -1951,6 +2010,17 @@ function renderBooked(year, status, eventName, salesManager, eventStatus) {
     : avgConversionWindow > 90 ? fmt(avgConversionWindow / 30, 1) + " months"
     : fmt(avgConversionWindow) + " days";
 
+  // Room Nights (Requested Rooms), Economic Impact (EIC Booked), and
+  // Attendees (Room Attendees) -- re-added to this tab's own KPI grid per
+  // direction (Overview does NOT get these back -- they're Booked-Business-
+  // only). All 3 are LEAD-level values (repeated on every attendee row under
+  // that lead), so they're summed over uniqueLeadRows (same dedupe as
+  // Definite Leads above), matching the same totals shown in the detail
+  // table's subtotal row below.
+  const roomNightsTotal = sum(uniqueLeadRows, r => r.roomNights);
+  const economicImpactTotal = sum(uniqueLeadRows, r => r.economicImpact);
+  const attendeesTotal = sum(uniqueLeadRows, r => r.attendeesCount);
+
   // Dynamic date-range subtitle -- dynamic with the Year/Status/Event filters via `rows`.
   const bbRange = rangeLabel(rows, "eventStartDate");
 
@@ -1975,6 +2045,11 @@ function renderBooked(year, status, eventName, salesManager, eventStatus) {
   const dDefiniteRate = bbYoy(rs => { const uniq = dedupeBy(rs, r => r.leadId); const leads = distinctCount(rs, r => r.leadId); return leads ? uniq.filter(r => r.leadStatus === "Definite").length / leads : null; });
   const dConvWindow = bbYoy(rs => mean(rs, r => r.daysFromLeadCreatedToEvent));
   const convWinFmtBB = v => (v === null ? "&mdash;" : v > 90 ? fmt(v / 30, 1) + " months" : fmt(v) + " days");
+  // Room Nights / Economic Impact / Attendees YoY deltas -- same lead-level
+  // dedupe-then-sum pattern as the totals above (roomNightsTotal etc.).
+  const dRoomNights = bbYoy(rs => sum(dedupeBy(rs, r => r.leadId), r => r.roomNights));
+  const dEconomicImpact = bbYoy(rs => sum(dedupeBy(rs, r => r.leadId), r => r.economicImpact));
+  const dAttendees = bbYoy(rs => sum(dedupeBy(rs, r => r.leadId), r => r.attendeesCount));
 
   // Hosted Events and Booked Business both represent the events team's own
   // data, so every card on these two tabs gets the same pale-blue
@@ -1985,7 +2060,10 @@ function renderBooked(year, status, eventName, salesManager, eventStatus) {
     kpiCard("Leads Generated", fmt(leadsGenerated), ytdDeltaText(dLeadsGen, fmt), deltaClass(dLeadsGen.d), bbRange, "events-team"),
     kpiCard("Definite Leads", fmt(definiteLeads), ytdDeltaText(dDefiniteLeads, fmt), deltaClass(dDefiniteLeads.d), bbRange, "events-team"),
     kpiCard("Definite Leads Percentage", pct(definiteRate), ytdDeltaText(dDefiniteRate, pct), deltaClass(dDefiniteRate.d), bbRange, "events-team"),
-    kpiCard("Avg. Conversion Window", convWindowText, ytdDeltaText(dConvWindow, convWinFmtBB), deltaClass(dConvWindow.d), bbRange, "events-team")
+    kpiCard("Avg. Conversion Window", convWindowText, ytdDeltaText(dConvWindow, convWinFmtBB), deltaClass(dConvWindow.d), bbRange, "events-team"),
+    kpiCard("Room Nights", fmt(roomNightsTotal), ytdDeltaText(dRoomNights, fmt), deltaClass(dRoomNights.d), bbRange, "events-team"),
+    kpiCard("Economic Impact", "$" + fmt(economicImpactTotal), ytdDeltaText(dEconomicImpact, v => "$" + fmt(v)), deltaClass(dEconomicImpact.d), bbRange, "events-team"),
+    kpiCard("Attendees", fmt(attendeesTotal), ytdDeltaText(dAttendees, fmt), deltaClass(dAttendees.d), bbRange, "events-team")
   ].join("");
 
   // Grouped from the full (non-deduped) rows, not uniqueLeadRows -- a lead
@@ -2068,6 +2146,11 @@ function renderBooked(year, status, eventName, salesManager, eventStatus) {
     .sort((a, b) => (b.eventStartDate || "").localeCompare(a.eventStartDate || ""))
     .map(r => `<tr><td>${r.eventName}</td><td>${r.accountName}</td><td>${r.leadName}</td><td>${r.salesManager || "&mdash;"}</td><td>${fmt(r.roomNights)}</td><td>${r.economicImpact === null || r.economicImpact === undefined ? "&mdash;" : "$" + fmt(r.economicImpact)}</td><td>${fmt(r.attendeesCount)}</td><td>${mdy(r.eventStartDate) || "&mdash;"}</td><td>${mdy(r.leadCreatedDate) || "&mdash;"}</td></tr>`)
     .join("");
+  // Subtotal row: distinct event count (not row count -- one event can have
+  // several lead rows), plus the same sums shown in the KPI cards above.
+  const detailDistinctEvents = distinctCount(uniqueLeadRows, r => r.eventName);
+  document.querySelector("#bb-detailTable tfoot").innerHTML =
+    `<tr><td>Total (${fmt(detailDistinctEvents)} events)</td><td></td><td></td><td></td><td>${fmt(roomNightsTotal)}</td><td>$${fmt(economicImpactTotal)}</td><td>${fmt(attendeesTotal)}</td><td></td><td></td></tr>`;
 
   // Auto-analysis sentences (bolded values) -- neither chart on this tab is
   // month-based, so they call out the top event/status instead of a "latest

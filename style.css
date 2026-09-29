@@ -287,6 +287,37 @@ section.panel h2 .tag {
   text-transform: uppercase;
   letter-spacing: .04em;
 }
+.panel-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.panel-header-row h2 { margin: 0 0 4px; }
+.toggle-switch {
+  display: inline-flex;
+  background: var(--pale);
+  border-radius: 999px;
+  padding: 3px;
+  gap: 2px;
+}
+.toggle-switch .toggle-btn {
+  border: none;
+  background: transparent;
+  color: var(--navy);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 5px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.toggle-switch .toggle-btn.active {
+  background: var(--navy);
+  color: #fff;
+}
+.toggle-switch .toggle-btn:not(.active):hover { background: var(--teal-light); }
 section.panel p.desc {
   margin: 0 0 18px;
   color: var(--text-muted);

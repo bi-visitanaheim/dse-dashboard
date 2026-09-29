@@ -450,7 +450,7 @@ This section documents a second batch of changes made in the same September 2026
 
 **Partner Referrals: new "Service Manager" filter.** The "PartnerReferralsDetail" table (see the Partner Referrals mapping section above) doesn't have its own separate Service Manager column -- its "User" column already **is** the DS&E service manager who logged each referral (the old, pre-2026-rebuild "Partner Referrals" sheet's own report title was literally "Partner Referrals by Manager (Sales User Group)"). The new filter (`ref-manager` in `index.html`) filters on that same field (`r.staff`, sourced from "User"), narrowing the KPI cards, all three charts, the YoY table, and the Referral Detail table together -- same pattern as every other tab's filters.
 
-**Booked Business: 3 new fields (detail-table columns only), and a Sales Manager filter.** The "Booked Business" sheet gained 3 new columns: **Requested Rooms** (column 18), **EIC Booked** (column 19), and **Room Attendees** (column 20) -- captured in `build_data.py` as `roomNights`, `economicImpact`, and `attendeesCount`. All 3 are **lead-level** values (the same value repeats on every attendee row under a given Lead ID, confirmed against the source workbook). Per direction, these 3 fields were **not** added as KPI cards anywhere (an earlier pass briefly added them to both this tab's KPI grid and Overview's "Department at a Glance" -- both were reverted) -- they live only as 3 new columns (**Room Nights**, **Economic Impact** -- formatted as a dollar figure, **Attendees**) on the "Events That Generated Leads Detail" table, between Lead and Event Start Date, alongside a new **Sales Manager** column. A new **Sales Manager** filter (`bb-manager`) was added, filtering on the existing `salesManager` field (column 13, "Sales Manager" -- already captured, just not previously filterable), and a new **Event Status** filter (`bb-eventstatus`) was added, filtering on the sheet's own "Event Status" column (`eventStatus` -- distinct from "Lead Status").
+**Booked Business: 3 new fields (detail-table columns), a Sales Manager filter, and (as of the September 2026 rebuild part 3, below) matching KPI cards.** The "Booked Business" sheet gained 3 new columns: **Requested Rooms** (column 18), **EIC Booked** (column 19), and **Room Attendees** (column 20) -- captured in `build_data.py` as `roomNights`, `economicImpact`, and `attendeesCount`. All 3 are **lead-level** values (the same value repeats on every attendee row under a given Lead ID, confirmed against the source workbook). They live as 3 columns (**Room Nights**, **Economic Impact** -- formatted as a dollar figure, **Attendees**) on the "Events That Generated Leads Detail" table, between Lead and Event Start Date, alongside a new **Sales Manager** column -- and, per direction in part 3 of this rebuild, as 3 matching KPI cards on **this tab only** (not Overview's "Department at a Glance" -- see part 3 below for why the two tabs ended up different). A new **Sales Manager** filter (`bb-manager`) was added, filtering on the existing `salesManager` field (column 13, "Sales Manager" -- already captured, just not previously filterable), and a new **Event Status** filter (`bb-eventstatus`) was added, filtering on the sheet's own "Event Status" column (`eventStatus` -- distinct from "Lead Status").
 
 **Repeat Clients: complete redesign -- accounts vs. clients, time-bound "repeat," searchable filters.** This tab got the most substantial rework of this rebuild; see the dedicated section below ("Repeat Clients redesign: 5-year lookback, account/client split, searchable filters") for the full breakdown.
 
@@ -464,7 +464,7 @@ This is a from-scratch rework of the Repeat Clients tab, replacing the "Accounts
 
 **5-year lookback definition (`computeFiveYearRepeatFlags` in `app.js`).** Computed once, dashboard-wide, from the full unfiltered `repeatingClients.raw` dataset (so a booking's classification doesn't shift depending on which Year/Account/Manager/Lead filter happens to be selected): a booking counts as repeat (`isRepeat5yr`) only if the *same Account ID* has another booking whose Start Date falls within the 5 years immediately before *this* booking's own Start Date. This rolling, self-referential window replaces the sheet's raw `repeat` column everywhere on this tab -- the KPI cards, both charts, the Accounts table's "Repeat (5-yr)?" column, and the Repeat filter all now read `isRepeat5yr` instead. (Reference point: each booking's own date, not "today" -- this is what lets the Year filter and past-year views stay meaningful; if a different reference point was intended, this is the spot in `app.js` to adjust.)
 
-**Two clearly separated KPI card groups**, under their own subheads in `index.html` (`#rep-kpiGrid-accounts` / `#rep-kpiGrid-clients`):
+**Two clearly separated KPI card groups**, under their own subheads in `index.html` (`#rep-kpiGrid-accounts` / `#rep-kpiGrid-clients`), renamed in part 3 of this rebuild (below) to **"By Account"** and **"By Client"**:
 
 | Group | Card | Definition |
 |---|---|---|
@@ -473,17 +473,40 @@ This is a from-scratch rework of the Repeat Clients tab, replacing the "Accounts
 | | Repeat Account Percentage | Repeat Accounts &divide; Total Accounts Serviced |
 | | New Accounts *(renamed from "New Accounts/Clients")* | Total Accounts Serviced &minus; Repeat Accounts (distinct accounts with **no** repeat-flagged booking) |
 | | New Account Percentage | New Accounts &divide; Total Accounts Serviced |
-| **By Client / Booking** (individual rows) | Repeat Clients | Row count where `isRepeat5yr` is true |
+| **By Client** (individual rows) | Total Clients Serviced *(re-added in part 3; see below)* | `rows.length` |
+| | Repeat Clients | Row count where `isRepeat5yr` is true |
 | | Repeat Client Percentage | Repeat Clients &divide; total filtered rows |
+| | New Clients *(added in part 3)* | Total Clients Serviced &minus; Repeat Clients |
+| | New Client Percentage *(added in part 3)* | New Clients &divide; Total Clients Serviced |
 | | Accounts with Future Bookings | Unchanged from the prior pass -- Definite-status bookings with a Start Date still ahead of today, counted per booking (no YoY delta; see below) |
 
-**"Total Clients Serviced" card removed** per direction (it duplicated "Total Accounts Serviced" territory without adding a distinct-from-the-two-groups-above insight).
+**"Total Clients Serviced" card, originally removed in this pass, was re-added in part 3 of this rebuild** so the By Client group mirrors the By Account group's 5-card structure (see below).
 
 **Searchable Account Name / Lead filters.** Both were converted from `<select>` dropdowns to a text `<input>` paired with a `<datalist>` (`rep-account`/`rep-account-options`, `rep-lead`/`rep-lead-options`) -- native browser type-to-search/autocomplete, no extra JS library. `resolveFilterValue()` in `app.js` resolves the typed text against the full list of valid values: an exact (case-insensitive) match -- typed by hand or picked from the dropdown -- applies the filter; a blank box or an incomplete/still-typing value resolves to "All" (no filter), so a partial name never produces a confusing empty result mid-keystroke.
 
 **Explanatory note above the KPI grid** states both definitions in one place: "Repeat client = an individual booking from an account that has another booking within the trailing 5 years (counted per booking). Repeat account = a distinct account with at least one such repeat booking. A booking from an account last seen 12+ years ago no longer counts as repeat."
 
 **"Accounts with Future Bookings" is unaffected** by the 5-year redefinition (it's a separate, forward-looking pipeline concept, not part of the repeat/new split) and still has no YoY delta for the same reason noted in the prior pass -- "future relative to today" doesn't have a meaningful "same YTD window one year ago" comparison.
+
+## September 2026 rebuild, part 3: Booked Business subtotals/cards, Repeat Clients mirrored By Client group, chart clarity
+
+This section documents a third batch of changes made in the same overall September 2026 rebuild.
+
+**Booked Business: Room Nights/Economic Impact/Attendees KPI cards restored -- on this tab only.** An earlier pass (part 2, above) removed these 3 fields as KPI cards from *both* the Booked Business tab and Overview's "Department at a Glance," keeping them only as detail-table columns. Per a follow-up correction, they belong back on Booked Business's own KPI grid (simple sums, same as the detail table's new subtotal row below) -- Overview is unaffected and still excludes them. `bb-kpiGrid` is now 9 cards; the 3 new ones reuse the same lead-level dedupe-then-sum pattern as the detail table (`sum(dedupeBy(rows, r => r.leadId), r => r.roomNights)`, etc.), with the same YTD YoY delta convention as every other card on the tab.
+
+**"Events That Generated Leads Detail" table: new subtotal row.** A `<tfoot>` row now sums **Room Nights**, **Economic Impact** (as a dollar figure), and **Attendees** across every row in the table, plus a distinct count of events in the Event column (labeled "Total (N events)") -- matching the 3 KPI cards above.
+
+**Repeat Clients: "By Client / Booking" renamed to "By Client," and mirrors "By Account"'s 5-card structure.** The group now has **Total Clients Serviced** (re-added), Repeat Clients, Repeat Client Percentage, New Clients, and New Client Percentage -- the same 5-metric shape as "By Account" -- plus **Accounts with Future Bookings** as a 6th card (unchanged, still no YoY delta). "By Account" itself is unchanged.
+
+**Repeat Clients: definitions split onto two bold rows.** The single combined sentence above the KPI grids ("Repeat client = ... Repeat account = ... A booking from an account last seen 12+ years ago...") is now two separate `<p><strong>` rows -- one for "Repeat client," one for "Repeat account" -- so each definition is easier to scan on its own.
+
+**Repeat Clients: "Accounts" table analysis rewritten.** The auto-analysis sentence under the Accounts table (`rep-analysis3`) previously named a single top account by name. It now states how many distinct accounts (within the current Year/Account/Manager/Repeat/Lead filter) are tied for the most bookings, and what that top booking count is -- e.g. "In 2026, 3 accounts had the most bookings, with 4 bookings each" -- since ties are common at low booking counts and naming just one account was misleading when others matched it.
+
+**Repeat Clients: doughnut subtitle clarified.** "Repeat vs. New: Clients & Accounts" (`rep-chart2`) previously read "Inner ring = distinct accounts; outer ring = individual client bookings (rows)." on one line. It's now two bold, separate lines: **"Inner Ring = Accounts"** and **"Outer Ring = Clients."**
+
+**Repeat Clients: interactive Accounts/Clients toggle on "Repeat vs. New by Services Manager."** This one chart (`rep-chart1`) now has its own local toggle switch (Clients / Accounts) in its panel header, independent of every other filter on the tab. "Clients" mode (the default) counts individual bookings per manager, same as before. "Accounts" mode instead counts distinct accounts per manager (an account counts as repeat if any of its bookings under that manager is flagged `isRepeat5yr`). The panel's subtitle text updates to describe whichever mode is active.
+
+**Client Survey: bolded y-axis labels, renamed chart, matching subtitle.** "VA Survey Questions Rating" (`sur-chart1`, a horizontal bar chart) now bolds its y-axis question labels for easier scanning. "VA Team Experience Avg. Score by Month" is renamed **"Avg. Rating by Month"** and gains a new subtitle, "Averaged across all six rated questions, grouped by the date on each response." -- mirroring the existing subtitle on "Avg. Rating by DS&E Manager" ("...grouped by the manager named on each response.").
 
 ## Known deployment issue (fixed)
 

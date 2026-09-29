@@ -143,21 +143,29 @@
       <label>Lead <input list="rep-lead-options" id="rep-lead" class="searchable-filter" placeholder="Select All" autocomplete="off" /><datalist id="rep-lead-options"></datalist></label>
       <label>Repeat (5-yr) <select id="rep-repeat"></select></label>
     </div>
-    <p class="desc"><strong>Repeat client</strong> = an individual booking from an account that has another booking within the trailing 5 years (counted per booking). <strong>Repeat account</strong> = a distinct account with at least one such repeat booking. A booking from an account last seen 12+ years ago no longer counts as repeat.</p>
+    <p class="desc"><strong>Repeat client</strong> = an individual booking from an account that has another booking within the trailing 5 years (counted per booking).</p>
+    <p class="desc"><strong>Repeat account</strong> = a distinct account with at least one such repeat booking. A booking from an account last seen 12+ years ago no longer counts as repeat.</p>
     <h3 class="kpi-subhead">By Account <span class="tag">Distinct accounts</span></h3>
     <div class="kpi-grid" id="rep-kpiGrid-accounts"></div>
-    <h3 class="kpi-subhead">By Client / Booking <span class="tag">Individual bookings</span></h3>
+    <h3 class="kpi-subhead">By Client <span class="tag">Individual bookings</span></h3>
     <div class="kpi-grid" id="rep-kpiGrid-clients"></div>
     <div class="grid-2">
       <section class="panel">
-        <h2>Repeat vs. New by Services Manager</h2>
-        <p class="desc">Counts individual client bookings (rows), not distinct accounts.</p>
+        <div class="panel-header-row">
+          <h2>Repeat vs. New by Services Manager</h2>
+          <div class="toggle-switch" id="rep-chart1-toggle" role="group" aria-label="View by Accounts or Clients">
+            <button type="button" class="toggle-btn active" data-mode="clients">Clients</button>
+            <button type="button" class="toggle-btn" data-mode="accounts">Accounts</button>
+          </div>
+        </div>
+        <p class="desc" id="rep-chart1-desc">Counts individual client bookings (rows), not distinct accounts.</p>
         <div class="chart-box"><canvas id="rep-chart1"></canvas></div>
         <p class="desc auto-analysis" id="rep-analysis1"></p>
       </section>
       <section class="panel">
         <h2>Repeat vs. New: Clients &amp; Accounts</h2>
-        <p class="desc">Inner ring = distinct accounts; outer ring = individual client bookings (rows).</p>
+        <p class="desc"><strong>Inner Ring = Accounts</strong></p>
+        <p class="desc"><strong>Outer Ring = Clients</strong></p>
         <div class="chart-box short"><canvas id="rep-chart2"></canvas></div>
         <p class="desc auto-analysis" id="rep-analysis2"></p>
       </section>
@@ -190,7 +198,8 @@
         <p class="desc auto-analysis" id="sur-analysis1"></p>
       </section>
       <section class="panel">
-        <h2 id="sur-chart2-title">VA Team Experience Avg. Score by Month <span class="tag">Monthly</span></h2>
+        <h2 id="sur-chart2-title">Avg. Rating by Month <span class="tag">Monthly</span></h2>
+        <p class="desc" id="sur-chart2-desc">Averaged across all six rated questions, grouped by the date on each response.</p>
         <div class="chart-box"><canvas id="sur-chart2"></canvas></div>
         <p class="desc auto-analysis" id="sur-analysis2"></p>
       </section>
@@ -320,7 +329,7 @@
     <section class="panel">
       <h2>Events That Generated Leads Detail</h2>
       <div class="table-scroll">
-        <table class="mini" id="bb-detailTable"><thead><tr><th>Event</th><th>Account</th><th>Lead</th><th>Sales Manager</th><th>Room Nights</th><th>Economic Impact</th><th>Attendees</th><th>Event Start Date</th><th>Lead Created Date</th></tr></thead><tbody></tbody></table>
+        <table class="mini" id="bb-detailTable"><thead><tr><th>Event</th><th>Account</th><th>Lead</th><th>Sales Manager</th><th>Room Nights</th><th>Economic Impact</th><th>Attendees</th><th>Event Start Date</th><th>Lead Created Date</th></tr></thead><tbody></tbody><tfoot></tfoot></table>
       </div>
       <p class="desc auto-analysis" id="bb-analysis4"></p>
     </section>
