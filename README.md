@@ -9,13 +9,16 @@ It reads all its data from `data.json`, generated from the master workbook `Depa
 ## Project structure
 
 ```
-index.html         Tab bar + layout for all 7 pages
-style.css           Theme (Visit Anaheim "ReBrand Teal" palette + Sharp Sans Disp No2)
-app.js              Tab switching, Year (and Category/Status) filters, all KPI + chart logic
+index.html         Sidebar + layout for the Overview, 6 section pages, and Sources page (restyled Sept 30, 2026)
+style.css           Theme (VA Branded: Escapism teal palette + Sharp Sans Disp No2)
+app.js              Page navigation, Overview date-range picker, section filters, all KPI + chart logic
 data.json           Raw per-record data (regenerate whenever the workbook changes)
 build_data.py       Turns "Department KPIs.xlsx" into data.json
-test/verify.mjs     Headless logic check (jsdom) — runs every tab and asserts it renders cleanly
+test/verify.mjs     Headless smoke test (jsdom) — every page, every filter, Overview date ranges
+legacy-tabs/        Rollback copy of the pre-restyle index.html / app.js / style.css / verify.mjs
 ```
+
+*(See "September 30, 2026: VA BI Dashboard Template restyle" near the bottom of this file. Since that restyle, only Chart.js is loaded from the CDN; `chartjs-plugin-datalabels` was replaced by a small built-in label plugin in app.js.)*
 
 Everything the browser loads (`index.html`, `style.css`, `app.js`, `data.json`) lives flat at the repo root — no subfolders. This is deliberate: GitHub's "upload files" web UI (drag-and-drop or file picker) frequently drops nested folders like `css/` or `js/` when you upload individual files instead of dragging a folder handle, which is exactly what happened on the first deploy of this dashboard (`style.css` and `app.js` both 404'd on the live Vercel URL even though `index.html` and `data.json` deployed fine). Keeping the browser-facing files flat means there's nothing for a file-picker upload to lose.
 
@@ -581,6 +584,30 @@ All of the above were verified against the full `test/verify.mjs` suite (rewritt
 ## September 2026 rebuild, part 10: "View tab" links on every Overview card (start of the restyled-navigation direction)
 
 **Every Overview KPI card now has a "View tab &rarr;" link** at the bottom, jumping straight to the tab that metric lives on (Partners Visited/Planning Visits/Clients Serviced During Planning Visits/Convention Groups Serviced/In House Groups Serviced/Clients Serviced &rarr; Team KPIs; Partner Referrals &rarr; Partner Referrals; Repeat Account % &rarr; Repeat ACC Accounts; VA Team Experience Rating &rarr; Client Survey; VA Hosted Events/VA Event Satisfaction Score &rarr; Hosted Events; Leads Generated/Avg. Lead Conversion Window &rarr; Booked Business). This is additive, not a replacement -- the existing click-anywhere-else-on-the-card behavior (select/narrow the Department at a Glance table) still works exactly as before; only `.goto-tab` clicks are intercepted (same capture-phase `stopPropagation()` technique as the definition hints in `initDefHints()`) so the two interactions don't conflict. This is the first piece of the broader "restyled Overview as a landing page into each section" direction -- the rest (tighter VA Branded visual pass, More extensive Overview-as-hub treatment) is still in progress.
+
+## September 30, 2026: VA BI Dashboard Template restyle (sidebar layout, Overview calendar date-range picker)
+
+**Why:** completes the restyled-navigation direction started in part 10. The dashboard now uses the VA BI Dashboard Template layout on the VA Branded design system, and the Overview period control is a real calendar date-range picker instead of a preset dropdown. The restyle was approved as a full-parity preview first, then split back into this repo's normal files.
+
+**What changed (`index.html`, `app.js`, `style.css`, `test/verify.mjs` only):**
+- **Layout:** the horizontal tab bar is replaced by a navy left sidebar (Overview; six section pages: Team KPIs, Partner Referrals, Repeat ACC Accounts, Client Survey, Hosted Events, Booked Business; and a new Sources page with data sources, methodology, and definitions). Each page has its own filter row, its own "Reporting period" badge, and its own Export as PDF button. The footer source line follows the open page.
+- **Section pages:** same filters, KPI cards, charts, tables, auto-analysis sentences, feedback modal, and definition popovers as before. The formula code is the previous `app.js` unchanged. A thin adapter at the end of that block only changes presentation: card markup, drawing charts when their page opens (Chart.js cannot size a hidden canvas), and a small built-in value-label plugin that replaces `chartjs-plugin-datalabels`.
+- **Overview:** 13 KPI cards, Key Takeaways, and "Open a page" cards. The "Open a page" cards read their numbers from each section page's default KPI cards, so they update on their own after each monthly refresh. The old Department at a Glance narrative/table and the per-card "View tab" links (part 10) are replaced by this layout.
+- **Overview date-range picker:** From/To native date inputs (`#ovFrom`, `#ovTo`) plus a "Year-to-date" reset button (`#ovReset`). By default the range runs from Jan 1 of the current year through the end of the latest month with populated Planning Visits data. That is the same window the old header pill showed (currently Jan 1 – Aug 31, 2026). Changing either date recomputes all 13 cards straight from `data.json`. Each card compares the picked dates with the same dates one year earlier. If a sheet's data ends before the To date, that card is cut off at the end of the sheet's latest populated month, the prior-year window is cut off at the same point, and the card says "Data available through ...". A range with no data shows a dash and "No data in this date range", not a zero. The Planning Visits sheet is monthly, so its cards include every month the range touches. The badge shows the picked range, e.g. "Jan 1, 2026 – Aug 31, 2026 vs. Jan 1, 2025 – Aug 31, 2025".
+- **One default number moved on purpose.** Under the old YTD logic each Overview card used its own sheet's latest month. Now every card shares the picked To date. With the default Aug 31 end date, Overview Partner Referrals shows 97 (Jan–Aug) instead of 103 (Jan–Sep), and Clients Serviced During Planning Visits shows 51 instead of 56. Pick a To date of Sep 30, 2026 to include September. The section pages are unchanged (Partner Referrals page still shows 103).
+
+**What did not change:** `data.json`, `build_data.py`, `vercel.json`, and `logo.png` are untouched. `app.js` still loads `fetch("data.json")` at runtime and reads the exact field names `build_data.py` produces. The monthly refresh works as before: rerun `build_data.py`, then upload the new `data.json`.
+
+**Rollback:** the previous `index.html`, `app.js`, `style.css`, and `test/verify.mjs` are saved unchanged in `legacy-tabs/`. To roll back, copy those three site files back to the repo root and re-upload them. `legacy-tabs/` is a backup only: opened in place it can't find `data.json`, so it does not need to be uploaded to GitHub.
+
+**Testing:** `test/verify.mjs` was rewritten as a smoke test for the new DOM (the previous 300+ check suite is kept at `legacy-tabs/verify.mjs`; it targets the old tab IDs). It covers:
+- no runtime errors, with data loaded through a stubbed `fetch("data.json")`
+- 13 Overview cards, checked against an independent recomputation for the default range and four custom ranges (single quarter, a range spanning two years, a To date past some sheets' data, and future dates)
+- every section page renders its cards and charts
+- every option of every section filter runs without error and changes the output
+- key values: 284 Partners Visited, 62 Planning Visits, 103 referrals, 50/23/27 Repeat ACC Accounts
+
+Run it with `node test/verify.mjs` from a copy of the folder that has `jsdom` installed. On Sept 30, 2026 all 123 checks passed.
 
 ## Known deployment issue (fixed)
 

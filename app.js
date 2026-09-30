@@ -1,15 +1,269 @@
-/* Destination Services & Events Dashboard
-   Structure mirrors the live Power BI "Destination Services & Events KPIs"
-   report (7 tabs: Overview, Team KPIs, Partner Referrals, Repeat Clients,
-   Client Survey, Hosted Events, Booked Business). KPI formulas were
-   reverse-engineered by comparing computed values against the numbers
-   shown live in that report. Reads data.json (built by build_data.py). */
+/* Destination Services & Events Dashboard -- app.js
+   VA BI Dashboard Template restyle (September 30, 2026): sidebar layout,
+   Overview with a From/To calendar date-range picker, and six section pages
+   (Team KPIs, Partner Referrals, Repeat ACC Accounts, Client Survey, Hosted
+   Events, Booked Business). Reads data.json (built by build_data.py) at
+   runtime via fetch("data.json") -- the monthly refresh (rerun
+   build_data.py, re-upload data.json) needs no code changes here.
+   The pre-restyle tabbed version is kept in legacy-tabs/ for rollback. */
 
-// VA Branded design system -- Escapism (teal) family, the approved
-// corporate/BI accent palette, plus the Dark/Light functional colors.
-// Restricted to these six approved colors only (navy, teal, teal-light,
-// pale, near-black text, off-white bg). Grid/muted are opacity tints of
-// those same colors, not new hues.
+/* =====================================================================
+   OVERVIEW PAGE (VA BI Dashboard Template restyle, September 30, 2026)
+   ---------------------------------------------------------------------
+   The 13 Overview KPI cards are driven by the From/To calendar date-range
+   picker. For every card:
+     - current period = rows dated From..To (inclusive)
+     - prior period   = the same calendar dates one year earlier
+       (same length, same YoY/YTD-style comparison as before)
+     - if a source sheet's data ends before To (sheets refresh on different
+       lags), that card's window is clamped to the end of the sheet's latest
+       populated month, and the prior-year window is clamped identically, so
+       the comparison stays apples-to-apples. The card says so.
+   The Planning Visits sheet is monthly (one row per month), so for those
+   cards any month that the picked range touches is included.
+   Default window: Jan 1 of the current year through the end of the latest
+   populated Planning Visits month -- the same default the previous
+   production Overview showed. Everything is read from data.json at runtime.
+   ===================================================================== */
+const OV = (function () {
+  let OVD = null;           // trimmed rows for the Overview cards
+  let DEFAULT_RANGE = null; // { from, to } ISO strings
+
+  function ovFmt(n, dig) { dig = dig || 0; if (n === null || n === undefined || Number.isNaN(n)) return "&mdash;"; return Number(n).toLocaleString("en-US", { maximumFractionDigits: dig, minimumFractionDigits: dig }); }
+  function ovPct(n, dig) { dig = dig === undefined ? 1 : dig; if (n === null || n === undefined || Number.isNaN(n)) return "&mdash;"; return (n * 100).toFixed(dig) + "%"; }
+  function ovSum(arr, fn) { return arr.reduce((a, r) => a + (Number(fn(r)) || 0), 0); }
+  function ovMean(arr, fn) { const v = arr.map(fn).filter(x => x !== null && x !== undefined && !Number.isNaN(x)); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; }
+  function ovDistinct(arr, fn) { return new Set(arr.map(fn).filter(x => x !== null && x !== undefined)).size; }
+  function ovPctChange(a, b) { if (a == null || b == null || a === 0) return null; return (b - a) / a; }
+  function ovDeltaClass(n) { if (n === null || n === undefined) return "flat"; return n > 0.001 ? "up" : n < -0.001 ? "down" : "flat"; }
+  function ovDeltaArrow(n) { if (n === null || n === undefined) return ""; return n > 0.001 ? "&#9650; " : n < -0.001 ? "&#9660; " : "&#9679; "; }
+
+  // ---- ISO date helpers (string-based, no timezone drift) ----
+  function isValidIso(s) { return typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s); }
+  function monthEndIso(iso) {
+    const y = Number(iso.slice(0, 4)), m = Number(iso.slice(5, 7));
+    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return iso.slice(0, 7) + "-" + String(last).padStart(2, "0");
+  }
+  function shiftYear(iso, n) { return String(Number(iso.slice(0, 4)) + n).padStart(4, "0") + iso.slice(4); }
+  function minIso(a, b) { return a < b ? a : b; }
+  function longDate(iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  }
+  function rangeText(from, to) { return longDate(from) + " &ndash; " + longDate(to); }
+
+  // Latest populated date in a sheet (optionally requiring a non-null field,
+  // e.g. Planning Visits pre-creates an empty placeholder row for next month).
+  function latestDate(rows, field, chk) {
+    let best = null;
+    rows.forEach(r => {
+      const v = r[field];
+      if (!isValidIso(v)) return;
+      if (chk && (r[chk] === null || r[chk] === undefined)) return;
+      if (best === null || v > best) best = v;
+    });
+    return best;
+  }
+
+  // Builds the current/prior row sets for one sheet and the picked range.
+  function windowRows(rows, field, chk, from, to, monthly) {
+    const latest = latestDate(rows, field, chk);
+    if (!latest) return { cur: [], pri: [], effTo: null, clamped: false, empty: true };
+    const dataEnd = monthEndIso(latest);
+    const effTo = minIso(to, dataEnd);
+    const clamped = effTo < to;
+    if (effTo < from) return { cur: [], pri: [], effTo, clamped, empty: true };
+    const pFrom = shiftYear(from, -1), pTo = shiftYear(effTo, -1);
+    let inCur, inPri;
+    if (monthly) {
+      const f = from.slice(0, 7), t = effTo.slice(0, 7), pf = pFrom.slice(0, 7), pt = pTo.slice(0, 7);
+      inCur = v => { const k = v.slice(0, 7); return k >= f && k <= t; };
+      inPri = v => { const k = v.slice(0, 7); return k >= pf && k <= pt; };
+    } else {
+      inCur = v => v >= from && v <= effTo;
+      inPri = v => v >= pFrom && v <= pTo;
+    }
+    const cur = rows.filter(r => isValidIso(r[field]) && inCur(r[field]));
+    const pri = rows.filter(r => isValidIso(r[field]) && inPri(r[field]));
+    return { cur, pri, effTo, clamped, empty: false };
+  }
+
+  // Maps data.json (exact shape produced by build_data.py) to the few
+  // columns the Overview needs. No field names are changed in data.json.
+  function buildOverviewData(DATA) {
+    return {
+      pv: (DATA.planningVisits || []).map(r => ({ date: r.date, pv: r.planningVisits, cs: r.clientsServiced, pw: r.partnersVisited, cg: r.conventionGroupsServiced, ih: r.inHouseGroupsServiced })),
+      ref: ((DATA.partnerReferrals || {}).raw || []).map(r => ({ date: r.date, count: r.count })),
+      rep: ((DATA.repeatingClients || {}).raw || []).map(r => ({ startDate: r.startDate, repeat: r.repeat })),
+      sur: ((DATA.accSurvey || {}).raw || []).map(r => ({ date: r.date, rating: r.rating })),
+      evs: ((DATA.eventSurveys || {}).raw || []).map(r => ({ date: r.date, eventId: r.eventId, satisfaction: r.satisfaction })),
+      bb: ((DATA.bookedBusiness || {}).raw || []).map(r => ({ eventStartDate: r.eventStartDate, leadId: r.leadId, daysFromLeadCreatedToEvent: r.daysFromLeadCreatedToEvent }))
+    };
+  }
+
+  function computeDefaultRange(D, generatedAt) {
+    const pvLatest = latestDate(D.pv, "date", "pv");
+    let to;
+    if (pvLatest) to = monthEndIso(pvLatest);
+    else {
+      const cands = [latestDate(D.ref, "date"), latestDate(D.rep, "startDate"), latestDate(D.sur, "date", "rating"), latestDate(D.evs, "date")].filter(Boolean).sort();
+      to = cands.length ? monthEndIso(cands[cands.length - 1]) : (isValidIso(generatedAt) ? generatedAt : new Date().toISOString().slice(0, 10));
+    }
+    return { from: to.slice(0, 4) + "-01-01", to };
+  }
+
+  function computeOverview(from, to) {
+    const D = OVD;
+    const pvW = windowRows(D.pv, "date", "pv", from, to, true);
+    const refW = windowRows(D.ref, "date", null, from, to, false);
+    const repW = windowRows(D.rep, "startDate", null, from, to, false);
+    const surW = windowRows(D.sur, "date", "rating", from, to, false);
+    const evsW = windowRows(D.evs, "date", null, from, to, false);
+    const bbW = windowRows(D.bb, "eventStartDate", null, from, to, false);
+
+    const rate = rs => rs.length ? rs.filter(r => r.repeat === "Yes").length / rs.length : null;
+    const convWinFmt = v => (v === null ? "&mdash;" : v > 90 ? ovFmt(v / 30, 1) + " months" : ovFmt(v) + " days");
+
+    function card(label, w, calc, fmtFn, def) {
+      return { label, def, w, cur: w.empty ? null : calc(w.cur), pri: w.empty ? null : calc(w.pri), fmtFn };
+    }
+    return [
+      card("Partners Visited", pvW, rs => ovSum(rs, r => r.pw), v => ovFmt(v), "A partner property visited in person during a planning visit."),
+      card("Planning Visits", pvW, rs => ovSum(rs, r => r.pv), v => ovFmt(v)),
+      card("Clients Serviced During Planning Visits", repW, rs => rs.length, v => ovFmt(v)),
+      card("Convention Groups Serviced", pvW, rs => ovSum(rs, r => r.cg), v => ovFmt(v)),
+      card("In House Groups Serviced", pvW, rs => ovSum(rs, r => r.ih), v => ovFmt(v)),
+      card("Clients Serviced", pvW, rs => ovSum(rs, r => r.cs), v => ovFmt(v)),
+      card("Partner Referrals", refW, rs => ovSum(rs, r => r.count), v => ovFmt(v), "A non-physical referral, such as email, phone, or shared contact info."),
+      card("Repeat Account %", repW, rate, v => ovPct(v)),
+      card("VA Team Experience Rating", surW, rs => ovMean(rs, r => r.rating), v => (v === null ? "&mdash;" : ovFmt(v, 2) + " / 10")),
+      card("VA Hosted Events", evsW, rs => ovDistinct(rs, r => r.eventId), v => ovFmt(v)),
+      card("VA Event Satisfaction Score", evsW, rs => ovMean(rs, r => r.satisfaction), v => ovPct(v)),
+      card("Leads Generated From VA Events", bbW, rs => ovDistinct(rs, r => r.leadId), v => ovFmt(v)),
+      card("Avg. Lead Conversion Window", bbW, rs => ovMean(rs, r => r.daysFromLeadCreatedToEvent), convWinFmt)
+    ];
+  }
+
+  function toggleDef(id) {
+    document.querySelectorAll(".def-pop").forEach(el => { if (el.id !== id) el.classList.remove("open"); });
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("open");
+  }
+
+  function readRange() {
+    const fEl = document.getElementById("ovFrom"), tEl = document.getElementById("ovTo");
+    let from = isValidIso(fEl.value) ? fEl.value : DEFAULT_RANGE.from;
+    let to = isValidIso(tEl.value) ? tEl.value : DEFAULT_RANGE.to;
+    if (from > to) { const t = from; from = to; to = t; }
+    fEl.value = from; tEl.value = to;
+    return { from, to };
+  }
+
+  function render() {
+    const { from, to } = readRange();
+    const cats = computeOverview(from, to);
+    const html = cats.map((c, i) => {
+      const dd = ovPctChange(c.pri, c.cur);
+      const delta = dd === null ? "" : `<div class="delta ${ovDeltaClass(dd)}">${ovDeltaArrow(dd)}${ovPct(dd)} vs. prior-year period</div>`;
+      const defBtn = c.def ? ` <button type="button" class="def-btn" onclick="event.stopPropagation();toggleDef('def-${i}')">?</button>` : "";
+      const pop = c.def ? `<div class="def-pop" id="def-${i}">${c.def}</div>` : "";
+      let note = "";
+      if (c.w.empty) note = `<div class="daterange">No data in this date range.</div>`;
+      else if (c.w.clamped) note = `<div class="daterange">Data available through ${longDate(c.w.effTo)}</div>`;
+      return `<div class="kpi-card">
+      <div class="kicker">KPI</div>
+      <div class="label">${c.label}${defBtn}</div>
+      <div class="value">${c.fmtFn(c.cur)}</div>
+      ${delta}
+      ${note}
+      ${pop}
+      <div class="src">Source: Granicus, Association Insights, and Internal Tracking</div>
+    </div>`;
+    }).join("");
+    document.getElementById("ov-kpiGrid").innerHTML = html;
+
+    const bullets = [];
+    cats.forEach(c => {
+      if (bullets.length >= 5) return;
+      const dv = ovPctChange(c.pri, c.cur);
+      if (c.label === "Partner Referrals") bullets.push(`<b>Partner Referrals:</b> ${c.fmtFn(c.cur)} logged this period${dv !== null ? ` (${ovDeltaArrow(dv)}${ovPct(dv)} vs. prior-year period)` : ""} (Source: Granicus).`);
+      if (c.label === "Repeat Account %") bullets.push(`<b>Repeat Account %:</b> ${c.fmtFn(c.cur)} of serviced accounts were repeat business${dv !== null ? ` (${ovDeltaArrow(dv)}${ovPct(dv)} YoY)` : ""} (Source: Granicus).`);
+      if (c.label === "VA Team Experience Rating") bullets.push(`<b>Team Experience Rating:</b> ${c.fmtFn(c.cur)} average score${dv !== null ? ` (${ovDeltaArrow(dv)}${ovPct(dv)} YoY)` : ""} (Source: Association Insights).`);
+      if (c.label === "VA Event Satisfaction Score") bullets.push(`<b>Event Satisfaction:</b> ${c.fmtFn(c.cur)} average satisfaction across VA-hosted events${dv !== null ? ` (${ovDeltaArrow(dv)}${ovPct(dv)} YoY)` : ""} (Source: Internal Tracking).`);
+      if (c.label === "Planning Visits") bullets.push(`<b>Planning Visits:</b> ${c.fmtFn(c.cur)} completed${dv !== null ? ` (${ovDeltaArrow(dv)}${ovPct(dv)} YoY)` : ""} (Source: Granicus).`);
+    });
+    document.getElementById("ov-takeaways").innerHTML = bullets.slice(0, 5).map(b => `<li>${b}</li>`).join("");
+
+    document.getElementById("periodBadge").innerHTML = rangeText(from, to) + " vs. " + rangeText(shiftYear(from, -1), shiftYear(to, -1));
+  }
+
+  // "Open a page" cards: summarize each section page's own default KPI cards
+  // (read back from the rendered section grids), so the teasers always match
+  // the latest data.json instead of going stale after the monthly refresh.
+  const NAV_PAGES = [
+    { id: "team", title: "Team KPIs", grid: "team-kpiGrid", period: "team-period" },
+    { id: "referrals", title: "Partner Referrals", grid: "ref-kpiGrid", period: "referrals-period" },
+    { id: "repeat", title: "Repeat ACC Accounts", grid: "rep-kpiGrid-accounts", period: "repeat-period" },
+    { id: "survey", title: "Client Survey", grid: "sur-kpiGrid", period: "survey-period" },
+    { id: "events", title: "Hosted Events", grid: "hev-kpiGrid", period: "events-period" },
+    { id: "booked", title: "Booked Business", grid: "bb-kpiGrid", period: "booked-period" }
+  ];
+  function renderNavCards() {
+    document.getElementById("ov-navCards").innerHTML = NAV_PAGES.map(n => {
+      const cards = [...document.querySelectorAll("#" + n.grid + " .kpi-card")].slice(0, 2);
+      const stats = cards.map(c => {
+        const lab = c.querySelector(".label"), val = c.querySelector(".value");
+        if (!lab || !val) return "";
+        const labText = [...lab.childNodes].filter(x => x.nodeType === 3).map(x => x.textContent).join("").trim();
+        return `${labText}: <strong>${val.innerHTML}</strong>`;
+      }).filter(Boolean);
+      const perEl = document.getElementById(n.period);
+      const per = perEl ? perEl.innerHTML.replace(/^Reporting period:\s*/, "") : "";
+      return `<div class="nav-card" onclick="showPage('${n.id}')"><div class="t">${n.title} &rarr;</div><div class="s">${stats.join(" &middot; ")}${per ? `<br>${per}` : ""}</div></div>`;
+    }).join("");
+  }
+
+  function init(DATA) {
+    OVD = buildOverviewData(DATA);
+    DEFAULT_RANGE = computeDefaultRange(OVD, DATA.generatedAt);
+    document.getElementById("refreshedAt").textContent = DATA.generatedAt || "";
+    const fEl = document.getElementById("ovFrom"), tEl = document.getElementById("ovTo");
+    fEl.value = DEFAULT_RANGE.from; tEl.value = DEFAULT_RANGE.to;
+    fEl.addEventListener("change", render);
+    tEl.addEventListener("change", render);
+    document.getElementById("ovReset").addEventListener("click", () => {
+      fEl.value = DEFAULT_RANGE.from; tEl.value = DEFAULT_RANGE.to; render();
+    });
+    document.addEventListener("click", e => {
+      if (!e.target.closest(".def-btn") && !e.target.closest(".def-pop")) {
+        document.querySelectorAll(".def-pop").forEach(el => el.classList.remove("open"));
+      }
+    });
+    render();
+  }
+
+  return { init, render, renderNavCards, toggleDef, computeOverview, getDefaultRange: () => DEFAULT_RANGE };
+})();
+window.toggleDef = OV.toggleDef;
+
+// ---- Page navigation (sidebar) ----
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === "page-" + id));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.page === id));
+  window.scrollTo(0, 0);
+  if (window.onSectionShow) window.onSectionShow(id);
+}
+window.showPage = showPage;
+document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => showPage(b.dataset.page)));
+
+/* =====================================================================
+   SECTION PAGES
+   Everything from "const COLORS" down to the adapter layer is the
+   pre-restyle production app.js logic, unchanged (same formulas, same
+   filters, same data.json fields).
+   ===================================================================== */
+const Sections = (function () {
 const COLORS = {
   navy: "#125C60", teal: "#43A3A3", tealLight: "#77C7C9", pale: "#B4D9E3",
   text: "#231F20", bg: "#F9F9F2",
@@ -2270,4 +2524,148 @@ function renderBooked(year, status, eventName, salesManager, eventStatus) {
   setReportingPeriod("booked", bbRange);
 }
 
-main();
+
+/* ===================================================================
+   Restyle adapter layer (restyle only -- no formula changes).
+   Everything above this line is production app.js, copied verbatim
+   (its own main()/tab bootstrap is not called; boot() below does the fetch). The functions below override only
+   presentation concerns: card markup, lazy chart creation for hidden
+   pages, the per-page reporting-period badge, and a small built-in
+   value-label plugin (replaces chartjs-plugin-datalabels so the approved
+   restyle renders identically; only Chart.js is loaded).
+   =================================================================== */
+const DL_DEFAULT = { color: COLORS.text, anchor: "end", font: { size: 10, weight: "700" }, formatter: numberLabel };
+Chart.defaults.layout.padding = { right: 18 };
+Chart.register({
+  id: "vaDataLabels",
+  afterDatasetsDraw(chart) {
+    const ctx = chart.ctx;
+    const horiz = chart.options.indexAxis === "y";
+    chart.data.datasets.forEach((ds, di) => {
+      const meta = chart.getDatasetMeta(di);
+      if (!chart.isDatasetVisible(di)) return;
+      const cfg = Object.assign({}, DL_DEFAULT, ds.datalabels || {});
+      if (cfg.display === false) return;
+      const font = Object.assign({}, DL_DEFAULT.font, cfg.font || {});
+      meta.data.forEach((el, i) => {
+        const raw = ds.data[i];
+        const c = { dataset: ds, dataIndex: i, chart };
+        let txt = cfg.formatter(raw, c);
+        if (txt === "" || txt === null || txt === undefined) return;
+        const color = typeof cfg.color === "function" ? cfg.color(c) : cfg.color;
+        let x, y;
+        ctx.save();
+        ctx.font = `${font.weight} ${font.size}px ${Chart.defaults.font.family}`;
+        ctx.fillStyle = color || COLORS.text;
+        if (meta.type === "doughnut" || meta.type === "pie") {
+          if (!el.circumference) { ctx.restore(); return; }
+          const p = el.tooltipPosition();
+          x = p.x; y = p.y; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        } else {
+          if (el.x === undefined || el.base === undefined || Number.isNaN(el.x)) { ctx.restore(); return; }
+          const center = cfg.anchor === "center";
+          if (horiz) {
+            y = el.y; ctx.textBaseline = "middle";
+            if (center) { x = (el.x + el.base) / 2; ctx.textAlign = "center"; } else { x = el.x + 4; ctx.textAlign = "left"; }
+          } else {
+            x = el.x; ctx.textAlign = "center";
+            if (center) { y = (el.y + el.base) / 2; ctx.textBaseline = "middle"; } else { y = el.y - 3; ctx.textBaseline = "bottom"; }
+          }
+        }
+        ctx.fillText(String(txt), x, y);
+        ctx.restore();
+      });
+    });
+  }
+});
+
+// Charts are only created while their page is visible (Chart.js cannot size
+// a canvas inside display:none); each page re-renders when it is opened.
+function makeChart(id, config) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  destroyChart(id);
+  if (!el.closest(".page.active")) return;
+  CHARTS[id] = new Chart(el, config);
+}
+
+let KPI_SRC = "";
+function kpiCard(label, value, deltaText, deltaCls, dateRange, cardClass, note, extraAttrs) {
+  return `<div class="kpi-card${cardClass ? " " + cardClass : ""}"${extraAttrs ? " " + extraAttrs : ""}>` +
+    `<div class="kicker">KPI</div><div class="label">${label}</div><div class="value">${value}</div>` +
+    `${deltaText ? `<div class="delta ${deltaCls || ""}">${deltaText}</div>` : ""}` +
+    `${note ? `<div class="daterange">${note}</div>` : ""}` +
+    `${dateRange ? `<div class="daterange">${dateRange}</div>` : ""}` +
+    `${KPI_SRC ? `<div class="src">Source: ${KPI_SRC}</div>` : ""}</div>`;
+}
+
+function setReportingPeriod(tabName, rangeText) {
+  const el = document.getElementById(tabName + "-period");
+  if (el) el.innerHTML = "Reporting period: " + (rangeText || "&mdash;");
+}
+function switchTab(name) { showPage(name); }
+
+// Remember each section's latest filter arguments so the page can be
+// re-rendered (with charts) whenever it is opened.
+const LAST_ARGS = {};
+function remember(name, fn, src) {
+  return function (...args) { LAST_ARGS[name] = args; KPI_SRC = src; return fn.apply(this, args); };
+}
+renderTeam = remember("team", renderTeam, TAB_SOURCES.team);
+renderReferrals = remember("referrals", renderReferrals, TAB_SOURCES.referrals);
+renderRepeat = remember("repeat", renderRepeat, TAB_SOURCES.repeat);
+renderSurvey = remember("survey", renderSurvey, TAB_SOURCES.survey);
+renderQ2Q7 = remember("q2q7", renderQ2Q7, TAB_SOURCES.survey);
+renderEvents = remember("events", renderEvents, TAB_SOURCES.events);
+renderBooked = remember("booked", renderBooked, TAB_SOURCES.booked);
+
+const SECTION_RENDER = {
+  team: () => renderTeam(...LAST_ARGS.team),
+  referrals: () => renderReferrals(...LAST_ARGS.referrals),
+  repeat: () => renderRepeat(...LAST_ARGS.repeat),
+  survey: () => { renderSurvey(...LAST_ARGS.survey); renderQ2Q7(...LAST_ARGS.q2q7); },
+  events: () => renderEvents(...LAST_ARGS.events),
+  booked: () => renderBooked(...LAST_ARGS.booked)
+};
+window.onSectionShow = function (id) {
+  const foot = document.getElementById("footSource");
+  if (foot) foot.textContent = "Sources: " + (TAB_SOURCES[id] || TAB_SOURCES.overview) + ".";
+  if (SECTION_RENDER[id] && LAST_ARGS[id === "survey" ? "survey" : id]) SECTION_RENDER[id]();
+};
+
+
+  return {
+    start(data) {
+      DATA = data;
+      initFeedbackModal();
+      initDefHints();
+      initTeam();
+      initReferrals();
+      initRepeat();
+      initSurvey();
+      initEvents();
+      initBooked();
+    }
+  };
+})();
+
+/* =====================================================================
+   Bootstrap: load data.json at runtime (never embedded), then render.
+   ===================================================================== */
+async function boot() {
+  let data;
+  try {
+    const res = await fetch("data.json");
+    if (res && res.ok === false) throw new Error("HTTP " + res.status);
+    data = await res.json();
+  } catch (err) {
+    console.error("Could not load data.json", err);
+    const g = document.getElementById("ov-kpiGrid");
+    if (g) g.innerHTML = '<div class="panel">The dashboard data (data.json) could not be loaded. Please refresh the page or contact the Business Intelligence team.</div>';
+    return;
+  }
+  Sections.start(data);
+  OV.init(data);
+  OV.renderNavCards();
+}
+boot();
