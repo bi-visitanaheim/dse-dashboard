@@ -556,6 +556,22 @@ Every other "repeat" calculation on the tab (both charts, the Accounts & Clients
 - Two new CSS variables added: `--danger-mark` (`#FF000C`, Passion 01 -- negative/warning marks only) and `--danger-text` (`#A10009`, Passion 03 -- reserved for future unfavorable-variance text use, not yet consumed elsewhere in this codebase).
 - No layout, spacing, component structure, or the core navy/teal/pale color identity changed -- this pass only removed off-palette hex values and tightened the font-fallback chain, per direction to keep color and layout as-is.
 
+## September 2026 rebuild, part 8: dashboard renamed back, card definitions, Repeat ACC Accounts card moved/trimmed
+
+**Dashboard renamed back to "Destination Services & Events Dashboard."** Reverts the brief "Destination Experience and Events Dashboard" name (`<title>` and `<h1>` in `index.html`).
+
+**Definitions added for Partners Visited / Partner Referrals**, since the distinction between the two caused confusion in a meeting. Both terms now show a small "(?)" hint (hover/tap for the definition via the `title` attribute, styled `.def-hint` in style.css) next to the card label, on every tab where they appear (Overview, Team KPIs, Partner Referrals), plus a plain-text sentence in the Team KPIs footnote and a `desc` line at the top of the Partner Referrals tab:
+- **Partners Visited** = a partner property visited in person during a planning visit.
+- **Partner Referrals** = a non-physical referral, such as email, phone, or shared contact info.
+
+**"Total Clients Serviced" moved from Repeat ACC Accounts to Team KPIs, renamed and repositioned.** It's now **"Clients Serviced During Planning Visits"** on the **Team KPIs** tab, positioned immediately after **Planning Visits** (both per direction), with the parenthetical "(counts the clients who attend each planning visit)" appended to the label so it's never confused with the existing "Clients Serviced" card further down the same grid (a different metric, from the planning-visits sheet itself). It's computed from the same `DATA.repeatingClients.raw` dataset the Repeat ACC Accounts tab uses, but filtered only by Team KPIs' own Year selector (`team-year`) rather than that tab's fuller Account/Manager/Lead/Repeat filter set, since it now lives in a context with just one filter. `renderTeam()` calls `computeRepeatFlags()` itself so this works even if the Repeat ACC Accounts tab hasn't been visited yet in the session.
+
+**Repeat ACC Accounts "By Accounts" KPI row trimmed to 3 cards:** Total Accounts Serviced, Repeat Accounts, New Accounts (was 6 -- Total Clients Serviced moved off per above, and Repeat Account Percentage / New Account Percentage were removed per direction; the underlying rates are still visible in the Year-over-Year table below).
+
+**Repeat ACC Accounts: new takeaway sentence added** below the KPI row (`#rep-takeaway`): "Services supported **N** repeat accounts. The point is that returning groups reflect a good service experience." -- N reflects whatever Year/Account/Manager/Lead/Repeat filters are currently applied.
+
+All of the above were verified against the full `test/verify.mjs` suite (rewritten/extended alongside these changes) with zero failures.
+
 ## Known deployment issue (fixed)
 
 The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.

@@ -488,12 +488,12 @@ function renderOverview() {
   // team's own data (vs. the services team's data for everything else),
   // used for the card color-coding below.
   const categories = [
-    { label: "Partners Visited", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "Partners Visited", def: "a partner property visited in person during a planning visit", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
     { label: "Planning Visits", cur: visitsCur, pri: visitsPri, month: visitsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
     { label: "Convention Groups Serviced", cur: convCur, pri: convPri, month: convMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
     { label: "In House Groups Serviced", cur: inHouseCur, pri: inHousePri, month: inHouseMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
     { label: "Clients Serviced", cur: clientsCur, pri: clientsPri, month: clientsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
-    { label: "Partner Referrals", cur: totalReferralsCur, pri: totalReferralsPri, month: totalReferralsMonth, cutoff: refCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
+    { label: "Partner Referrals", def: "a non-physical referral, such as email, phone, or shared contact info", cur: totalReferralsCur, pri: totalReferralsPri, month: totalReferralsMonth, cutoff: refCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
     { label: "Repeat Account %", cur: rateCur, pri: ratePri, month: rateMonth, cutoff: repCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "services" },
     { label: "VA Team Experience Rating", cur: teamScoreCur, pri: teamScorePri, month: teamScoreMonth, cutoff: surCutoff, curYear: CUR, priYear: PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v, 2) + " / 10"), team: "services" },
     { label: "VA Hosted Events", cur: hostedEventsCur, pri: hostedEventsPri, month: hostedEventsMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "events" },
@@ -507,7 +507,8 @@ function renderOverview() {
       const d = pctChange(c.pri, c.cur);
       const text = d === null ? null : `${deltaArrow(d)}${pct(d)} vs. ${c.priYear} YTD`;
       const cardClass = `selectable${c.team === "events" ? " events-team" : ""}`;
-      return kpiCard(c.label, c.fmtFn(c.cur), text, deltaClass(d), ytdRangeLabel(c.curYear, c.cutoff), cardClass, null, `data-cat-index="${i}"`);
+      const label = c.def ? `${c.label} <span class="def-hint" title="${c.def}">(?)</span>` : c.label;
+      return kpiCard(label, c.fmtFn(c.cur), text, deltaClass(d), ytdRangeLabel(c.curYear, c.cutoff), cardClass, null, `data-cat-index="${i}"`);
     }).join("");
 
   // Per-category 1-sentence version of the narrative below -- shown instead
@@ -613,9 +614,24 @@ function renderTeam(year) {
   const dInHouseV = teamYoy(r => r.inHouseGroupsServiced);
   const dClientsV = teamYoy(r => r.clientsServiced);
 
+  // "Clients Serviced During Planning Visits" -- moved here from the Repeat
+  // ACC Accounts tab (formerly "Total Clients Serviced") so it sits next to
+  // Planning Visits, since this counts the clients who attend each planning
+  // visit (a distinct metric from "Clients Serviced" below, which is the
+  // planning-visits sheet's own per-visit client count). Pulls from the same
+  // repeatingClients dataset the Repeat ACC Accounts tab uses, filtered by
+  // this tab's own Year selector (on startDate) instead of that tab's fuller
+  // filter set.
+  computeRepeatFlags(DATA.repeatingClients.raw);
+  const repRowsForTeam = byYear(DATA.repeatingClients.raw, year);
+  const teamClientsServicedDuringVisits = repRowsForTeam.length;
+  const { prior: repPriorY, latest: repLatestY } = resolveYoyYears(DATA.repeatingClients.raw, year);
+  const dClientsServicedVisits = ytdYoyMetric(DATA.repeatingClients.raw, "startDate", repLatestY, repPriorY, null, rs => rs.length);
+
   document.getElementById("team-kpiGrid").innerHTML = [
-    kpiCard("Partners Visited*", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
+    kpiCard("Partners Visited* <span class=\"def-hint\" title=\"A partner property visited in person during a planning visit.\">(?)</span>", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
     kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits)), ytdDeltaText(dPlanningV, fmt), deltaClass(dPlanningV.d), teamRange),
+    kpiCard("Clients Serviced During Planning Visits (counts the clients who attend each planning visit)", fmt(teamClientsServicedDuringVisits), ytdDeltaText(dClientsServicedVisits, fmt), deltaClass(dClientsServicedVisits.d), teamRange),
     kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced)), ytdDeltaText(dConvV, fmt), deltaClass(dConvV.d), teamRange),
     kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), ytdDeltaText(dInHouseV, fmt), deltaClass(dInHouseV.d), teamRange),
     kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)), ytdDeltaText(dClientsV, fmt), deltaClass(dClientsV.d), teamRange)
@@ -863,7 +879,7 @@ function renderReferrals(year, manager) {
   });
 
   document.getElementById("ref-kpiGrid").innerHTML = [
-    kpiCard("Partner Referrals", fmt(total), ytdDeltaText(dTotalRef, fmt), deltaClass(dTotalRef.d), refRange),
+    kpiCard("Partner Referrals <span class=\"def-hint\" title=\"A non-physical referral, such as email, phone, or shared contact info.\">(?)</span>", fmt(total), ytdDeltaText(dTotalRef, fmt), deltaClass(dTotalRef.d), refRange),
     kpiCard("Avg. Referrals Per Month", fmt(avgPerMonth, 2), ytdDeltaText(dAvgRef, v => fmt(v, 2)), deltaClass(dAvgRef.d), refRange)
   ].join("");
 
@@ -1101,21 +1117,27 @@ function renderRepeat(year, accountNameTyped, manager, repeatFilter, leadNameTyp
   // sheet, so there's no duplicate-Lead-ID concept of "repeat" at that
   // grain. repeatClientsCount/repeatClientRate above are still used by the
   // doughnut chart and the repeat-vs-new analysis sentence.
-  const dTotalClients = repYoy(rs => rs.length);
-
   // Two clearly separated KPI groups (see the "By Accounts" subhead in
   // index.html) so a REPEAT ACCOUNT (a distinct account that has repeat
   // business) never gets confused with a REPEAT CLIENT (an individual
   // repeat booking/engagement) -- the two numbers are usually
   // different and answer different questions.
+  // "Total Clients Serviced" moved to the Team KPIs tab (as "Clients
+  // Serviced During Planning Visits," next to Planning Visits). Repeat
+  // Account Percentage / New Account Percentage cards removed per direction
+  // -- the Repeat Accounts / New Accounts counts remain, the rates are still
+  // available in the Year-over-Year table below.
   document.getElementById("rep-kpiGrid-accounts").innerHTML = [
-    kpiCard("Total Clients Serviced", fmt(totalRows), ytdDeltaText(dTotalClients, fmt), deltaClass(dTotalClients.d), repRange),
     kpiCard("Total Accounts Serviced", fmt(accountsServiced), ytdDeltaText(dTotalAccounts, fmt), deltaClass(dTotalAccounts.d), repRange),
     kpiCard("Repeat Accounts", fmt(repeatAccountsCount), ytdDeltaText(dRepeatAccounts, fmt), deltaClass(dRepeatAccounts.d), repRange),
-    kpiCard("Repeat Account Percentage", pct(repeatAccountRate), ytdDeltaText(dRepeatAccountRate, pct), deltaClass(dRepeatAccountRate.d), repRange),
-    kpiCard("New Accounts", fmt(newAccountsCount), ytdDeltaText(dNewAccounts, fmt), deltaClass(dNewAccounts.d), repRange),
-    kpiCard("New Account Percentage", pct(newAccountRate), ytdDeltaText(dNewAccountRate, pct), deltaClass(dNewAccountRate.d), repRange)
+    kpiCard("New Accounts", fmt(newAccountsCount), ytdDeltaText(dNewAccounts, fmt), deltaClass(dNewAccounts.d), repRange)
   ].join("");
+
+  // Takeaway sentence for the tab (per direction): a one-line statement that
+  // returning groups reflect a good service experience.
+  document.getElementById("rep-takeaway").innerHTML = repeatAccountsCount
+    ? `Services supported <strong>${fmt(repeatAccountsCount)}</strong> repeat account${repeatAccountsCount === 1 ? "" : "s"}. The point is that returning groups reflect a good service experience.`
+    : "No repeat accounts in this selection yet.";
 
   const byMgr = groupBy(rows, r => r.servicesManager);
   const mgrs = [...byMgr.keys()];

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Destination Experience and Events Dashboard | Visit Anaheim</title>
+<title>Destination Services &amp; Events Dashboard | Visit Anaheim</title>
 <link rel="stylesheet" href="style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
@@ -16,7 +16,7 @@
       <img class="brand-logo" src="logo.png" alt="Visit Anaheim" onerror="this.style.display='none'" />
       <div>
         <p class="brand-eyebrow">Visit Anaheim &middot; Internal KPI Dashboard</p>
-        <h1>Destination Experience and Events Dashboard</h1>
+        <h1>Destination Services &amp; Events Dashboard</h1>
         <p class="sub" id="headerSub">Planning visits, partner referrals, repeat business, events supported, booked business, and survey feedback.</p>
       </div>
     </div>
@@ -92,6 +92,7 @@
       </section>
     </div>
     <p class="footnote">*Partners Visited and In House Groups Serviced only began being tracked in 2026, so no prior-year comparison is available for them yet.</p>
+    <p class="footnote"><strong>Partners Visited</strong> = a partner property visited in person during a planning visit. <strong>Partner Referrals</strong> (see Partner Referrals tab) = a non-physical referral, such as email, phone, or shared contact info.</p>
   </section>
 
   <!-- ================= PARTNER REFERRALS ================= -->
@@ -101,6 +102,7 @@
       <label>Year <select id="ref-year"></select></label>
       <label>Service Manager <select id="ref-manager"></select></label>
     </div>
+    <p class="desc"><strong>Partner Referrals</strong> = a non-physical referral, such as email, phone, or shared contact info (as distinct from a Partners Visited, which is an in-person property visit -- see Team KPIs tab).</p>
     <div class="kpi-grid" id="ref-kpiGrid"></div>
     <div class="grid-2">
       <section class="panel">
@@ -146,6 +148,7 @@
     <p class="desc"><strong>Repeat account</strong> = a distinct account (Account ID) with at least one booking whose "Repeat Business" value on the sheet is Yes.</p>
     <h3 class="kpi-subhead">By Accounts</h3>
     <div class="kpi-grid" id="rep-kpiGrid-accounts"></div>
+    <p class="desc auto-analysis" id="rep-takeaway"></p>
     <div class="grid-2">
       <section class="panel">
         <div class="panel-header-row">

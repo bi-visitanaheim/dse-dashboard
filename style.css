@@ -250,6 +250,7 @@ header.top p.sub {
 .kpi-card .delta.down { color: var(--down); }
 .kpi-card .delta.flat { color: var(--text-muted); }
 .kpi-card .daterange { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; }
+.def-hint { cursor: help; color: var(--navy); font-weight: 700; border: 1px solid var(--teal-light); border-radius: 50%; padding: 0 4px; font-size: 10px; }
 /* Overview tab only: the 4 cards driven by the events team's own data
    (Hosted Events, Event Satisfaction, Leads Generated, Lead Conversion
    Window) get a pale-blue accent instead of the default navy, so they read
