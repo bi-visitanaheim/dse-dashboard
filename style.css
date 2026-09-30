@@ -250,7 +250,53 @@ header.top p.sub {
 .kpi-card .delta.down { color: var(--down); }
 .kpi-card .delta.flat { color: var(--text-muted); }
 .kpi-card .daterange { font-size: 10.5px; color: var(--text-muted); margin-top: 6px; }
-.def-hint { cursor: help; color: var(--navy); font-weight: 700; border: 1px solid var(--teal-light); border-radius: 50%; padding: 0 4px; font-size: 10px; }
+.def-hint {
+  cursor: pointer;
+  color: var(--navy);
+  font-weight: 700;
+  background: var(--bg);
+  border: 1px solid var(--teal-light);
+  border-radius: 50%;
+  width: 15px;
+  height: 15px;
+  line-height: 13px;
+  padding: 0;
+  font-size: 10px;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+.def-hint:hover, .def-hint:focus-visible { background: var(--teal-light); color: var(--navy); outline: none; }
+.def-popover {
+  display: none;
+  position: absolute;
+  z-index: 500;
+  max-width: 260px;
+  background: var(--navy);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.4;
+  padding: 8px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0,0,0,.2);
+}
+.def-popover.open { display: block; }
+.goto-tab {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.goto-tab:hover, .goto-tab:focus-visible { text-decoration: underline; outline: none; }
 /* Overview tab only: the 4 cards driven by the events team's own data
    (Hosted Events, Event Satisfaction, Leads Generated, Lead Conversion
    Window) get a pale-blue accent instead of the default navy, so they read

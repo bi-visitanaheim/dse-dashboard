@@ -112,11 +112,15 @@ assert(doc.getElementById("printTabTitle").textContent === "Booked Business", "P
 window.switchTab("overview");
 
 // Overview
-// Back to 12 categories: Room Nights/Economic Impact/Attendees (briefly
-// added here in an earlier pass) were removed per direction -- those 3
-// fields belong only on the Booked Business tab's "Events That Generated
-// Leads Detail" table, not as Overview or Booked Business KPI cards.
-assert(doc.getElementById("ov-kpiGrid").children.length === 12, "Overview: 12 KPI cards (Room Nights/Economic Impact/Attendees removed again)");
+// 13 categories: the original 12, plus "Clients Serviced During Planning
+// Visits" (added next to Planning Visits, mirroring the Team KPIs card of
+// the same name). Room Nights/Economic Impact/Attendees (briefly added here
+// in an earlier pass) stay removed -- those 3 fields belong only on the
+// Booked Business tab's "Events That Generated Leads Detail" table, not as
+// Overview or Booked Business KPI cards.
+assert(doc.getElementById("ov-kpiGrid").children.length === 13, "Overview: 13 KPI cards (added 'Clients Serviced During Planning Visits')");
+assert(doc.getElementById("ov-kpiGrid").textContent.includes("Clients Serviced During Planning Visits"), "Overview: 'Clients Serviced During Planning Visits' card present");
+assert(doc.getElementById("ov-kpiGrid").children[2].textContent.includes("Clients Serviced During Planning Visits"), "Overview: 'Clients Serviced During Planning Visits' sits right after 'Planning Visits' (3rd card)");
 assert(!doc.getElementById("ov-kpiGrid").textContent.includes("Room Nights"), "Overview: 'Room Nights' card removed");
 assert(!doc.getElementById("ov-kpiGrid").textContent.includes("Economic Impact"), "Overview: 'Economic Impact' card removed");
 assert(doc.getElementById("ov-insights").querySelectorAll("p").length === 3, "Overview: 3 narrative paragraphs");
@@ -124,10 +128,10 @@ assert(doc.querySelectorAll("#ov-kpiGrid .delta").length > 0, "Overview: cards s
 assert(doc.querySelectorAll("#ov-insights .delta-inline").length > 0, "Overview: narrative has bold/colored inline deltas");
 assert(doc.getElementById("ov-desc").textContent.trim() === "", "Overview: stale 'above data cards reflect...' subtitle sentence removed (each card shows its own date range now)");
 assert(doc.getElementById("ov-kpiGrid").textContent.includes("Repeat Account %"), "Overview: card renamed to Repeat Account % (was Repeat Client %)");
-assert(doc.querySelectorAll("#ov-summaryTable tbody tr").length === 12, "Overview: Department at a Glance summary table has all 12 categories");
+assert(doc.querySelectorAll("#ov-summaryTable tbody tr").length === 13, "Overview: Department at a Glance summary table has all 13 categories");
 assert(doc.querySelector("#ov-summaryTable tbody tr").children.length === 5, "Overview: summary table rows have Category/Month/Previous Month/YTD/YoY% columns");
 assert(!doc.getElementById("ov-summaryTable").closest(".table-scroll"), "Overview: Department at a Glance table no longer wrapped in a scrolling container");
-assert(doc.querySelectorAll("#ov-kpiGrid .daterange").length === 12, "Overview: every KPI card shows its YTD date range");
+assert(doc.querySelectorAll("#ov-kpiGrid .daterange").length === 13, "Overview: every KPI card shows its YTD date range");
 assert(doc.querySelectorAll("#ov-kpiGrid .kpi-card.events-team").length === 4, "Overview: 4 events-team cards get the blue accent");
 assert(
   ["VA Hosted Events", "VA Event Satisfaction Score", "Leads Generated From VA Events", "Avg. Lead Conversion Window"]
@@ -136,8 +140,38 @@ assert(
 );
 assert(doc.querySelector("#ov-kpiGrid").children[0].querySelector(".label").textContent.trim().startsWith("Partners Visited"), "Overview: cards reordered, Partners Visited first");
 assert(doc.querySelector("#ov-kpiGrid").children[0].querySelector(".def-hint"), "Overview: Partners Visited card has a definition hint");
-assert(doc.querySelector("#ov-kpiGrid").children[0].querySelector(".def-hint").title.includes("partner property visited in person"), "Overview: Partners Visited definition text present");
+assert(doc.querySelector("#ov-kpiGrid").children[0].querySelector(".def-hint").dataset.def.includes("partner property visited in person"), "Overview: Partners Visited definition text present in data-def");
+assert(doc.querySelector("#ov-kpiGrid").children[0].querySelector(".def-hint").tagName === "BUTTON", "Overview: definition hint is a real <button> (clickable popover, not a hover-only title tooltip)");
 assert([...doc.querySelectorAll("#ov-kpiGrid .kpi-card")].every(el => el.classList.contains("selectable")), "Overview: every KPI card is clickable/selectable");
+{
+  // Clicking the "?" definition hint must show its popover WITHOUT also
+  // selecting/filtering the card underneath it (the capture-phase
+  // stopPropagation in initDefHints() is what prevents that).
+  const partnersCard = doc.querySelector("#ov-kpiGrid").children[0];
+  const hint = partnersCard.querySelector(".def-hint");
+  hint.dispatchEvent(new window.Event("click", { bubbles: true, cancelable: true }));
+  assert(!partnersCard.classList.contains("selected"), "Overview: clicking a definition hint does NOT select/filter the card");
+  const pop = doc.querySelector(".def-popover.open");
+  assert(pop, "Overview: definition popover opens on click");
+  assert(pop.textContent.includes("partner property visited in person"), "Overview: popover shows the correct definition text");
+  // Clicking it again closes the popover (toggle behavior).
+  hint.dispatchEvent(new window.Event("click", { bubbles: true, cancelable: true }));
+  assert(!doc.querySelector(".def-popover.open"), "Overview: clicking the same hint again closes the popover");
+}
+{
+  // "View tab" link on each Overview card jumps straight to that metric's
+  // own tab, without also triggering the card's click-to-select/filter
+  // behavior.
+  const partnersCard = doc.querySelector("#ov-kpiGrid").children[0];
+  const gotoBtn = partnersCard.querySelector(".goto-tab");
+  assert(gotoBtn, "Overview: Partners Visited card has a 'View tab' link");
+  assert(gotoBtn.dataset.tab === "team", "Overview: Partners Visited 'View tab' link points at the Team KPIs tab");
+  gotoBtn.dispatchEvent(new window.Event("click", { bubbles: true, cancelable: true }));
+  assert(!partnersCard.classList.contains("selected"), "Overview: clicking 'View tab' does NOT select/filter the card");
+  assert(doc.getElementById("tab-team").classList.contains("active"), "Overview: clicking 'View tab' switches to the Team KPIs tab");
+  assert([...doc.querySelectorAll(".tab-btn")].find(b => b.dataset.tab === "team").classList.contains("active"), "Overview: clicking 'View tab' also activates the Team KPIs nav button");
+  window.switchTab("overview"); // restore for the remaining Overview-tab assertions below
+}
 {
   // Clicking a card highlights it and narrows the summary table to just its
   // row; clicking it again clears the selection.
@@ -149,7 +183,7 @@ assert([...doc.querySelectorAll("#ov-kpiGrid .kpi-card")].every(el => el.classLi
   cards[2].dispatchEvent(new window.Event("click"));
   const visibleAfter = [...doc.querySelectorAll("#ov-summaryTable tbody tr")].filter(tr => tr.style.display !== "none");
   assert(!cards[2].classList.contains("selected"), "Overview: clicking the same card again clears the highlight");
-  assert(visibleAfter.length === 12, "Overview: clicking the same card again shows all 12 rows again");
+  assert(visibleAfter.length === 13, "Overview: clicking the same card again shows all 13 rows again");
 }
 {
   // The narrative above the table is also dynamic with card selection: a

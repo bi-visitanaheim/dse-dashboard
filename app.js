@@ -285,6 +285,7 @@ async function main() {
     btn.addEventListener("click", () => switchTab(btn.dataset.tab));
   });
   initFeedbackModal();
+  initDefHints();
 
   renderOverview();
   initTeam();
@@ -487,19 +488,27 @@ function renderOverview() {
   // see BB_CUR above). "team" marks the 4 categories driven by the events
   // team's own data (vs. the services team's data for everything else),
   // used for the card color-coding below.
+  // "Clients Serviced During Planning Visits" -- same repeatingClients-based
+  // metric as the Team KPIs card of the same name (counts the clients who
+  // attend each planning visit), reusing the repCurR/repPriR/repMonthR
+  // YTD row sets already computed above for the Repeat Account % card so the
+  // YTD window/cutoff stays consistent with everything else on this tab.
+  const clientsVisitCur = repCurR.length, clientsVisitPri = repPriR.length, clientsVisitMonth = repMonthR.length;
+
   const categories = [
-    { label: "Partners Visited", def: "a partner property visited in person during a planning visit", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
-    { label: "Planning Visits", cur: visitsCur, pri: visitsPri, month: visitsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
-    { label: "Convention Groups Serviced", cur: convCur, pri: convPri, month: convMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
-    { label: "In House Groups Serviced", cur: inHouseCur, pri: inHousePri, month: inHouseMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
-    { label: "Clients Serviced", cur: clientsCur, pri: clientsPri, month: clientsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
-    { label: "Partner Referrals", def: "a non-physical referral, such as email, phone, or shared contact info", cur: totalReferralsCur, pri: totalReferralsPri, month: totalReferralsMonth, cutoff: refCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services" },
-    { label: "Repeat Account %", cur: rateCur, pri: ratePri, month: rateMonth, cutoff: repCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "services" },
-    { label: "VA Team Experience Rating", cur: teamScoreCur, pri: teamScorePri, month: teamScoreMonth, cutoff: surCutoff, curYear: CUR, priYear: PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v, 2) + " / 10"), team: "services" },
-    { label: "VA Hosted Events", cur: hostedEventsCur, pri: hostedEventsPri, month: hostedEventsMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "events" },
-    { label: "VA Event Satisfaction Score", cur: eventSatCur, pri: eventSatPri, month: eventSatMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "events" },
-    { label: `${BB_CUR} Leads Generated From VA Events`, cur: leadsCurYtd, pri: leadsPriYtd, month: leadsMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v), team: "events" },
-    { label: `${BB_CUR} Avg. Lead Conversion Window`, cur: convWinCur, pri: convWinPri, month: convWinMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: convWinFmt, team: "events" }
+    { label: "Partners Visited", def: "a partner property visited in person during a planning visit", cur: partnersCur, pri: partnersPri, month: partnersMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services", tab: "team" },
+    { label: "Planning Visits", cur: visitsCur, pri: visitsPri, month: visitsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services", tab: "team" },
+    { label: "Clients Serviced During Planning Visits", def: "Counts the clients who attend each planning visit.", cur: clientsVisitCur, pri: clientsVisitPri, month: clientsVisitMonth, cutoff: repCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services", tab: "team" },
+    { label: "Convention Groups Serviced", cur: convCur, pri: convPri, month: convMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services", tab: "team" },
+    { label: "In House Groups Serviced", cur: inHouseCur, pri: inHousePri, month: inHouseMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services", tab: "team" },
+    { label: "Clients Serviced", cur: clientsCur, pri: clientsPri, month: clientsMonth, cutoff: pvCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services", tab: "team" },
+    { label: "Partner Referrals", def: "a non-physical referral, such as email, phone, or shared contact info", cur: totalReferralsCur, pri: totalReferralsPri, month: totalReferralsMonth, cutoff: refCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "services", tab: "referrals" },
+    { label: "Repeat Account %", cur: rateCur, pri: ratePri, month: rateMonth, cutoff: repCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "services", tab: "repeat" },
+    { label: "VA Team Experience Rating", cur: teamScoreCur, pri: teamScorePri, month: teamScoreMonth, cutoff: surCutoff, curYear: CUR, priYear: PRI, fmtFn: v => (v === null ? "&mdash;" : fmt(v, 2) + " / 10"), team: "services", tab: "survey" },
+    { label: "VA Hosted Events", cur: hostedEventsCur, pri: hostedEventsPri, month: hostedEventsMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => fmt(v), team: "events", tab: "events" },
+    { label: "VA Event Satisfaction Score", cur: eventSatCur, pri: eventSatPri, month: eventSatMonth, cutoff: evsCutoff, curYear: CUR, priYear: PRI, fmtFn: v => pct(v), team: "events", tab: "events" },
+    { label: `${BB_CUR} Leads Generated From VA Events`, cur: leadsCurYtd, pri: leadsPriYtd, month: leadsMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: v => fmt(v), team: "events", tab: "booked" },
+    { label: `${BB_CUR} Avg. Lead Conversion Window`, cur: convWinCur, pri: convWinPri, month: convWinMonth, cutoff: bbCutoff, curYear: BB_CUR, priYear: BB_PRI, fmtFn: convWinFmt, team: "events", tab: "booked" }
   ];
 
   document.getElementById("ov-kpiGrid").innerHTML =
@@ -507,8 +516,16 @@ function renderOverview() {
       const d = pctChange(c.pri, c.cur);
       const text = d === null ? null : `${deltaArrow(d)}${pct(d)} vs. ${c.priYear} YTD`;
       const cardClass = `selectable${c.team === "events" ? " events-team" : ""}`;
-      const label = c.def ? `${c.label} <span class="def-hint" title="${c.def}">(?)</span>` : c.label;
-      return kpiCard(label, c.fmtFn(c.cur), text, deltaClass(d), ytdRangeLabel(c.curYear, c.cutoff), cardClass, null, `data-cat-index="${i}"`);
+      const label = c.def ? `${c.label} <button type="button" class="def-hint" data-def="${c.def.replace(/"/g, "&quot;")}">?</button>` : c.label;
+      let cardHtml = kpiCard(label, c.fmtFn(c.cur), text, deltaClass(d), ytdRangeLabel(c.curYear, c.cutoff), cardClass, null, `data-cat-index="${i}"`);
+      // "View tab" link (per direction: clicking an Overview card should be
+      // able to take you to that metric's own tab) -- a separate element
+      // from the card's existing click-to-select-and-filter behavior (see
+      // below), not a replacement for it, so both interactions coexist. Only
+      // the last closing </div> (the card's own) is targeted, so this can't
+      // accidentally match something inside the label/value/delta markup.
+      if (c.tab) cardHtml = cardHtml.replace(/<\/div>$/, `<button type="button" class="goto-tab" data-tab="${c.tab}">View tab &rarr;</button></div>`);
+      return cardHtml;
     }).join("");
 
   // Per-category 1-sentence version of the narrative below -- shown instead
@@ -629,9 +646,9 @@ function renderTeam(year) {
   const dClientsServicedVisits = ytdYoyMetric(DATA.repeatingClients.raw, "startDate", repLatestY, repPriorY, null, rs => rs.length);
 
   document.getElementById("team-kpiGrid").innerHTML = [
-    kpiCard("Partners Visited* <span class=\"def-hint\" title=\"A partner property visited in person during a planning visit.\">(?)</span>", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
+    kpiCard("Partners Visited* <button type=\"button\" class=\"def-hint\" data-def=\"A partner property visited in person during a planning visit.\">?</button>", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
     kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits)), ytdDeltaText(dPlanningV, fmt), deltaClass(dPlanningV.d), teamRange),
-    kpiCard("Clients Serviced During Planning Visits (counts the clients who attend each planning visit)", fmt(teamClientsServicedDuringVisits), ytdDeltaText(dClientsServicedVisits, fmt), deltaClass(dClientsServicedVisits.d), teamRange),
+    kpiCard("Clients Serviced During Planning Visits <button type=\"button\" class=\"def-hint\" data-def=\"Counts the clients who attend each planning visit.\">?</button>", fmt(teamClientsServicedDuringVisits), ytdDeltaText(dClientsServicedVisits, fmt), deltaClass(dClientsServicedVisits.d), teamRange),
     kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced)), ytdDeltaText(dConvV, fmt), deltaClass(dConvV.d), teamRange),
     kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), ytdDeltaText(dInHouseV, fmt), deltaClass(dInHouseV.d), teamRange),
     kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)), ytdDeltaText(dClientsV, fmt), deltaClass(dClientsV.d), teamRange)
@@ -879,7 +896,7 @@ function renderReferrals(year, manager) {
   });
 
   document.getElementById("ref-kpiGrid").innerHTML = [
-    kpiCard("Partner Referrals <span class=\"def-hint\" title=\"A non-physical referral, such as email, phone, or shared contact info.\">(?)</span>", fmt(total), ytdDeltaText(dTotalRef, fmt), deltaClass(dTotalRef.d), refRange),
+    kpiCard("Partner Referrals <button type=\"button\" class=\"def-hint\" data-def=\"A non-physical referral, such as email, phone, or shared contact info.\">?</button>", fmt(total), ytdDeltaText(dTotalRef, fmt), deltaClass(dTotalRef.d), refRange),
     kpiCard("Avg. Referrals Per Month", fmt(avgPerMonth, 2), ytdDeltaText(dAvgRef, v => fmt(v, 2)), deltaClass(dAvgRef.d), refRange)
   ].join("");
 
@@ -1617,6 +1634,71 @@ function initFeedbackModal() {
   overlay.addEventListener("click", (e) => { if (e.target === overlay) closeFeedbackModal(); });
   document.getElementById("feedbackModalClose")?.addEventListener("click", closeFeedbackModal);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFeedbackModal(); });
+}
+
+// Definition hints ("?" badges on Partners Visited/Partner Referrals/Clients
+// Serviced During Planning Visits cards, Overview + Team KPIs + Partner
+// Referrals tabs). Each badge is a real <button> carrying its definition in
+// data-def -- clicking it opens a small popover with that text. This is a
+// single delegated listener (works across every tab's KPI grid regardless of
+// how often those grids get re-rendered by filters) registered in the
+// CAPTURING phase specifically so it runs, and can stopPropagation(), before
+// the click ever reaches an ancestor .kpi-card's own bubble-phase click
+// handler (Overview cards are clickable to select/filter the summary table --
+// without capture-phase stopPropagation, clicking "?" would also trigger
+// that selection instead of just showing the definition).
+let DEF_POPOVER_OPEN_HINT = null;
+function initDefHints() {
+  const pop = document.createElement("div");
+  pop.className = "def-popover";
+  pop.setAttribute("role", "tooltip");
+  document.body.appendChild(pop);
+
+  function hidePopover() {
+    pop.classList.remove("open");
+    DEF_POPOVER_OPEN_HINT = null;
+  }
+  function showPopoverFor(hint) {
+    pop.textContent = hint.dataset.def || "";
+    pop.classList.add("open");
+    const rect = hint.getBoundingClientRect();
+    const popRect = pop.getBoundingClientRect();
+    let left = rect.left + window.scrollX;
+    // Keep the popover from running off the right edge of the viewport.
+    const maxLeft = window.scrollX + document.documentElement.clientWidth - popRect.width - 12;
+    if (left > maxLeft) left = Math.max(12, maxLeft);
+    pop.style.left = left + "px";
+    pop.style.top = (rect.bottom + window.scrollY + 8) + "px";
+    DEF_POPOVER_OPEN_HINT = hint;
+  }
+
+  document.addEventListener("click", (e) => {
+    const hint = e.target.closest(".def-hint");
+    if (hint) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (DEF_POPOVER_OPEN_HINT === hint) { hidePopover(); return; }
+      showPopoverFor(hint);
+      return;
+    }
+    // "View tab" link on an Overview KPI card (see renderOverview): jumps to
+    // that metric's own tab instead of (not in addition to) the card's
+    // normal click-to-select/filter behavior, so this also needs the same
+    // capture-phase stopPropagation trick as the definition hints above.
+    const goto = e.target.closest(".goto-tab");
+    if (goto) {
+      e.preventDefault();
+      e.stopPropagation();
+      hidePopover();
+      switchTab(goto.dataset.tab);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (!e.target.closest(".def-popover")) hidePopover();
+  }, true);
+  window.addEventListener("scroll", hidePopover, true);
+  window.addEventListener("resize", hidePopover);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") hidePopover(); });
 }
 function renderQ2Q7(year, manager) {
   const spot = DATA.accSurvey.q2q7;
