@@ -609,6 +609,22 @@ All of the above were verified against the full `test/verify.mjs` suite (rewritt
 
 Run it with `node test/verify.mjs` from a copy of the folder that has `jsdom` installed. On Sept 30, 2026 all 123 checks passed.
 
+## September 30, 2026: Cowork artifact is now the official dashboard (embedded data snapshot)
+
+**Decision:** per the dashboard owner, the Cowork artifact `dse-dashboard-vabi-preview` is now the team's official, primary DS&E dashboard. The id keeps the old "preview" name only so existing links keep working; the page itself no longer carries any preview or draft language.
+
+**What it is:** a single self-contained HTML file built from this folder's `index.html`, `style.css`, and `app.js` (same layout, calendar date-range picker, six section pages, and Sources page as the files above). The only difference: the Cowork artifact sandbox cannot load `data.json` over the network, so the data is embedded in the page as a snapshot, trimmed to the fields `app.js` uses. Chart.js loads from the one CDN tag Cowork allows.
+
+**The data is not live.** It shows whatever `data.json` held when the artifact was last rebuilt. Current snapshot: `generatedAt` 2026-09-28 (the "Data last refreshed" line on the Overview shows this date).
+
+**Refresh procedure (after each monthly `build_data.py` run):**
+1. Rerun `build_data.py` as usual so `data.json` in this folder is current.
+2. Run `python3 build_artifact.py <output.html>` from this folder. It inlines `style.css`, `app.js`, and the new `data.json` into one HTML file. It never edits the site files.
+3. In a Cowork session, call `update_artifact` with id `dse-dashboard-vabi-preview` and that output file. Update the description's snapshot date.
+4. Open the artifact, confirm the "Data last refreshed" date changed and the Overview cards are populated, and check `verify_artifact` for console errors.
+
+If `index.html`, `style.css`, or `app.js` change later, the same steps carry those changes into the artifact too.
+
 ## Known deployment issue (fixed)
 
 The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.
