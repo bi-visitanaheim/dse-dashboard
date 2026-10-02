@@ -207,7 +207,7 @@ const OV = (function () {
     { id: "repeat", title: "Repeat ACC Accounts", grid: "rep-kpiGrid-accounts", period: "repeat-period" },
     { id: "survey", title: "Client Survey", grid: "sur-kpiGrid", period: "survey-period" },
     { id: "events", title: "Hosted Events", grid: "hev-kpiGrid", period: "events-period" },
-    { id: "booked", title: "Booked Business", grid: "bb-kpiGrid", period: "booked-period" }
+    { id: "booked", title: "Event Touchpoints to Booked Business", grid: "bb-kpiGrid", period: "booked-period" }
   ];
   function renderNavCards() {
     document.getElementById("ov-navCards").innerHTML = NAV_PAGES.map(n => {
