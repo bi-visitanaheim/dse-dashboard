@@ -680,6 +680,25 @@ The artifact was rebuilt with `build_artifact.py`. The data snapshot is unchange
 
 **Still needs a person to check visually:** no real browser was available. Please check the spacing of the question cards on desktop, tablet, and phone, the look of the "Show full metrics" toggle, and the wording of the answers.
 
+## October 2, 2026: Overview question-and-answer cards removed (back to metric numbers)
+
+**Why:** the owner asked to "go back to displaying metric numbers on the overview page and not questions since in this request they did not state specific questions." The six questions and their wording (September 30 section above) were the BI team's own guesses. The owner had not specified them, so the Overview now shows the real metrics directly again.
+
+**What changed (Overview only; section pages are unchanged):**
+- The six question cards (`#ov-qa`) and the "Show full metrics" toggle (`#ov-details`) are gone. The 13 KPI cards (`#ov-kpiGrid`) and Key Takeaways show right away, below the date picker, as they did before the September 30 Q&A pass. There is no collapsed section left.
+- `app.js`: removed `buildQA()`, `renderQA()`, and their helpers (`QA_DEFS`, `qaCard`, `qaChange`, and the rest), and dropped the `#ov-qa` target from the data-load error message. `style.css`: removed all `.qa-*` and `.ov-details` rules. The `.goto-tab` link style was kept for the section pages. `index.html`: the Sources page Methodology text no longer mentions question cards.
+- **Kept:** the From/To date picker (it still drives all 13 cards live), the Partners Visited / Partner Referrals "?" definition popovers, the "Open a page" cards, the responsive/mobile layout, and the sidebar brand line "Visit Anaheim" (the old internal-BI eyebrow is still removed).
+
+**Testing:** the Q&A checks in `test/verify.mjs` were replaced with new checks for the following:
+- there are no question cards and no `<details>`/toggle on the Overview
+- the 13-card grid sits directly on the Overview page and is the first block after the date picker
+- the "?" popover opens and closes
+- the "Open a page" cards link to all six section pages
+
+All 144 checks pass. The artifact was rebuilt with `build_artifact.py` (data snapshot unchanged, generatedAt 2026-09-28).
+
+**Still needs a person to check visually:** open the Overview on desktop and phone and confirm the cards appear first, with no question cards.
+
 ## Known deployment issue (fixed)
 
 The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.

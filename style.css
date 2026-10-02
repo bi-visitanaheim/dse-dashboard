@@ -156,50 +156,9 @@
   .picker-note{font-size:11.5px;color:var(--muted);margin:-10px 0 14px;}
   @media print{ .date-range input[type="date"]{border:none;background:none;} .date-range .btn-link{display:none;} }
 
-  /* ---- Overview question-and-answer cards (plain-language redesign, 2026-09-30) ----
-     Headline Overview content for non-technical readers. Approved palette only:
-     navy text, teal/pale marks, red-text only for real declines. */
-  .qa-intro{font-size:15px;line-height:1.5;color:var(--dark);margin:0 0 18px;max-width:760px;}
-  .qa-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:20px;margin:0 0 28px;}
-  .qa-card{display:flex;gap:16px;background:#fff;border:1px solid var(--border);border-radius:14px;padding:24px 26px;}
-  .qa-num{flex:0 0 36px;width:36px;height:36px;border-radius:50%;background:var(--pale);color:var(--navy);font-weight:800;font-size:16px;display:flex;align-items:center;justify-content:center;}
-  .qa-body{flex:1;min-width:0;display:flex;flex-direction:column;}
-  .qa-q{margin:4px 0 10px;font-size:19px;line-height:1.3;font-weight:700;color:var(--navy);}
-  .qa-a{margin:0;font-size:17px;line-height:1.55;color:var(--dark);}
-  .qa-a strong{color:var(--navy);font-weight:800;}
-  .qa-a .qa-down{color:var(--red-text);font-weight:700;}
-  .qa-note{margin:8px 0 0;font-size:12.5px;color:var(--muted);}
-  .qa-foot{margin-top:auto;padding-top:16px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;}
-  .qa-based{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap;}
-  .qa-link,.goto-tab{font-family:var(--font);font-size:13px;font-weight:700;color:var(--navy);background:none;border:none;padding:4px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
-  .qa-link:hover,.goto-tab:hover{color:var(--dark);}
-  .ov-details{margin:0 0 22px;}
-  .ov-details > summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px 18px;font-weight:700;font-size:15px;color:var(--navy);}
-  .ov-details > summary::-webkit-details-marker{display:none;}
-  .ov-details > summary:before{content:"+";display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--navy);color:#fff;font-size:16px;line-height:1;}
-  .ov-details[open] > summary:before{content:"\2212";}
-  .ov-details > summary:hover{border-color:var(--teal);}
-  .ov-details > summary:focus-visible{outline:2px solid var(--teal);outline-offset:2px;}
-  .ov-details .summary-hint{font-weight:400;font-size:12.5px;color:var(--muted);}
-  .ov-details .when-open{display:none;}
-  .ov-details[open] .when-open{display:inline;}
-  .ov-details[open] .when-closed{display:none;}
-  .ov-details-body{padding-top:16px;}
-  .ov-details-body .picker-note{margin:0 0 4px;}
-  @media screen and (max-width:767px){
-    .qa-grid{grid-template-columns:1fr;gap:14px;}
-    .qa-card{padding:18px 16px;gap:12px;}
-    .qa-num{flex-basis:30px;width:30px;height:30px;font-size:14px;}
-    .qa-q{font-size:18px;}
-    .qa-a{font-size:16px;}
-    .qa-link{min-height:44px;}
-    .ov-details > summary{min-height:44px;}
-  }
-  @media print{
-    .qa-grid{grid-template-columns:1fr 1fr;}
-    .qa-card{break-inside:avoid;}
-    .qa-link,.ov-details > summary{display:none !important;} /* full metrics print only if expanded */
-  }
+  /* "View tab" links on Overview KPI cards */
+  .goto-tab{font-family:var(--font);font-size:13px;font-weight:700;color:var(--navy);background:none;border:none;padding:4px 0;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+  .goto-tab:hover{color:var(--dark);}
 
   /* ==================================================================
      Responsive layout pass (2026-09-30)

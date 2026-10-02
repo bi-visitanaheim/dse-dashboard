@@ -10,10 +10,6 @@
 /* =====================================================================
    OVERVIEW PAGE (VA BI Dashboard Template restyle, September 30, 2026)
    ---------------------------------------------------------------------
-   Plain-language redesign (2026-09-30): the Overview now leads with six
-   question-and-answer cards (#ov-qa, see buildQA/renderQA below) for
-   non-technical readers. The 13 KPI cards + Key Takeaways described next
-   are unchanged and sit in the collapsed "Show full metrics" section.
    The 13 Overview KPI cards are driven by the From/To calendar date-range
    picker. For every card:
      - current period = rows dated From..To (inclusive)
@@ -200,140 +196,6 @@ const OV = (function () {
     document.getElementById("ov-takeaways").innerHTML = bullets.slice(0, 5).map(b => `<li>${b}</li>`).join("");
 
     document.getElementById("periodBadge").innerHTML = rangeText(from, to) + " vs. " + rangeText(shiftYear(from, -1), shiftYear(to, -1));
-    renderQA(cats);
-  }
-
-  /* ---- Question-and-answer Overview (plain-language redesign, 2026-09-30) ----
-     The headline Overview content for non-technical readers: six questions,
-     each answered in one or two plain sentences. Every number comes straight
-     from the same computeOverview() results that feed the 13 detail cards
-     (no new calculations); only rounding/wording differ. The 13-card grid and
-     Key Takeaways remain available under "Show full metrics" (#ov-details). */
-  const QA_DEFS = {
-    "Partners Visited": "A partner property visited in person during a planning visit.",
-    "Partner Referrals": "A non-physical referral, such as email, phone, or shared contact info."
-  };
-  function qaCard(cats, label) { return cats.find(c => c.label === label); }
-  function qaHas(c) { return c && !c.w.empty && c.cur !== null && c.cur !== undefined && !Number.isNaN(c.cur); }
-  // Whole-percent change vs. the same dates last year (null when no prior-year data).
-  function qaChange(c) {
-    if (!qaHas(c)) return null;
-    const d = ovPctChange(c.pri, c.cur);
-    if (d === null) return null;
-    const p = Math.round(Math.abs(d) * 100);
-    if (p === 0) return { dir: "flat", long: "about the same as last year", short: "about the same as last year" };
-    if (d > 0) return { dir: "up", long: `up ${p}% from the same dates last year`, short: `up ${p}% vs. last year` };
-    return { dir: "down", long: `<span class="qa-down">down ${p}%</span> from the same dates last year`, short: `<span class="qa-down">down ${p}%</span> vs. last year` };
-  }
-  // Short spoken-style lead ("Yes — the team ...") from the direction of change.
-  function qaLead(ch, ch2) {
-    if (ch && ch2 && ch.dir !== ch2.dir) return "Partly &mdash; ";
-    if (!ch) return "";
-    return ch.dir === "up" ? "Yes &mdash; " : ch.dir === "down" ? "Not quite &mdash; " : "Holding steady &mdash; ";
-  }
-  function qaJoin(lead, text) { return lead && text.startsWith("The ") ? lead + "t" + text.slice(1) : lead + text; }
-  function qaInt(v) { return `<strong>${ovFmt(v)}</strong>`; }
-  // Per-source note when a sheet's data ends before the picked To date,
-  // e.g. "Event survey data is only available through Mar 31, 2026."
-  function qaNote(list) {
-    const byDate = {};
-    list.forEach(([c, src]) => {
-      if (!c || c.w.empty || !c.w.clamped) return;
-      (byDate[c.w.effTo] = byDate[c.w.effTo] || []).includes(src) || byDate[c.w.effTo].push(src);
-    });
-    return Object.keys(byDate).sort().map(d => {
-      const names = byDate[d];
-      const who = names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0];
-      return `${who.charAt(0).toUpperCase() + who.slice(1)} data is only available through ${longDate(d)}.`;
-    }).join(" ");
-  }
-  function qaHint(label) {
-    return ` <button type="button" class="def-hint" data-def="${QA_DEFS[label]}" aria-label="What does ${label} mean?">?</button>`;
-  }
-  const NO_DATA = "There is no data for these dates yet. Try a wider date range.";
-
-  function buildQA(cats) {
-    const g = l => qaCard(cats, l);
-    const out = [];
-
-    // 1. Planning visits
-    { const pv = g("Planning Visits"), pw = g("Partners Visited"), ch = qaChange(pv);
-      let a = NO_DATA;
-      if (qaHas(pv)) {
-        a = qaJoin(qaLead(ch), `The team completed ${qaInt(pv.cur)} planning visits${ch ? `, ${ch.long}` : ""}`);
-        a += qaHas(pw) ? `, and visited ${qaInt(pw.cur)} partner properties along the way.` : ".";
-      }
-      out.push({ id: "visits", q: "Are we staying busy with planning visits?", a, tab: "team", tabName: "Team KPIs",
-        based: ["Planning Visits", "Partners Visited"], note: qaNote([[pv, "planning visit"], [pw, "planning visit"]]) }); }
-
-    // 2. Groups and clients serviced
-    { const cg = g("Convention Groups Serviced"), cs = g("Clients Serviced"), ch1 = qaChange(cg), ch2 = qaChange(cs);
-      let a = NO_DATA;
-      if (qaHas(cg) || qaHas(cs)) {
-        const parts = [];
-        if (qaHas(cg)) parts.push(`${qaInt(cg.cur)} convention groups${ch1 ? ` (${ch1.short})` : ""}`);
-        if (qaHas(cs)) parts.push(`${qaInt(cs.cur)} clients${ch2 ? ` (${ch2.short})` : ""}`);
-        a = qaJoin(qaLead(ch2 || ch1, ch2 ? ch1 : null), `The team serviced ${parts.join(" and ")}.`);
-      }
-      out.push({ id: "groups", q: "Are we serving more groups and clients?", a, tab: "team", tabName: "Team KPIs",
-        based: ["Convention Groups Serviced", "Clients Serviced"], note: qaNote([[cg, "planning visit"], [cs, "planning visit"]]) }); }
-
-    // 3. Partner referrals
-    { const rf = g("Partner Referrals"), ch = qaChange(rf);
-      const a = qaHas(rf) ? qaJoin(qaLead(ch), `The team passed ${qaInt(rf.cur)} referrals to partners by email, phone, or shared contact info${ch ? `, ${ch.long}` : ""}.`) : NO_DATA;
-      out.push({ id: "referrals", q: "Are we sending new business to our partners?", a, tab: "referrals", tabName: "Partner Referrals",
-        based: ["Partner Referrals"], note: qaNote([[rf, "partner referral"]]) }); }
-
-    // 4. Repeat accounts
-    { const rp = g("Repeat Account %"), ch = qaChange(rp);
-      const a = qaHas(rp) ? `<strong>${Math.round(rp.cur * 100)}%</strong> of the accounts we serviced are returning (repeat) business${ch ? `, ${ch.long}` : ""}.` : NO_DATA;
-      out.push({ id: "repeat", q: "Are our clients coming back?", a, tab: "repeat", tabName: "Repeat ACC Accounts",
-        based: ["Repeat Account %"], note: qaNote([[rp, "repeat account"]]) }); }
-
-    // 5. Satisfaction
-    { const tr = g("VA Team Experience Rating"), es = g("VA Event Satisfaction Score"), ch1 = qaChange(tr), ch2 = qaChange(es);
-      const parts = [];
-      if (qaHas(tr)) parts.push(`Clients rate our team <strong>${ovFmt(tr.cur, 1)} out of 10</strong>${ch1 ? ` (${ch1.short})` : ""}`);
-      if (qaHas(es)) parts.push(`${parts.length ? "guests" : "Guests"} at VA-hosted events gave a <strong>${Math.round(es.cur * 100)}%</strong> satisfaction score${ch2 ? ` (${ch2.short})` : ""}`);
-      const a = parts.length ? parts.join(", and ") + "." : NO_DATA;
-      out.push({ id: "satisfaction", q: "How happy are our clients and event guests?", a, tab: "survey", tabName: "Client Survey",
-        based: ["VA Team Experience Rating", "VA Event Satisfaction Score"], note: qaNote([[tr, "client survey"], [es, "event survey"]]) }); }
-
-    // 6. Hosted events -> leads
-    { const ev = g("VA Hosted Events"), ld = g("Leads Generated From VA Events"), cw = g("Avg. Lead Conversion Window"), ch = qaChange(ld);
-      let a = NO_DATA;
-      if (qaHas(ld) || qaHas(ev)) {
-        const s = [];
-        if (qaHas(ev)) s.push(`The team hosted ${qaInt(ev.cur)} events`);
-        if (qaHas(ld)) s.push(`VA events generated ${qaInt(ld.cur)} sales leads${ch ? ` (${ch.short})` : ""}`);
-        a = qaJoin(qaHas(ld) ? qaLead(ch) : "", `${s.join(", and ")}.`);
-        if (qaHas(cw)) {
-          const v = cw.cur;
-          const when = v > 90 ? `about <strong>${Math.round(v / 30)} months</strong>` : `about <strong>${ovFmt(v)} days</strong>`;
-          a += ` On average, a lead comes in ${when} before its event.`;
-        }
-      }
-      out.push({ id: "events", q: "Are our hosted events bringing in new business?", a, tab: "booked", tabName: "Booked Business",
-        based: ["VA Hosted Events", "Leads Generated From VA Events", "Avg. Lead Conversion Window"], note: qaNote([[ev, "event survey"], [ld, "booked business"], [cw, "booked business"]]) }); }
-
-    return out;
-  }
-
-  function renderQA(cats) {
-    const el = document.getElementById("ov-qa");
-    if (!el) return;
-    el.innerHTML = buildQA(cats).map((x, i) => `<article class="qa-card" data-qa="${x.id}">
-      <div class="qa-num" aria-hidden="true">${i + 1}</div>
-      <div class="qa-body">
-        <h3 class="qa-q">${x.q}</h3>
-        <p class="qa-a">${x.a}</p>
-        ${x.note ? `<p class="qa-note">${x.note}</p>` : ""}
-        <div class="qa-foot">
-          <span class="qa-based">Based on: ${x.based.map(b => b + (QA_DEFS[b] ? qaHint(b) : "")).join(", ")}</span>
-          <button type="button" class="goto-tab qa-link" data-tab="${x.tab}">See ${x.tabName} &rarr;</button>
-        </div>
-      </div>
-    </article>`).join("");
   }
 
   // "Open a page" cards: summarize each section page's own default KPI cards
@@ -381,7 +243,7 @@ const OV = (function () {
     render();
   }
 
-  return { init, render, renderNavCards, toggleDef, computeOverview, buildQA, getDefaultRange: () => DEFAULT_RANGE };
+  return { init, render, renderNavCards, toggleDef, computeOverview, getDefaultRange: () => DEFAULT_RANGE };
 })();
 window.toggleDef = OV.toggleDef;
 
@@ -2831,7 +2693,7 @@ async function boot() {
   } catch (err) {
     console.error("Could not load data.json", err);
     const msg = '<div class="panel">The dashboard data (data.json) could not be loaded. Please refresh the page or contact the Business Intelligence team.</div>';
-    ["ov-qa", "ov-kpiGrid"].forEach(id => { const g = document.getElementById(id); if (g) g.innerHTML = msg; });
+    { const g = document.getElementById("ov-kpiGrid"); if (g) g.innerHTML = msg; }
     return;
   }
   Sections.start(data);
