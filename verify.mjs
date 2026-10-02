@@ -130,6 +130,51 @@ checkRange("default range", fromEl.value, toEl.value);
 { const g = cardMap("ov-kpiGrid"); console.log("   default Overview:", JSON.stringify(g));
   assert(g["Partners Visited"] === "284" && g["Planning Visits"] === "62", "default Overview: 284 Partners Visited, 62 Planning Visits (matches prior production default)"); }
 
+// ---------- Overview: plain-language Q&A cards (2026-09-30 redesign) ----------
+const qaCards = () => [...doc.querySelectorAll("#ov-qa .qa-card")];
+const qaById = (id) => doc.querySelector(`#ov-qa .qa-card[data-qa="${id}"]`);
+const qaStrong = (id) => [...qaById(id).querySelectorAll(".qa-a strong")].map((b) => b.textContent.trim());
+function checkQA(tag) {
+  const g = cardMap("ov-kpiGrid");
+  const expect = { visits: ["Planning Visits", "Partners Visited"], groups: ["Convention Groups Serviced", "Clients Serviced"], referrals: ["Partner Referrals"], events: ["VA Hosted Events", "Leads Generated From VA Events"] };
+  const bad = [];
+  for (const [id, labels] of Object.entries(expect)) {
+    const want = labels.map((l) => g[l]).filter((v) => v !== "—");
+    const got = qaStrong(id);
+    if (!want.length) { if (!/no data for these dates/.test(qaById(id).textContent)) bad.push(`${id}: expected no-data message`); continue; }
+    want.forEach((v) => { if (!got.includes(v)) bad.push(`${id}: missing ${v} (got ${JSON.stringify(got)})`); });
+  }
+  const rp = g["Repeat Account %"];
+  if (rp !== "—" && !qaStrong("repeat").includes(Math.round(parseFloat(rp)) + "%")) bad.push(`repeat: ${rp} -> ${JSON.stringify(qaStrong("repeat"))}`);
+  const tr = g["VA Team Experience Rating"];
+  if (tr !== "—" && !qaStrong("satisfaction").includes(parseFloat(tr).toFixed(1) + " out of 10")) bad.push(`satisfaction: ${tr} -> ${JSON.stringify(qaStrong("satisfaction"))}`);
+  assert(bad.length === 0, `${tag}: Q&A answers use the same numbers as the detail cards (${bad.join("; ")})`);
+}
+{
+  const cards = qaCards();
+  assert(cards.length === 6, `Overview shows 6 question cards (got ${cards.length})`);
+  assert(cards.every((c) => c.querySelector(".qa-q").textContent.trim().endsWith("?") && c.querySelector(".qa-a").textContent.trim().length > 20), "every Q&A card has a question and a written answer");
+  assert(cards.every((c) => (c.querySelector(".qa-a").textContent.replace(/vs\./g, "vs").match(/[.!](\s|$)/g) || []).length <= 2), "every answer is at most two sentences");
+  assert(cards.every((c) => c.querySelector(".qa-a strong")), "every answer bolds its key number(s)");
+  assert(cards.every((c) => c.querySelector(".goto-tab[data-tab]")), "every Q&A card has a See-page link");
+  assert(qaById("visits").querySelector('.def-hint[data-def*="in person"]') && qaById("referrals").querySelector('.def-hint[data-def*="non-physical"]'), "Partners Visited / Partner Referrals definition buttons on the Q&A cards");
+  console.log("   Q&A default:\n" + cards.map((c) => "     " + c.querySelector(".qa-q").textContent + " -> " + c.querySelector(".qa-a").textContent).join("\n"));
+  assert(/62/.test(qaStrong("visits").join()) && qaStrong("visits").includes("284"), "default Q&A: 62 planning visits, 284 partners visited");
+  checkQA("default range");
+  const det = doc.getElementById("ov-details");
+  assert(det && det.tagName === "DETAILS" && !det.open, "full metrics section exists and is collapsed by default");
+  assert(det.querySelector("summary").textContent.includes("Show full metrics"), 'toggle is labelled "Show full metrics"');
+  assert(det.contains(doc.getElementById("ov-kpiGrid")) && det.contains(doc.getElementById("ov-takeaways")), "13-card grid and Key Takeaways live inside the collapsed section");
+  assert(doc.getElementById("ov-qa").compareDocumentPosition(det) & window.Node.DOCUMENT_POSITION_FOLLOWING, "Q&A cards come before the full metrics section");
+  assert(doc.querySelectorAll("#ov-takeaways li").length > 0, "Key Takeaways still render inside the full metrics section");
+  det.open = true; assert(det.open && det.hasAttribute("open"), "full metrics section expands");
+  det.open = false;
+  const hint = qaById("referrals").querySelector(".def-hint");
+  hint.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  assert(doc.querySelector(".def-popover.open") && doc.querySelector(".def-popover").textContent.includes("non-physical"), "Q&A definition button opens the popover");
+  doc.body.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+}
+
 function pick(from, to) {
   // Set both inputs, then fire change (firing between the two edits would
   // briefly produce a reversed range, which the app swaps into order).
@@ -141,15 +186,21 @@ pick("2026-04-01", "2026-06-30");
 assert(badge().startsWith("Apr 1, 2026 – Jun 30, 2026"), `custom range 1 badge updates (${badge()})`);
 assert(doc.getElementById("ov-kpiGrid").innerHTML !== defaultSnapshot, "custom range 1 changes the cards");
 checkRange("custom range 1 (Apr 1 – Jun 30, 2026)", "2026-04-01", "2026-06-30");
+checkQA("custom range 1");
+assert(qaStrong("visits").includes("24"), "custom range 1: Q&A answer updates live to 24 planning visits");
 console.log("   Q2 2026:", JSON.stringify(cardMap("ov-kpiGrid")));
 assert(cardMap("ov-kpiGrid")["Planning Visits"] === "24", "custom range 1: Planning Visits Apr–Jun 2026 = 5+10+9 = 24");
 pick("2025-07-15", "2026-03-10");
 checkRange("custom range 2 (Jul 15, 2025 – Mar 10, 2026, spans two years)", "2025-07-15", "2026-03-10");
+checkQA("custom range 2");
 pick("2026-02-01", "2026-09-30");
 checkRange("custom range 3 (To beyond some sheets' data -> per-card clamp)", "2026-02-01", "2026-09-30");
+checkQA("custom range 3");
+assert(/only available through/.test(doc.getElementById("ov-qa").textContent), "range 3: Q&A cards note when a source's data ends early");
 assert(doc.getElementById("ov-kpiGrid").textContent.includes("Data available through"), "range 3: lagging sheets are labelled 'Data available through ...'");
 pick("2026-10-01", "2026-12-31");
 checkRange("custom range 4 (future dates, no data)", "2026-10-01", "2026-12-31");
+assert(qaCards().every((c) => /no data for these dates/.test(c.textContent)), "range 4: every Q&A card says there is no data (no fabricated zeros)");
 assert(doc.getElementById("ov-kpiGrid").textContent.includes("No data in this date range"), "range 4: empty cards say 'No data in this date range' (no fabricated zeros)");
 pick("2026-06-30", "2026-04-01");
 assert(fromEl.value === "2026-04-01" && toEl.value === "2026-06-30", "reversed From/To are swapped into order");
@@ -160,6 +211,14 @@ assert(errors.length === 0, `no runtime errors after date-range changes (${JSON.
 // Nav teasers are data-driven (not hardcoded)
 { const t = doc.getElementById("ov-navCards").textContent;
   assert(doc.querySelectorAll("#ov-navCards .nav-card").length === 6 && /Partners Visited\*?: 284/.test(t) && /Partner Referrals: 103/.test(t), "Open-a-page cards read live section values (284 partners, 103 referrals)"); }
+
+// "See page" link on a Q&A card jumps to that section page
+qaById("referrals").querySelector(".goto-tab").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+assert(doc.getElementById("page-referrals").classList.contains("active"), "Q&A 'See Partner Referrals' link opens the Partner Referrals page");
+window.showPage("overview");
+// Old sidebar eyebrow ("Internal" + " BI") removed; pattern split so this file doesn't match its own grep
+assert(doc.querySelector(".sidebar .brand").textContent.trim() === "Visit Anaheim", 'sidebar brand line reads just "Visit Anaheim"');
+assert(![html, appJs, fs.readFileSync(new URL("../style.css", import.meta.url), "utf8")].some((t) => new RegExp("internal" + " bi", "i").test(t)), 'old sidebar eyebrow text appears nowhere in index.html / app.js / style.css');
 
 // ---------- Section pages ----------
 const SECTIONS = {
@@ -216,5 +275,18 @@ window.showPage("sources");
 assert(doc.getElementById("page-sources").classList.contains("active"), "Sources page opens");
 window.showPage("overview");
 assert(doc.getElementById("footSource").textContent.includes("Granicus, Association Insights"), "Overview footer source restored");
+// Mobile nav drawer (responsive pass, 2026-09-30): hamburger / backdrop / Escape / nav click
+{ const sb = doc.getElementById("sidebar"), tg = doc.getElementById("navToggle"), bd = doc.getElementById("navBackdrop");
+  const st = () => [sb.classList.contains("open"), tg.getAttribute("aria-expanded"), bd.hidden, doc.body.classList.contains("nav-open")].join(",");
+  const CLOSED = "false,false,true,false";
+  assert(sb && tg && bd && st() === CLOSED, "mobile drawer: starts closed");
+  tg.click(); assert(st() === "true,true,false,true", "mobile drawer: hamburger opens it");
+  tg.click(); assert(st() === CLOSED, "mobile drawer: hamburger closes it");
+  tg.click(); bd.click(); assert(st() === CLOSED, "mobile drawer: backdrop click closes it");
+  tg.click(); doc.dispatchEvent(new window.KeyboardEvent("keydown", { key: "Escape" })); assert(st() === CLOSED, "mobile drawer: Escape closes it");
+  tg.click(); doc.querySelector('.nav-btn[data-page="team"]').click();
+  assert(st() === CLOSED && doc.getElementById("page-team").classList.contains("active"), "mobile drawer: nav click opens the page and closes the drawer");
+  window.showPage("overview");
+  assert([...doc.querySelectorAll("table.mini")].every((t) => t.parentElement.classList.contains("table-scroll")), "every table sits in its own .table-scroll container"); }
 assert(errors.length === 0, `no runtime errors anywhere (${JSON.stringify(errors)})`);
 console.log(`\nALL ${passed} CHECKS PASSED (${chartInstances} chart instances)`);

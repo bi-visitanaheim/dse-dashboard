@@ -9,8 +9,13 @@
 </head>
 <body>
 <div class="app">
-  <aside class="sidebar">
-    <div class="brand">Visit Anaheim &middot; Internal BI</div>
+  <header class="mobile-bar">
+    <button type="button" class="nav-toggle" id="navToggle" aria-controls="sidebar" aria-expanded="false" aria-label="Open menu"><span class="nav-toggle-icon" aria-hidden="true"></span></button>
+    <span class="mobile-bar-title">DS&amp;E Dashboard</span>
+  </header>
+  <div class="nav-backdrop" id="navBackdrop" hidden></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">Visit Anaheim</div>
     <h1>Destination Services &amp; Events Dashboard</h1>
     <div class="navgroup-label">Dashboard</div>
     <nav id="navMain">
@@ -51,12 +56,19 @@
         </div>
       </div>
       <div class="period-badge" id="periodBadge"></div>
-      <p class="picker-note">Each card compares the picked dates with the same dates one year earlier. Planning Visits data is monthly, so those cards include every month the range touches. If a source sheet has not been updated through the To date yet, that card notes the last date with data and compares the same shortened window in both years.</p>
-      <div class="kpi-grid" id="ov-kpiGrid"></div>
-      <div class="panel">
-        <h3>Key Takeaways</h3>
-        <ul class="takeaways" id="ov-takeaways"></ul>
-      </div>
+      <p class="qa-intro">Quick answers to the questions we hear most. Each answer compares the dates above with the same dates last year.</p>
+      <div class="qa-grid" id="ov-qa" aria-live="polite"></div>
+      <details class="ov-details" id="ov-details">
+        <summary><span class="when-closed">Show full metrics</span><span class="when-open">Hide full metrics</span> <span class="summary-hint">All 13 numbers, with year-over-year change</span></summary>
+        <div class="ov-details-body">
+          <p class="picker-note">Each card compares the picked dates with the same dates one year earlier. Planning Visits data is monthly, so those cards include every month the range touches. If a source sheet has not been updated through the To date yet, that card notes the last date with data and compares the same shortened window in both years.</p>
+          <div class="kpi-grid" id="ov-kpiGrid"></div>
+          <div class="panel">
+            <h3>Key Takeaways</h3>
+            <ul class="takeaways" id="ov-takeaways"></ul>
+          </div>
+        </div>
+      </details>
       <div class="panel">
         <h3>Open a page</h3>
         <div class="nav-cards" id="ov-navCards"></div>
@@ -89,7 +101,7 @@
       <div class="grid-2 even">
         <div class="panel">
           <h3>Year over Year KPIs</h3>
-          <table class="mini" id="team-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+          <div class="table-scroll"><table class="mini" id="team-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
           <p class="auto-analysis" id="team-yoy-analysis"></p>
           <div class="src">Source: Granicus and Internal Tracking (Planning Visits). Year-to-date window, same cutoff month both years.</div>
         </div>
@@ -132,7 +144,7 @@
       <div class="grid-2 even">
         <div class="panel">
           <h3>Year over Year</h3>
-          <table class="mini" id="ref-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+          <div class="table-scroll"><table class="mini" id="ref-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
           <p class="auto-analysis" id="ref-yoy-analysis"></p>
           <div class="src">Source: Granicus (Partner Referrals Details). Year-to-date window, same cutoff month both years.</div>
         </div>
@@ -191,7 +203,7 @@
       </div>
       <div class="panel">
         <h3>Year over Year</h3>
-        <table class="mini" id="rep-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table>
+        <div class="table-scroll"><table class="mini" id="rep-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
         <p class="auto-analysis" id="rep-yoy-analysis"></p>
         <div class="src">Source: Granicus (Repeating ACC Clients Services). Year-to-date window, same cutoff month both years.</div>
       </div>
@@ -289,7 +301,7 @@
       <div class="grid-2 even">
         <div class="panel">
           <h3>Avg. Rating by Question</h3>
-          <table class="mini" id="hev-byQuestionTable"><thead><tr><th>Question</th><th>Attendee</th><th>Partner</th><th>Avg. Total</th></tr></thead><tbody></tbody></table>
+          <div class="table-scroll"><table class="mini" id="hev-byQuestionTable"><thead><tr><th>Question</th><th>Attendee</th><th>Partner</th><th>Avg. Total</th></tr></thead><tbody></tbody></table></div>
           <p class="auto-analysis" id="hev-analysis3"></p>
           <div class="src">Source: Internal Tracking (Event Surveys).</div>
         </div>
@@ -370,7 +382,7 @@
       </div>
       <div class="panel">
         <h3>Methodology</h3>
-        <p style="font-size:13.5px;">The Overview's From/To date picker drives all 13 Overview KPI cards. Each card compares the picked date range with the same calendar dates one year earlier ("YoY"). By default the range runs from January 1 of the current year through the end of the latest month with populated Planning Visits data. Source sheets update on different lags, so if a sheet's data ends before the To date, that card is cut off at the end of the sheet's latest populated month and the prior-year window is cut off at the same point, keeping the comparison like-for-like. The Planning Visits sheet is monthly, so its cards include every month the picked range touches.</p><p style="font-size:13.5px;">Each section page has its own filters (matching the production dashboard) and recomputes every card, chart, and table live from the raw rows in data.json using the production app.js formulas. Section KPI deltas use the same year-to-date methodology: the selected (or latest) year is compared with the prior year over an identical January-through-cutoff window. Client Survey "Ratings by Year" uses full-year averages. The Hosted Events &amp; Booked Business cross-reference is pinned to 2025 until 2026 Event IDs are reconciled between the two sheets.</p>
+        <p style="font-size:13.5px;">The Overview opens with six plain-language questions, each with a short answer built from the same 13 Overview KPIs (the full 13-card grid is one click away under "Show full metrics"). The Overview's From/To date picker drives both the answers and all 13 cards. Each card compares the picked date range with the same calendar dates one year earlier ("YoY"). By default the range runs from January 1 of the current year through the end of the latest month with populated Planning Visits data. Source sheets update on different lags, so if a sheet's data ends before the To date, that card is cut off at the end of the sheet's latest populated month and the prior-year window is cut off at the same point, keeping the comparison like-for-like. The Planning Visits sheet is monthly, so its cards include every month the picked range touches.</p><p style="font-size:13.5px;">Each section page has its own filters (matching the production dashboard) and recomputes every card, chart, and table live from the raw rows in data.json using the production app.js formulas. Section KPI deltas use the same year-to-date methodology: the selected (or latest) year is compared with the prior year over an identical January-through-cutoff window. Client Survey "Ratings by Year" uses full-year averages. The Hosted Events &amp; Booked Business cross-reference is pinned to 2025 until 2026 Event IDs are reconciled between the two sheets.</p>
       </div>
       <div class="panel">
         <h3>Definitions</h3>

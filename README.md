@@ -625,6 +625,61 @@ Run it with `node test/verify.mjs` from a copy of the folder that has `jsdom` in
 
 If `index.html`, `style.css`, or `app.js` change later, the same steps carry those changes into the artifact too.
 
+## September 30, 2026: Responsive layout pass (desktop/laptop wide, mobile portrait)
+
+Breakpoints (all in the "Responsive layout pass" section at the end of `style.css`, all `screen`-only so the PDF export does not change with window width):
+
+- **Desktop / laptop, 1025px and up:** sidebar and content side by side, two-up chart/table pairs, multi-column KPI grid (unchanged base layout).
+- **Tablet, 768-1024px:** sidebar narrows to 204px, chart/table pairs stack to one column, KPI grid uses `auto-fill, minmax(180px, 1fr)`.
+- **Mobile, 767px and below:** the sidebar becomes a slide-out drawer opened from a navy top bar with a hamburger button (`#navToggle`). The drawer closes on a nav click, a backdrop click, Escape, or when the window widens to 768px or more. The topbar, controls, filter rows, and Overview date picker (From / To / Year-to-date) stack vertically. Nav items, selects, date inputs, buttons, chart toggles, and the modal close button are at least 44px tall. Inputs use 16px text so iOS does not zoom in. KPI cards run 2 across, nav and testimonial cards 1 across, and charts are shorter.
+- **Phone, 479px and below:** KPI cards run 1 across.
+
+Other changes:
+
+- The four tables that were not wrapped (the three YoY tables and Hosted Events by-question) now sit in `.table-scroll`, so every table scrolls inside its own box and the page never scrolls sideways.
+- This fixes an old bug: the previous `max-width:900px` rule hid the sidebar off-screen with no way to open it.
+- `index.html` has a new `.mobile-bar`, `#navBackdrop`, and `id="sidebar"`. `app.js` has the drawer logic (`setNavOpen` / `closeNav`). `test/verify.mjs` has 7 new checks (drawer open/close paths, every table wrapped) and 130/130 pass.
+- Print is unchanged: the mobile bar and backdrop are hidden, and chart/table pairs stay stacked as before. No `@page` orientation is forced, so choose Landscape in the print dialog as before.
+- The Cowork artifact was regenerated with `build_artifact.py`. The embedded data is byte-identical (generatedAt 2026-09-28).
+
+**Still needs a person to check visually:** no real browser was available for this pass. Someone should resize a desktop browser across 1024px and 768px and open the live site on an iPhone and an Android phone held upright. Check the drawer, date picker, table scrolling, and chart legibility, and confirm there is no sideways page scroll on every page.
+
+## September 30, 2026: Overview simplified to plain-language questions and answers
+
+**Why:** the owner asked for a simpler Overview for non-technical teams. They found the 13 equal-weight KPI cards overwhelming. The Overview now leads with questions, and each question gets a short answer.
+
+**What changed (Overview only; section pages are unchanged):**
+- The Overview now opens with **six question cards** (`#ov-qa`). Each card has one plain-English answer, two sentences at most, with the key numbers in bold and any decline shown in red:
+  1. *Are we staying busy with planning visits?* (Planning Visits, Partners Visited) links to Team KPIs
+  2. *Are we serving more groups and clients?* (Convention Groups Serviced, Clients Serviced) links to Team KPIs
+  3. *Are we sending new business to our partners?* (Partner Referrals) links to Partner Referrals
+  4. *Are our clients coming back?* (Repeat Account %) links to Repeat ACC Accounts
+  5. *How happy are our clients and event guests?* (VA Team Experience Rating, VA Event Satisfaction Score) links to Client Survey
+  6. *Are our hosted events bringing in new business?* (VA Hosted Events, Leads Generated From VA Events, Avg. Lead Conversion Window) links to Booked Business
+- **No new calculations.** Each answer reads the same `computeOverview()` results that feed the 13 detail cards (`buildQA()` / `renderQA()` in `app.js`). Only the rounding and wording differ: whole percents, the rating to one decimal, and the conversion window in whole months (or days when it is 90 days or less). The date picker still drives everything live.
+- **How the lead word is picked.** It follows the year-over-year direction of the main metric: "Yes", "Not quite" (down), "Holding steady" (rounds to 0%), or "Partly" (two metrics moved in opposite directions). Questions 4 and 5 have no lead word and just state the result. When a source sheet ends before the To date, the card says so (for example, "Event survey data is only available through Mar 31, 2026."). A date range with no data says so rather than showing zeros.
+- **Things that still work:**
+  - each card's "Based on" line names the metrics behind the answer
+  - the Partners Visited / Partner Referrals "?" definition buttons (the same `.def-hint` popover)
+  - the "See [page] →" links (the same `.goto-tab` handler)
+  - the "Open a page" nav cards
+- **The detailed view is still there, just collapsed.** Click **"Show full metrics"** (a `<details>` element, `#ov-details`, closed by default) below the questions. It shows the full 13-card KPI grid, the per-card notes, and Key Takeaways, all unchanged. When printed, the full metrics appear only if the section is expanded.
+- **Sidebar eyebrow removed.** The small uppercase internal-BI eyebrow line above the dashboard name is gone, and the sidebar `.brand` line now reads just "Visit Anaheim". A search of the production files and the current artifact confirms the old text no longer appears. Older artifact version snapshots under Cowork's `versions/` folder still contain it, because that is history.
+- **Sources page:** the Methodology text now mentions the question cards.
+
+**Testing:** `test/verify.mjs` now has 154 checks, all passing. The old 13-card checks still run against the grid, which stays in the DOM while collapsed. New checks cover:
+- 6 question cards, each with a question, an answer of at most two sentences, bold numbers, and a link
+- the numbers in each answer match the detail cards for the default range and three custom ranges
+- the answers update live with the date picker
+- the no-data and data-ends-early messages
+- the definition popover and the "See page" link on the question cards
+- the full metrics section is collapsed by default and holds the grid and takeaways
+- the sidebar brand text
+
+The artifact was rebuilt with `build_artifact.py`. The data snapshot is unchanged (generatedAt 2026-09-28).
+
+**Still needs a person to check visually:** no real browser was available. Please check the spacing of the question cards on desktop, tablet, and phone, the look of the "Show full metrics" toggle, and the wording of the answers.
+
 ## Known deployment issue (fixed)
 
 The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.
