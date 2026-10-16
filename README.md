@@ -1,6 +1,27 @@
-# Destination Experience and Events Dashboard
+# Destination Services & Events Dashboard
 
-*(Renamed from "Destination Services & Events Dashboard" in the September 2026 rebuild -- see the dated section near the bottom of this file for the full list of that rebuild's changes. The dashboard's internal structure/file names are unchanged.)*
+**Live site:** https://dse-dashboard-iota.vercel.app (Vercel, auto-deploys from GitHub `bi-visitanaheim/dse-dashboard`, branch `main`).
+**Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan.
+**Data source (since Oct 16, 2026):** `Master.xlsx` in SharePoint -- site *Business Intelligence-Apps* (https://visitanaheimorg.sharepoint.com/sites/BusinessIntelligence-Apps), library *Shared Documents*, folder `DS&E/Destination Services and Events Dashboard KPIs/Master.xlsx`.
+
+## How to refresh the dashboard from Master.xlsx (monthly)
+
+The website does **not** read SharePoint directly -- a public static site cannot sign in to Microsoft 365. "Connected" means: `Master.xlsx` -> `build_data.py` -> `data.json` -> GitHub -> Vercel. Do this after Master.xlsx is updated (Planning Visits is updated on the 15th):
+
+1. Update `Master.xlsx` in SharePoint (same sheet names and column headers).
+2. On a computer with the *Business Intelligence-Apps - Documents* library synced in OneDrive, make sure `Master.xlsx` is downloaded (right-click -> *Always keep on this device*).
+3. In the `dse-dashboard` folder run: `pip install openpyxl` (once), then `python3 build_data.py`. It reads `../Master.xlsx` by default (or pass a path: `python3 build_data.py "/path/to/Master.xlsx"`). If a sheet or column header is missing it stops with an `ERROR:` message and leaves `data.json` unchanged.
+4. Optional check: `node test/verify.mjs` (needs `npm install jsdom`). Note: some checks pin specific numbers (e.g. 62 Planning Visits) and must be updated when the data changes.
+5. Upload the new `data.json` to the GitHub repo root (github.com -> *Add file* -> *Upload files* -> commit to `main`). Vercel redeploys in about a minute.
+6. Optional: rebuild the Cowork artifact with `python3 build_artifact.py out.html` and update artifact `dse-dashboard-vabi-preview`.
+
+Sheets read from Master.xlsx (columns are matched by header name): **Planning Visits** (Overview, Team KPIs), **Partner Referrals Details** (Partner Referrals), **ACC Survey** (Client Survey), **Repeating ACC Clients Services** (Team KPIs "Clients Serviced During Planning Visits"). Master.xlsx's *Event Surveys* and *Booked Business* sheets are not used by this dashboard. Master.xlsx is never modified by the script.
+
+---
+
+*(History: renamed to "Destination Experience and Events Dashboard" in the September 2026 rebuild and back to "Destination Services & Events Dashboard" in October 2026. The older sections below describe earlier builds -- including the old `Department KPIs.xlsx` source and the retired tabs -- and are kept as history.)*
+
+> **Oct 14, 2026:** the Overview was simplified and Sources & Methodology became its own tab. Earlier the same day: the Overview got five drill-down cards, the Repeat ACC Accounts page was retired, and Event Touchpoints to Booked Business moved to the Trade Shows & Events dashboard. This layout was approved by John Picou on Oct 16, 2026 (see the last section).
 
 A static, no-build web dashboard for Visit Anaheim's Destination Services & Events (DS&E) KPIs. Its structure mirrors the live Power BI **"Destination Services & Events KPIs"** report tab-for-tab: Overview, Team KPIs, Partner Referrals, Repeat Clients, Client Survey, Hosted Events, and Booked Business.
 
@@ -702,3 +723,171 @@ All 144 checks pass. The artifact was rebuilt with `build_artifact.py` (data sna
 ## Known deployment issue (fixed)
 
 The first GitHub upload lost the `css/` and `js/` subfolders — confirmed by checking the live site's network requests: `index.html` and `data.json` returned 200, but `style.css` and `app.js` both 404'd. As of this version, both files were moved to the repo root specifically so this can't recur regardless of how files are added to GitHub. If you re-upload, just make sure all 7 files at the repo root (`index.html`, `style.css`, `app.js`, `data.json`, `build_data.py`, `README.md`, `.gitignore`, `vercel.json`) land directly in the repo root — not nested inside an extra folder.
+
+## October 14, 2026 update (DRAFT, pending approval)
+
+**Status:** working copy only. **Sonya Henry and John Picou have not approved it yet.** Until they do, the official Cowork artifact `dse-dashboard-vabi-preview` stays as it was. The draft is published as a separate artifact, `dse-dashboard-draft-oct14`, built with `python3 build_artifact.py <out.html> --draft`, which shows a "Draft · pending approval" label in the sidebar. Nothing deploys automatically. The files are uploaded to GitHub by hand later.
+
+### Requested changes and what was done
+1. **Overview cards.** The Overview now shows only five KPI cards, in this order: **# of Planning Visits, # of Clients Serviced, # of Partners Visited, # of Convention Groups Serviced, # of In-House Groups Serviced**. All five come from the monthly Planning Visits sheet (`data.json` → `planningVisits`). The From/To date picker, the current/prior-year computation, the "Data available through …" clamp and the "No data in this date range" state work the same as before. Partners Visited keeps its "?" definition popover. The "?" button now sits next to the card, not inside it, so there is no button inside a button, and it reports `aria-expanded`. Partners Visited and In-House Groups Serviced were first tracked in 2026, so their cards read "No prior-year comparison available".
+2. **Drill-down.** Each Overview card is a focusable `role="button"` (`tabindex="0"`) with a "Team KPIs →" kicker and arrow. Hovering lifts the card, and keyboard focus shows a visible ring. Clicking, Enter or Space opens **Team KPIs**, the page with all five metrics, their monthly charts and the year-over-year table. Clicking the "?" button does not navigate.
+3. **Removed from the Overview:** Clients Serviced During Planning Visits, Partner Referrals, Repeat Account %, VA Team Experience Rating, VA Hosted Events, VA Event Satisfaction Score, Leads Generated From VA Events and Avg. Lead Conversion Window. Key Takeaways now has one data statement per remaining card. The "Open a page" cards are now real buttons for Team KPIs, Partner Referrals, Client Survey and Hosted Events, each with a one-line description and the page's live reporting period. They no longer show metric teasers.
+4. **Partner Referrals.** The page is unchanged and stays in the sidebar.
+5. **Repeat ACC Accounts retired.** The nav button, the page section, `initRepeat`/`renderRepeat`, its filters (including the Account/Lead datalists and the Clients/Accounts toggle), its CSS (`.toggle-switch`, `.searchable-filter` styles), its tests, and its Sources and definition text are gone. The Team KPIs card "Clients Serviced During Planning Visits" still reads `repeatingClients`, so `build_data.py` and `data.json` are unchanged.
+6. **VA Team Experience Rating.** The card is removed from the Overview only. The Client Survey page is unchanged.
+7. **Event Touchpoints to Booked Business moved** to the Trade Shows & Events dashboard. The page, the nav button, the "Open a page" card and every Overview reference are gone, and Hosted Events is kept. The original source is saved in `moved-to-trade-shows/`: `booked-section.index.html`, `booked-section.app.js`, `booked-section.verify-snippets.mjs`, and `style.pre-oct14.css` (the full stylesheet the page used). A proposed `/booked` tab for the Trade Shows app was built in a working copy, *not* in John's folder, at `outputs/trade-shows-app-copy/`. It needs John Picou's review (BIREPORTS-1003) and has not been merged or deployed. `build_artifact.py` now drops `data.json` sections that `app.js` no longer reads, such as `bookedBusiness`, from the embedded snapshot.
+8. **Dead code removed:** the legacy `main()` bootstrap, the legacy `renderOverview()` and its Department-at-a-Glance and narrative helpers, the legacy tab `switchTab`/`setReportingPeriod`, the Overview "View tab" link handler, and unused helpers (`dedupeBy`, `ytdRangeLabel`, `deltaSpan`, `endOfMonthLabel`, `monthYearLabel`, `monthOnlyRows`, `computeRepeatFlags`, `resolveFilterValue`). `app.js` went from about 167 KB to about 100 KB. `build_artifact.py` now expects one `fetch("data.json")`.
+9. **Question numbering:** Team KPIs is Question 1, Partner Referrals Question 2, Client Survey Question 3 and Hosted Events Question 4. The Sources page Methodology and Definitions were rewritten for the five-card Overview. The Overview footer reads "Sources: Granicus and Internal Tracking."
+
+### Design system: source and differences
+**Source used:** the newest governed implementation of VA Branded, the Trade Show App `app/globals.css` (John Picou, BIREPORTS-1003, modified Oct 9–13, 2026: "2026 Brand Playbook palette, Sharp Sans Display No. 2, and the VA Branded Executive Dashboard standards"), along with its `docs/DESIGN_SYSTEM.md`. `style.css` was rebuilt on its semantic tokens (`--heading`, `--kpi-value`, `--accent-text`, `--rule`, `--border-subtle`, `--surface-*`, `--status-*`, `--focus-ring`), its spacing, radius and shadow scale, and its component patterns:
+- cards: white, 1px hairline border, 3px Escapism 01 top rule, 18px radius, small shadow
+- KPI values: Escapism 03, 800 oblique
+- labels and overlines: Escapism 03
+- buttons: pill-shaped
+- tags: outlined pill
+- tables: white header, 600 weight, 2px Escapism 03 rule, alt-fill zebra
+- focus: 2px #6FC7C9 ring plus a 2px Escapism 03 inner ring
+
+The layout stays the VA BI Dashboard Template: Escapism 03 sidebar, Overview, section pages, Sources, and the footer. The active nav item changed from a teal (#43A3A3) fill, which put white text at 2.9:1 and failed WCAG AA, to a translucent white fill with an Escapism 02 left rule. Chart series now follow globals.css: series 1 Escapism 03, series 2 Escapism 01, series 3 Escapism 02, prior Escapism 04, hairline grid, ink-soft axis text.
+
+**Where globals.css differs from the visit-anaheim skill v3.0 text (globals.css followed):**
+- **KPI number:** the skill says weight 750 in Escapism 01. globals.css uses 800 oblique in Escapism 03. Escapism 01 on white is 2.9:1, which fails AA.
+- **Table headers:** the skill says Escapism 03 fill with white text. globals.css uses a white header with ink text and a 2px Escapism 03 bottom rule.
+- **Body weight:** the skill says Semibold 600. globals.css uses Book 400 for body text, 600/700 for emphasis and 800 oblique for display.
+- **Negative values:** the skill says Passion 01 #FF000C for negative chart marks. globals.css uses Passion 03 #A10009 for unfavorable text. Here, Passion 03 is used for text and Passion 01 only for decline marks (the sentiment bar).
+- **Extra neutrals:** globals.css adds tokens that are not in the skill text: ink-soft #4A4647, hairline #E3E2DA, alt fill #F2F1EA, hover #0E4B4E, focus #6FC7C9.
+- **Text color:** both sources agree that teal used as text is Escapism 03 only. The older "teal never as text" rule is effectively the same.
+- **Fonts:** the font stack is unchanged (`Sharp Sans Disp No2`, then Proxima Nova, then system). The Trade Show App self-hosts the font files, but its decision register still lists the web licence as open (D-10), so no font files are embedded here.
+
+### Responsive layout
+- **Desktop/laptop landscape (1200 px and wider):** sidebar plus content, the five Overview cards in one row, four "Open a page" cards, and two-up charts.
+- **1025–1199 px:** Overview cards in a row of 3 and a row of 2.
+- **Tablet (768–1024 px):** single-column charts.
+- **Mobile portrait (767 px and narrower):** drawer navigation, stacked controls, 44 px touch targets, and 2-up cards with the fifth card full width.
+- **479 px and narrower:** one column.
+- **Print:** keeps a five-across Overview.
+
+### Tests
+`node test/verify.mjs` (jsdom) was rewritten for the new structure and run in a disposable copy (`outputs/dse-test-oct14/`). It checks:
+- exactly five Overview cards, in order
+- each card matches an independent recomputation across five date ranges
+- the drill-down: click on every card, plus Enter and Space
+- the "?" button opens and closes without navigating
+- the removed cards are absent from the cards and Key Takeaways
+- the four "Open a page" buttons
+- the Repeat and Booked pages, nav buttons, elements and render code are gone
+- every remaining page renders, and every filter option on Team KPIs, Partner Referrals, Client Survey and Hosted Events runs
+- the footer
+- the mobile drawer
+- no old "Internal BI" eyebrow text anywhere
+
+Result: **all checks pass, with no runtime errors.** The draft artifact build was also loaded in jsdom with no errors.
+
+### Needs human review
+- Visual QA of the draft artifact at desktop, laptop and phone widths. No real browser was available to this build.
+- Approval from Sonya Henry and John Picou before `dse-dashboard-vabi-preview` is updated.
+- John's review of the Trade Shows `/booked` tab.
+
+
+## October 14, 2026: layout switched to Social Media Dashboard layout (DRAFT, pending approval)
+
+**Why:** feedback on the draft: "the layout is wrong make sure to design it with va branded design system, same layout as the social media dashboard". The sidebar (VA BI Dashboard Template) shell is gone. The dashboard now uses the shell of the Visit Anaheim Social Media Dashboard (https://social-dashboard-silk-gamma.vercel.app/dashboard.html). Its live HTML and CSS were inspected in a browser on Oct 14, 2026, and its tokens and component sizes were copied. Data, formulas, filters, charts, tables, the date-range picker and the "?" popovers are unchanged. **Status:** still a draft. The official artifact `dse-dashboard-vabi-preview` has not been touched and waits for approval from Sonya Henry and John Picou. The pre-change files are backed up in `outputs/backup-pre-social-layout/`.
+
+**Shell (matches the reference):**
+- **Header:** light page background with a 1px Escapism 01 bottom rule. It has the teal Visit Anaheim logo (`visit-anaheim-teal.png` at the repo root since Oct 16, 2026 -- formerly `brand/` -- copied from the Trade Show App `public/brand`), the italic 800 title, a "Monthly update · Data last refreshed …" line and an **Export PDF** pill button on the right.
+- **Tab bar:** sticky horizontal tabs (**Overview | Team KPIs | Partner Referrals | Client Survey | Hosted Events**). The active tab is bold Escapism 03 with a 3px underline. The bar scrolls sideways on phones, and each tab is 48px tall.
+- **Content:** 1440px max width with 48/24/16px side padding.
+- **Page header:** each view has an overline, an H2, a one-line subtitle with source pills (Granicus, Association Insights, Internal Tracking) and the reporting-period pill on the right.
+- **Filters:** a "Date range" row (Overview) or filter row (section tabs) sits under the title and above the KPI tiles.
+- **Tiles and cards:** KPI tiles use the reference `.sc` style (uppercase overline, label, 800-italic value, delta, source). Cards are white with a 3px Escapism 01 top rule, an 18px radius and a small shadow. Key takeaways sit on the Escapism 04 panel.
+- **Footer:** an Escapism 01 rule with "Sources: …" on the left and "Powered by Visit Anaheim Business Intelligence Team" on the right.
+
+**Overview:** five drill-down tiles, unchanged and in the same order (click, Enter or Space opens Team KPIs). The tab also has:
+- a new "Selected period vs. prior year" bar card that uses the tiles' own computed values. Where there is no prior-year comparison, it says so instead of drawing a zero.
+- Key takeaways.
+- a **Definitions** block covering the five tiles plus Partner Referrals.
+- Data sources and Methodology. The separate Sources page was retired, and its content now lives here.
+
+The "Open a page" cards were removed because the tab bar replaces them.
+
+**Deliberate differences from the reference:**
+1. Five tabs and no "Sources" tab, because the definitions and sources sit on the Overview.
+2. The footer reads "Sources … / Powered by …" as requested. The reference's footer reads "Visit Anaheim | visitanaheim.org / Sources …".
+3. There is no Period, Previous, Next, One page / All pages or Full screen button, because each tab keeps its own filters.
+4. Sharp Sans font files are not embedded. The reference embeds them, but the web licence is still open (Trade Show App decision D-10), so the font stack falls back to Proxima Nova and then system fonts where Sharp Sans is not installed.
+5. Contrast: like the reference, all teal text (H2, H3, KPI values, labels) uses Escapism 03 #125C60 (7.6:1). Escapism 01 #43A3A3 is only used for rules and is never used for text, because it is 2.9:1 on white.
+
+**Responsive:**
+- **1200px and wider:** five tiles in one row and two-up cards.
+- **768–1199px:** tiles auto-fit.
+- **899px and narrower:** cards stack.
+- **767px and narrower:** the header stacks, the tabs scroll, filters and date inputs stack with 44px targets, tiles are 2-up (the fifth tile is full width), tables scroll inside their own box, and there is no sideways page scroll.
+- **479px and narrower:** tiles are 1-up.
+- **Print:** prints the active tab on landscape Letter.
+
+**Code:** `app.js` uses tab switching (`showPage` sets `aria-current`) and wires Export PDF to `window.print()`. The sidebar, mobile drawer and nav-card code are deleted. Section tiles now show their tab name as the overline. `build_artifact.py` inlines the logo and puts the draft pill under the title. `test/verify.mjs` was updated for the new DOM, and **all 142 checks pass**, run in `outputs/dse-test-social/`. The checks cover:
+- the tab list
+- that no sidebar or Sources page is left
+- the five tiles, in order, against an independent recomputation
+- the drill-down
+- that the comparison bars equal the tile values
+- the Definitions block
+- the header and filter order on each tab
+- that every filter changes the output
+- the footer text
+- Export PDF
+
+**Needs human review:** a visual check of the section tabs (charts and tables) in the artifact panel. The Overview shell was checked at 1440px and 390px in a browser using the real CSS. The section tabs use the same components but were not screenshotted.
+
+## October 14, 2026 update (DRAFT): simpler Overview + Sources & Methodology tab
+
+**Why:** feedback on the draft: move data sources and methodology off the Overview into their own tab, and make the Overview simpler for non-technical teams. **Status:** still a draft, pending Sonya Henry / John Picou approval. The official artifact `dse-dashboard-vabi-preview` has not been touched; only the draft artifact `dse-dashboard-draft-oct14` was updated. Pre-change files are backed up in `outputs/backup-pre-sources-tab/`.
+
+**New sixth tab, "Sources & Methodology"** (`#page-sources`, last in the tab bar): Definitions (the five Overview tiles plus Partner Referrals), Data sources (Granicus, Association Insights, Internal Tracking) and Methodology, all in plain language. Footer: "Sources: Granicus, Association Insights and Internal Tracking."
+
+**Overview now has only:** heading + one subtitle sentence, period pill, a light From/To date row with a "This year" reset button, the five drill-down tiles (same order, still open Team KPIs; Partners Visited keeps its "?" popover), up to three one-sentence Key takeaways, and a "How these numbers are counted" link to the new tab.
+
+**Removed from the Overview:** source pills, the "Compared:" badge, the picker note, the "Selected period vs. prior year" bar card, the Definitions / Data sources / Methodology blocks, the tile kicker and per-tile source line, and the "Data available through" note. When the picked dates run past the latest data, the period pill shows the shortened dates followed by "(latest numbers)". Tile change lines read "Up X% vs. last year", "Down X% vs. last year", "About the same as last year" or "New this year, nothing to compare yet".
+
+**Tests:** `test/verify.mjs` updated (6 tabs, Overview text free of Methodology/Data sources/Definitions/YoY/YTD/cutoff, ≤3 takeaways, Sources tab contents, link to the Sources tab, all earlier filter tests). **All 163 checks pass**, run in `outputs/dse-test-sources/`.
+
+**Needs human review:** a visual check at desktop and phone widths. No browser was available to take screenshots in this pass.
+
+## October 14, 2026 update (DRAFT): Hosted Events tab removed
+
+**Why:** the Hosted Events tab is no longer relevant. **Status:** still a draft, pending Sonya Henry / John Picou approval. The official artifact `dse-dashboard-vabi-preview` has not been touched; only the draft artifact `dse-dashboard-draft-oct14` was updated. Pre-change files are backed up in `outputs/backup-pre-remove-hosted-events/`.
+
+**Tab bar is now five tabs:** Overview | Team KPIs | Partner Referrals | Client Survey | Sources & Methodology.
+
+**Removed:** the Hosted Events tab button and page (filters, KPI cards, two charts, three tables, auto-analysis), `initEvents` / `renderEvents` and their wiring (`TAB_SOURCES`, `TAB_TITLES`, `remember`, `SECTION_RENDER`, `Sections.start`), and the `.kpi-card.events-team` CSS class (only those cards used it). Shared helpers (`mean`, `distinctCount`, `ytdYoyMetric`, `select.wide`, etc.) stay because other tabs use them. On the Sources & Methodology tab, Internal Tracking now reads "The monthly Planning Visits sheet. Used on Overview and Team KPIs." The footer source lists are unchanged because Internal Tracking is still used by Overview and Team KPIs.
+
+**Saved for reference (not deployed):** `removed-hosted-events/` holds the HTML section and tab button, the JS functions and wiring lines, the CSS, and the old test assertions.
+
+**Data:** `data.json` and `build_data.py` are unchanged, and `eventSurveys` is still built. `build_artifact.py` now keeps only the data sections that app.js reads as `DATA.<name>`. Before this change, a plain word match also kept the unused `events` section. The embedded snapshot now holds only planningVisits, partnerReferrals, accSurvey and repeatingClients, and the draft artifact went from about 575 KB to 476 KB.
+
+**Tests:** `test/verify.mjs` was updated with these checks:
+- exactly 5 tabs
+- no Hosted Events page, tab or elements
+- no Hosted Events or Event Survey text in the DOM
+- no Hosted Events JS or CSS left
+
+All earlier checks for the remaining tabs are kept. **All 151 checks pass**, run in `outputs/dse-test-no-hosted/`.
+
+
+## October 16, 2026: approved, data from Master.xlsx, published
+
+**Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan. The Oct 14 layout (5 tabs: Overview | Team KPIs | Partner Referrals | Client Survey | Sources & Methodology) is now the official version; "draft / pending approval" wording was removed from the official artifact, `app.js` and `style.css` comments.
+
+**Data connection**
+- `build_data.py` was rewritten to read `Master.xlsx` (default `../Master.xlsx`, i.e. the SharePoint *Business Intelligence-Apps* library, `DS&E/Destination Services and Events Dashboard KPIs/`). Columns are found by header name, not position. A missing sheet or header stops the script with a clear `ERROR:` and does not overwrite `data.json`.
+- It now emits only what the dashboard shows: `planningVisits`, `partnerReferrals`, `accSurvey`, `repeatingClients`, plus `generatedAt` and a new `source` field. The unused `events`, `bookedBusiness` and `eventSurveys` sections were dropped (`data.json` went from about 1.2 MB to about 0.5 MB). Field names used by `app.js` are unchanged.
+- Compared with the previous `data.json` (built Sept 28 from `Department KPIs.xlsx`), all four datasets are row-for-row identical: Planning Visits 20 rows, Partner Referrals 204, ACC Survey 1,000, Repeating ACC Clients 118. 2026 totals are unchanged: 62 Planning Visits, 478 Clients Serviced, 284 Partners Visited, 47 Convention Groups, 35 In-House Groups, 103 Partner Referrals, ACC Survey 2026 average 8.64 (72 ratings). Only `generatedAt` changed (2026-10-16).
+- No live SharePoint link: the Vercel site is static and cannot sign in to Microsoft 365. For the Cowork artifact, the SharePoint connector's `read_resource` on Master.xlsx was tested on Oct 16 and returns a text rendering that is **truncated** (the ACC Survey sheet was cut off with 83 rows missing), so no live-refresh button was added. Refresh uses the steps at the top of this file.
+- Sources & Methodology now names Master.xlsx (SharePoint, Business Intelligence-Apps) as the data source; the Updates line mentions it too.
+
+**Logo path:** the GitHub repo is flat (no folders), so the header logo moved from `brand/visit-anaheim-teal.png` to the root file `visit-anaheim-teal.png` (`index.html` and `build_artifact.py` updated; the `brand/` copy stays in the OneDrive folder only).
+
+**Tests:** `test/verify.mjs` gained checks for the Master.xlsx source, the clear-error behavior, the Sources tab text, no draft wording, and the root logo. All 158 checks pass (run in `outputs/dse-test-oct16/`). In the GitHub repo the test file lives at the root as `verify.mjs` (the repo has no `test/` folder); run it from a local copy where it sits in `test/`.
+
+**Published:** official Cowork artifact `dse-dashboard-vabi-preview` updated; GitHub `main` updated through the browser upload page with `index.html`, `app.js`, `style.css`, `data.json`, `build_data.py`, `README.md`, `verify.mjs`, `visit-anaheim-teal.png` (`vercel.json` and `logo.png` unchanged). Not uploaded: `legacy-tabs/`, `moved-to-trade-shows/`, `removed-hosted-events/`, `build_artifact.py`, `brand/`, backups.

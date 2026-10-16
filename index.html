@@ -8,390 +8,270 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 </head>
 <body>
-<div class="app">
-  <header class="mobile-bar">
-    <button type="button" class="nav-toggle" id="navToggle" aria-controls="sidebar" aria-expanded="false" aria-label="Open menu"><span class="nav-toggle-icon" aria-hidden="true"></span></button>
-    <span class="mobile-bar-title">DS&amp;E Dashboard</span>
-  </header>
-  <div class="nav-backdrop" id="navBackdrop" hidden></div>
-  <aside class="sidebar" id="sidebar">
-    <div class="brand">Visit Anaheim</div>
-    <h1>Destination Services &amp; Events Dashboard</h1>
-    <div class="navgroup-label">Dashboard</div>
-    <nav id="navMain">
-      <button class="nav-btn active" data-page="overview">Overview</button>
-    </nav>
-    <div class="navgroup-label">Sections</div>
-    <nav id="navSections">
-      <button class="nav-btn" data-page="team">Team KPIs</button>
-      <button class="nav-btn" data-page="referrals">Partner Referrals</button>
-      <button class="nav-btn" data-page="repeat">Repeat ACC Accounts</button>
-      <button class="nav-btn" data-page="survey">Client Survey</button>
-      <button class="nav-btn" data-page="events">Hosted Events</button>
-      <button class="nav-btn" data-page="booked">Event Touchpoints to Booked Business</button>
-    </nav>
-    <div class="navgroup-label">Reference</div>
-    <nav id="navSources">
-      <button class="nav-btn" data-page="sources">Sources</button>
-    </nav>
-  </aside>
+<a class="skip" href="#main">Skip to content</a>
+<div id="app">
+  <!-- Header: same layout as the Visit Anaheim Social Media Dashboard -->
+  <header class="hdr" id="band"><div class="wrap">
+    <div class="hdr-id">
+      <img class="logo" src="visit-anaheim-teal.png" alt="Visit Anaheim" width="720" height="263" />
+      <div class="titles">
+        <h1 id="dashTitle">Destination Services &amp; Events Dashboard</h1>
+        <p class="per" id="periodLine">Monthly update &middot; Data last refreshed <span id="refreshedAt">&mdash;</span></p>
+      </div>
+    </div>
+    <div class="hdr-ctl" aria-label="Page controls">
+      <button type="button" class="btn primary" id="exportPdf">Export PDF</button>
+    </div>
+  </div></header>
 
-  <main class="main">
-    <!-- OVERVIEW -->
-    <section class="page active" id="page-overview">
-      <div class="topbar">
-        <div>
-          <div class="eyebrow">Overview</div>
-          <h2>Department at a Glance</h2>
-          <div class="meta">Data last refreshed <strong id="refreshedAt">&mdash;</strong> &middot; Updates monthly on the 15th, reflecting data through the prior month.</div>
+  <nav class="tabs" aria-label="Sections"><div class="wrap" id="tabBar">
+    <button type="button" class="tab" data-page="overview" aria-current="true">Overview</button>
+    <button type="button" class="tab" data-page="team" aria-current="false">Team KPIs</button>
+    <button type="button" class="tab" data-page="referrals" aria-current="false">Partner Referrals</button>
+    <button type="button" class="tab" data-page="survey" aria-current="false">Client Survey</button>
+    <button type="button" class="tab" data-page="sources" aria-current="false">Sources &amp; Methodology</button>
+  </div></nav>
+
+  <main id="main" tabindex="-1"><div class="wrap">
+    <!-- OVERVIEW (simplified Oct 14, 2026 for non-technical readers) -->
+    <section class="page active" id="page-overview" aria-labelledby="h-overview">
+      <div class="page-h">
+        <div class="ph">
+          <p class="overline">Overview</p>
+          <h2 id="h-overview">Department at a glance</h2>
+          <p class="sub">How much the Destination Services team has done, compared with the same dates last year. Select any number for more detail.</p>
         </div>
-        <div class="controls">
-          <div class="date-range" role="group" aria-label="Overview date range">
-            <span class="dr-title">Showing</span>
-            <label for="ovFrom">From <input type="date" id="ovFrom"></label>
-            <label for="ovTo">To <input type="date" id="ovTo"></label>
-            <button type="button" class="btn-link" id="ovReset" title="Reset to Jan 1 through the latest month of data">Year-to-date</button>
-          </div>
-          <button class="btn" onclick="window.print()">Export as PDF</button>
-        </div>
+        <span class="tag-o" id="ovPeriodTag"></span>
       </div>
-      <div class="period-badge" id="periodBadge"></div>
-      <p class="picker-note">Each card compares the picked dates with the same dates one year earlier. Planning Visits data is monthly, so those cards include every month the range touches. If a source sheet has not been updated through the To date yet, that card notes the last date with data and compares the same shortened window in both years.</p>
-      <div class="kpi-grid" id="ov-kpiGrid"></div>
-      <div class="panel">
-        <h3>Key Takeaways</h3>
-        <ul class="takeaways" id="ov-takeaways"></ul>
+      <div class="date-range light" role="group" aria-label="Overview date range">
+        <label for="ovFrom">From <input type="date" id="ovFrom"></label>
+        <label for="ovTo">To <input type="date" id="ovTo"></label>
+        <button type="button" class="btn" id="ovReset" title="Show January 1 through the latest month of numbers">This year</button>
       </div>
-      <div class="panel">
-        <h3>Open a page</h3>
-        <div class="nav-cards" id="ov-navCards"></div>
-      </div>
+      <div class="kpi-grid ov-grid strip" id="ov-kpiGrid"></div>
+      <section class="ins ov-ins" aria-labelledby="h-ov-takeaways">
+        <h3 id="h-ov-takeaways">Key takeaways</h3>
+        <ul class="ins-l" id="ov-takeaways"></ul>
+      </section>
+      <p class="ov-more"><button type="button" class="linkbtn" id="ovSeeSources" data-goto="sources">How these numbers are counted &rarr;</button></p>
     </section>
 
     <!-- TEAM KPIs -->
-    <section class="page" id="page-team">
-      <div class="topbar"><div><div class="eyebrow">Question 1</div><h2>How is the Services team performing on core activity volume?</h2></div>
-        <div class="controls"><button class="btn" onclick="window.print()">Export as PDF</button></div></div>
-      <div class="filter-row">
+    <section class="page" id="page-team" aria-labelledby="h-team">
+      <div class="page-h">
+        <div class="ph">
+          <p class="overline">Team KPIs</p>
+          <h2 id="h-team">How is the Services team performing on core activity volume?</h2>
+          <p class="sub">Planning visits, clients, partners visited and groups serviced, by month and year over year. <span class="src-pills"><span class="src-pill">Granicus</span><span class="src-pill">Internal Tracking</span></span></p>
+        </div>
+        <span class="tag-o" id="team-period"></span>
+      </div>
+      <div class="filter-row" role="group" aria-label="Team KPIs filters">
         <label>Year <select id="team-year"></select></label>
       </div>
-      <div class="period-badge" id="team-period"></div>
-      <div class="kpi-grid" id="team-kpiGrid"></div>
-      <div class="grid-2 even">
-        <div class="panel">
+      <div class="kpi-grid strip" id="team-kpiGrid"></div>
+      <div class="grid2">
+        <div class="box">
           <h3>Partners Visited* &amp; Planning Visits <span class="tag">Monthly</span></h3>
           <div class="chart-box"><canvas id="team-chart1"></canvas></div>
           <p class="auto-analysis" id="team-analysis1"></p>
-          <div class="src">Source: Granicus and Internal Tracking (Planning Visits).</div>
+          <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
-        <div class="panel">
+        <div class="box">
           <h3>Groups Serviced <span class="tag">Monthly</span></h3>
           <div class="chart-box"><canvas id="team-chart2"></canvas></div>
           <p class="auto-analysis" id="team-analysis2"></p>
-          <div class="src">Source: Granicus and Internal Tracking (Planning Visits).</div>
+          <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
       </div>
-      <div class="grid-2 even">
-        <div class="panel">
+      <div class="grid2">
+        <div class="box">
           <h3>Year over Year KPIs</h3>
-          <div class="table-scroll"><table class="mini" id="team-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Year over Year KPIs"><table class="mini" id="team-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
           <p class="auto-analysis" id="team-yoy-analysis"></p>
-          <div class="src">Source: Granicus and Internal Tracking (Planning Visits). Year-to-date window, same cutoff month both years.</div>
+          <p class="src">Source: Granicus and Internal Tracking (Planning Visits). Year-to-date window, same cutoff month both years.</p>
         </div>
-        <div class="panel">
+        <div class="box">
           <h3>Clients Serviced <span class="tag">Monthly</span></h3>
           <div class="chart-box"><canvas id="team-chart3"></canvas></div>
           <p class="auto-analysis" id="team-analysis3"></p>
-          <div class="src">Source: Granicus and Internal Tracking (Planning Visits).</div>
+          <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
       </div>
-      <p class="footnote">*Partners Visited and In House Groups Serviced only began being tracked in 2026, so no prior-year comparison is available for them yet.</p>
-      <p class="footnote"><strong>Partners Visited</strong> = a partner property visited in person during a planning visit. <strong>Partner Referrals</strong> (see Partner Referrals page) = a non-physical referral, such as email, phone, or shared contact info.</p>
+      <div class="box notes">
+        <h3>Definitions</h3>
+        <dl class="defs">
+          <div><dt>Partners Visited</dt><dd>A partner property visited in person during a planning visit.</dd></div>
+          <div><dt>Partner Referrals</dt><dd>A non-physical referral, such as email, phone, or shared contact info (see the Partner Referrals tab).</dd></div>
+          <div><dt>Clients Serviced During Planning Visits</dt><dd>Counts the clients who attend each planning visit.</dd></div>
+        </dl>
+        <p class="footnote">*Partners Visited and In House Groups Serviced only began being tracked in 2026, so no prior-year comparison is available for them yet.</p>
+      </div>
     </section>
 
     <!-- PARTNER REFERRALS -->
-    <section class="page" id="page-referrals">
-      <div class="topbar"><div><div class="eyebrow">Question 2</div><h2>Which partner referral channels are producing the most volume?</h2></div>
-        <div class="controls"><button class="btn" onclick="window.print()">Export as PDF</button></div></div>
-      <div class="filter-row">
+    <section class="page" id="page-referrals" aria-labelledby="h-referrals">
+      <div class="page-h">
+        <div class="ph">
+          <p class="overline">Partner Referrals</p>
+          <h2 id="h-referrals">Which partner referral channels are producing the most volume?</h2>
+          <p class="sub">Referral volume by staff member and month, with referral detail. <span class="src-pills"><span class="src-pill">Granicus</span></span></p>
+        </div>
+        <span class="tag-o" id="referrals-period"></span>
+      </div>
+      <div class="filter-row" role="group" aria-label="Partner Referrals filters">
         <label>Year <select id="ref-year"></select></label>
         <label>Service Manager <select id="ref-manager"></select></label>
       </div>
-      <div class="period-badge" id="referrals-period"></div>
-      <p class="desc"><strong>Partner Referrals</strong> = a non-physical referral, such as email, phone, or shared contact info (as distinct from Partners Visited, which is an in-person property visit; see Team KPIs page).</p>
-      <div class="kpi-grid" id="ref-kpiGrid"></div>
-      <div class="grid-2 even">
-        <div class="panel">
+      <p class="desc"><strong>Partner Referrals</strong> = a non-physical referral, such as email, phone, or shared contact info (as distinct from Partners Visited, which is an in-person property visit; see Team KPIs).</p>
+      <div class="kpi-grid strip" id="ref-kpiGrid"></div>
+      <div class="grid2">
+        <div class="box">
           <h3>Partner Referrals by Staff</h3>
           <div class="chart-box"><canvas id="ref-chart1"></canvas></div>
           <p class="auto-analysis" id="ref-analysis1"></p>
-          <div class="src">Source: Granicus (Partner Referrals Details). Click a bar to highlight that staff member below.</div>
+          <p class="src">Source: Granicus (Partner Referrals Details). Click a bar to highlight that staff member below.</p>
         </div>
-        <div class="panel">
+        <div class="box">
           <h3>Partner Referrals by Month <span class="tag">Monthly</span></h3>
           <div class="chart-box"><canvas id="ref-chart2"></canvas></div>
           <p class="auto-analysis" id="ref-analysis2"></p>
-          <div class="src">Source: Granicus (Partner Referrals Details).</div>
+          <p class="src">Source: Granicus (Partner Referrals Details).</p>
         </div>
       </div>
-      <div class="grid-2 even">
-        <div class="panel">
+      <div class="grid2">
+        <div class="box">
           <h3>Year over Year</h3>
-          <div class="table-scroll"><table class="mini" id="ref-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Partner Referrals year over year"><table class="mini" id="ref-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
           <p class="auto-analysis" id="ref-yoy-analysis"></p>
-          <div class="src">Source: Granicus (Partner Referrals Details). Year-to-date window, same cutoff month both years.</div>
+          <p class="src">Source: Granicus (Partner Referrals Details). Year-to-date window, same cutoff month both years.</p>
         </div>
-        <div class="panel">
+        <div class="box">
           <h3>Monthly Referrals by Staff <span class="tag">Monthly</span></h3>
           <div class="chart-box tall"><canvas id="ref-chart3"></canvas></div>
           <p class="auto-analysis" id="ref-analysis3"></p>
-          <div class="src">Source: Granicus (Partner Referrals Details).</div>
+          <p class="src">Source: Granicus (Partner Referrals Details).</p>
         </div>
       </div>
-      <div class="panel">
+      <div class="box">
         <h3>Referral Detail</h3>
-        <div class="table-scroll"><table class="mini" id="ref-detailTable"><thead><tr><th>Referral ID</th><th>Referral Date</th><th>Account Name</th><th>Function Name</th><th>Lead Arrival</th><th>Lead Departure</th><th>User</th></tr></thead><tbody></tbody></table></div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Referral detail"><table class="mini" id="ref-detailTable"><thead><tr><th>Referral ID</th><th>Referral Date</th><th>Account Name</th><th>Function Name</th><th>Lead Arrival</th><th>Lead Departure</th><th>User</th></tr></thead><tbody></tbody></table></div>
         <p class="auto-analysis" id="ref-analysis4"></p>
-        <div class="src">Source: Granicus (Partner Referrals Details).</div>
-      </div>
-    </section>
-
-    <!-- REPEAT ACC ACCOUNTS -->
-    <section class="page" id="page-repeat">
-      <div class="topbar"><div><div class="eyebrow">Question 3</div><h2>How much of our account base is repeat business?</h2></div>
-        <div class="controls"><button class="btn" onclick="window.print()">Export as PDF</button></div></div>
-      <div class="filter-row">
-        <label>Year (meeting start) <select id="rep-year"></select></label>
-        <label>Account Name <input list="rep-account-options" id="rep-account" class="searchable-filter" placeholder="Select All" autocomplete="off"><datalist id="rep-account-options"></datalist></label>
-        <label>Services Manager <select id="rep-manager"></select></label>
-        <label>Lead <input list="rep-lead-options" id="rep-lead" class="searchable-filter" placeholder="Select All" autocomplete="off"><datalist id="rep-lead-options"></datalist></label>
-        <label>Repeat <select id="rep-repeat"></select></label>
-      </div>
-      <div class="period-badge" id="repeat-period"></div>
-      <p class="desc"><strong>Repeat account</strong> = a distinct account (Account ID) with at least one booking whose "Repeat Business" value on the sheet is Yes.</p>
-      <h4 class="kpi-subhead">By Accounts</h4>
-      <div class="kpi-grid" id="rep-kpiGrid-accounts"></div>
-      <div class="takeaway-callout" id="rep-takeaway"></div>
-      <div class="grid-2 even">
-        <div class="panel">
-          <div class="panel-header-row">
-            <h3>Repeat vs. New by Services Manager</h3>
-            <div class="toggle-switch" id="rep-chart1-toggle" role="group" aria-label="View by Accounts or Clients">
-              <button type="button" class="toggle-btn active" data-mode="clients">Clients</button>
-              <button type="button" class="toggle-btn" data-mode="accounts">Accounts</button>
-            </div>
-          </div>
-          <p class="desc" id="rep-chart1-desc">Counts individual client bookings (rows), not distinct accounts.</p>
-          <div class="chart-box"><canvas id="rep-chart1"></canvas></div>
-          <p class="auto-analysis" id="rep-analysis1"></p>
-          <div class="src">Source: Granicus (Repeating ACC Clients Services).</div>
-        </div>
-        <div class="panel">
-          <h3>Repeat vs. New: Clients &amp; Accounts</h3>
-          <p class="desc"><strong>Inner Ring = Accounts</strong> &middot; <strong>Outer Ring = Clients</strong></p>
-          <div class="chart-box"><canvas id="rep-chart2"></canvas></div>
-          <p class="auto-analysis" id="rep-analysis2"></p>
-          <div class="src">Source: Granicus (Repeating ACC Clients Services).</div>
-        </div>
-      </div>
-      <div class="panel">
-        <h3>Year over Year</h3>
-        <div class="table-scroll"><table class="mini" id="rep-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
-        <p class="auto-analysis" id="rep-yoy-analysis"></p>
-        <div class="src">Source: Granicus (Repeating ACC Clients Services). Year-to-date window, same cutoff month both years.</div>
-      </div>
-      <div class="panel">
-        <h3>Accounts &amp; Clients</h3>
-        <div class="table-scroll"><table class="mini" id="rep-clientsTable"><thead><tr><th>Account</th><th>Lead</th><th>Start Date</th><th>End Date</th><th>Attendance</th><th>Peak Room</th><th>Repeat?</th><th>Bookings</th><th>Services Manager</th></tr></thead><tbody></tbody></table></div>
-        <p class="auto-analysis" id="rep-analysis3"></p>
-        <div class="src">Source: Granicus (Repeating ACC Clients Services). Top 30 rows by bookings, then attendance (same as production).</div>
+        <p class="src">Source: Granicus (Partner Referrals Details).</p>
       </div>
     </section>
 
     <!-- CLIENT SURVEY -->
-    <section class="page" id="page-survey">
-      <div class="topbar"><div><div class="eyebrow">Question 4</div><h2>How satisfied are clients with the Visit Anaheim team experience?</h2></div>
-        <div class="controls"><button class="btn" onclick="window.print()">Export as PDF</button></div></div>
-      <div class="filter-row">
+    <section class="page" id="page-survey" aria-labelledby="h-survey">
+      <div class="page-h">
+        <div class="ph">
+          <p class="overline">Client Survey</p>
+          <h2 id="h-survey">How satisfied are clients with the Visit Anaheim team experience?</h2>
+          <p class="sub">Client ratings by question, month and manager, with feedback. <span class="src-pills"><span class="src-pill">Association Insights</span></span></p>
+        </div>
+        <span class="tag-o" id="survey-period"></span>
+      </div>
+      <div class="filter-row" role="group" aria-label="Client Survey filters">
         <label>Year (start date) <select id="sur-year"></select></label>
         <label>Services Manager <select id="sur-manager"></select></label>
         <label>Question <select id="sur-question" class="wide"></select></label>
       </div>
-      <div class="period-badge" id="survey-period"></div>
-      <div class="kpi-grid" id="sur-kpiGrid"></div>
-      <div class="grid-2 even">
-        <div class="panel">
+      <div class="kpi-grid strip" id="sur-kpiGrid"></div>
+      <div class="grid2">
+        <div class="box">
           <h3 id="sur-chart1-title">VA Survey Questions Rating</h3>
           <div class="chart-box tall"><canvas id="sur-chart1"></canvas></div>
           <p class="auto-analysis" id="sur-analysis1"></p>
-          <div class="src">Source: Association Insights (ACC Survey). 0&ndash;10 scale.</div>
+          <p class="src">Source: Association Insights (ACC Survey). 0&ndash;10 scale.</p>
         </div>
-        <div class="panel">
+        <div class="box">
           <h3 id="sur-chart2-title">Avg. Rating by Month <span class="tag">Monthly</span></h3>
           <p class="desc" id="sur-chart2-desc">Averaged across all six rated questions, grouped by the date on each response.</p>
           <div class="chart-box"><canvas id="sur-chart2"></canvas></div>
           <p class="auto-analysis" id="sur-analysis2"></p>
-          <div class="src">Source: Association Insights (ACC Survey).</div>
+          <p class="src">Source: Association Insights (ACC Survey).</p>
         </div>
       </div>
-      <div class="panel">
+      <div class="box">
         <h3 id="sur-chart3-title">Avg. Rating by DS&amp;E Manager</h3>
         <p class="desc" id="sur-chart3-desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
         <div class="chart-box"><canvas id="sur-chart3"></canvas></div>
         <p class="auto-analysis" id="sur-analysis3"></p>
-        <div class="src">Source: Association Insights (ACC Survey).</div>
+        <p class="src">Source: Association Insights (ACC Survey).</p>
       </div>
-      <div class="grid-2 even">
-        <div class="panel">
+      <div class="grid2">
+        <div class="box">
           <h3 id="sur-yoyValues-title">Ratings by Year</h3>
-          <div class="table-scroll"><table class="mini" id="sur-yoyValuesTable"><thead><tr><th>Question</th></tr></thead><tbody></tbody></table></div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Ratings by year"><table class="mini" id="sur-yoyValuesTable"><thead><tr><th>Question</th></tr></thead><tbody></tbody></table></div>
           <p class="auto-analysis" id="sur-yoy-analysis"></p>
-          <div class="src">Source: Association Insights (ACC Survey). Full-year averages per year.</div>
+          <p class="src">Source: Association Insights (ACC Survey). Full-year averages per year.</p>
         </div>
-        <div class="panel">
+        <div class="box">
           <h3 id="sur-yoyPct-title">Year-over-Year % Change</h3>
-          <div class="table-scroll"><table class="mini" id="sur-yoyPctTable"><thead><tr><th>Question</th></tr></thead><tbody></tbody></table></div>
-          <div class="src">Source: Association Insights (ACC Survey).</div>
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Year-over-year percent change"><table class="mini" id="sur-yoyPctTable"><thead><tr><th>Question</th></tr></thead><tbody></tbody></table></div>
+          <p class="src">Source: Association Insights (ACC Survey).</p>
         </div>
       </div>
-      <div class="panel spotlight">
+      <div class="box spotlight">
         <h3>Feedback</h3>
         <div class="spotlight-head">
           <p class="desc" id="q2q7Desc"></p>
           <div class="sentiment-scale" id="q2q7SentimentScale"></div>
         </div>
         <div id="testimonialCols" class="testimonial-cols"></div>
-        <div class="src">Source: Association Insights (ACC Survey, open-ended comments question). Sentiment from the sheet's Sentiment column, with a keyword fallback where untagged (same as production). Up to 20 comments per year; click a truncated card to read the full comment.</div>
+        <p class="src">Source: Association Insights (ACC Survey, open-ended comments question). Sentiment from the sheet's Sentiment column, with a keyword fallback where untagged (same as production). Up to 20 comments per year; click a truncated card to read the full comment.</p>
       </div>
     </section>
 
-    <!-- HOSTED EVENTS -->
-    <section class="page" id="page-events">
-      <div class="topbar"><div><div class="eyebrow">Question 5</div><h2>How many VA-hosted events ran, and how satisfied were attendees?</h2></div>
-        <div class="controls"><button class="btn" onclick="window.print()">Export as PDF</button></div></div>
-      <div class="filter-row">
-        <label>Year <select id="hev-year"></select></label>
-        <label>Event Category <select id="hev-category"></select></label>
-        <label>Event Name <select id="hev-event" class="wide"></select></label>
-      </div>
-      <div class="period-badge" id="events-period"></div>
-      <div class="kpi-grid" id="hev-kpiGrid"></div>
-      <div class="grid-2 even">
-        <div class="panel">
-          <h3>Events by Month <span class="tag">Monthly</span></h3>
-          <div class="chart-box"><canvas id="hev-chart1"></canvas></div>
-          <p class="auto-analysis" id="hev-analysis1"></p>
-          <div class="src">Source: Internal Tracking (Event Surveys).</div>
-        </div>
-        <div class="panel">
-          <h3>Survey Questions Ratings <span class="tag">Monthly</span></h3>
-          <p class="desc">Ranked on a scale of 0&ndash;5.</p>
-          <div class="chart-box"><canvas id="hev-chart2"></canvas></div>
-          <p class="auto-analysis" id="hev-analysis2"></p>
-          <div class="src">Source: Internal Tracking (Event Surveys).</div>
+    <!-- SOURCES & METHODOLOGY (moved off the Overview, Oct 14, 2026) -->
+    <section class="page" id="page-sources" aria-labelledby="h-sources">
+      <div class="page-h">
+        <div class="ph">
+          <p class="overline">Sources &amp; Methodology</p>
+          <h2 id="h-sources">Where the numbers come from</h2>
+          <p class="sub">What each number means, where it comes from, and how it is counted.</p>
         </div>
       </div>
-      <div class="grid-2 even">
-        <div class="panel">
-          <h3>Avg. Rating by Question</h3>
-          <div class="table-scroll"><table class="mini" id="hev-byQuestionTable"><thead><tr><th>Question</th><th>Attendee</th><th>Partner</th><th>Avg. Total</th></tr></thead><tbody></tbody></table></div>
-          <p class="auto-analysis" id="hev-analysis3"></p>
-          <div class="src">Source: Internal Tracking (Event Surveys).</div>
-        </div>
-        <div class="panel">
-          <h3>Ratings by Event Category</h3>
-          <div class="table-scroll"><table class="mini" id="hev-byCategoryTable"><thead><tr><th>Category</th><th>Respondents</th><th>Avg. Satisfaction Score</th><th>Overall Experience</th><th>Arrival and Registration</th><th>Recommend Future Events</th></tr></thead><tbody></tbody></table></div>
-          <p class="auto-analysis" id="hev-analysis4"></p>
-          <div class="src">Source: Internal Tracking (Event Surveys).</div>
-        </div>
-      </div>
-      <div class="panel">
-        <h3>Event Survey Detail</h3>
-        <div class="table-scroll"><table class="mini" id="hev-detailTable"><thead><tr><th>Event</th><th>Event Type</th><th>Category</th><th>Date</th></tr></thead><tbody></tbody></table></div>
-        <p class="auto-analysis" id="hev-analysis5"></p>
-        <div class="src">Source: Internal Tracking (Event Surveys).</div>
-      </div>
-    </section>
-
-    <!-- BOOKED BUSINESS -->
-    <section class="page" id="page-booked">
-      <div class="topbar"><div><div class="eyebrow">Question 6</div><h2>Which VA-hosted events are converting into booked business leads?</h2></div>
-        <div class="controls"><button class="btn" onclick="window.print()">Export as PDF</button></div></div>
-      <div class="filter-row">
-        <label>Year <select id="bb-year"></select></label>
-        <label>Lead Status <select id="bb-status"></select></label>
-        <label>Event Name <select id="bb-event" class="wide"></select></label>
-        <label>Sales Manager <select id="bb-manager"></select></label>
-        <label>Event Status <select id="bb-eventstatus"></select></label>
-      </div>
-      <div class="period-badge" id="booked-period"></div>
-      <div class="kpi-grid" id="bb-kpiGrid"></div>
-      <div class="kpi-grid" id="bb-kpiGrid2"></div>
-      <div class="panel">
-        <h3>Hosted Events &amp; Booked Business</h3>
-        <p class="footnote">This visual always shows 2025 data, regardless of the Year filter above, until 2026 event ID correlation between Event Surveys and Booked Business is available.</p>
-        <p class="desc" id="hev-bbDesc"></p>
-        <div class="grid-2 even">
-          <div class="chart-box"><canvas id="hev-bbChart"></canvas></div>
-          <div class="table-scroll"><table class="mini" id="hev-bbTable"><thead><tr><th>Event</th><th>Survey Respondents</th><th>Avg. Satisfaction Score</th><th>Leads Generated</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-        </div>
-        <p class="auto-analysis" id="hev-bb-analysis"></p>
-        <div class="src">Source: Internal Tracking (Event Surveys) joined to Granicus (Booked Business) on Event ID. Lead Status and Event Name filters apply; Year is pinned to 2025.</div>
-      </div>
-      <div class="grid-2 even">
-        <div class="panel">
-          <h3>Leads Generated by Event</h3>
-          <div class="chart-box tall"><canvas id="bb-chart1"></canvas></div>
-          <p class="auto-analysis" id="bb-analysis1"></p>
-          <div class="src">Source: Granicus (Booked Business). Top 10 events.</div>
-        </div>
-        <div class="panel">
-          <h3>Leads Generated by Lead Status</h3>
-          <div class="chart-box"><canvas id="bb-chart2"></canvas></div>
-          <p class="auto-analysis" id="bb-analysis2"></p>
-          <div class="src">Source: Granicus (Booked Business).</div>
-        </div>
-      </div>
-      <div class="panel">
-        <h3>Conversion Window by Event <span class="tag">Detail</span></h3>
-        <div class="table-scroll"><table class="mini" id="bb-conversionTable"><thead><tr><th>Event</th><th>1 Month</th><th>2-3 Months</th><th>4-6 Months</th><th>7-12 Months</th><th>Over 12+ Months</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-        <p class="auto-analysis" id="bb-analysis3"></p>
-        <div class="src">Source: Granicus (Booked Business). Distinct leads by minimum days from lead created to event.</div>
-      </div>
-      <div class="panel">
-        <h3>Events That Generated Leads Detail</h3>
-        <div class="table-scroll"><table class="mini" id="bb-detailTable"><thead><tr><th>Event</th><th>Account</th><th>Lead</th><th>Sales Manager</th><th>Room Nights</th><th>Economic Impact</th><th>Attendees</th><th>Event Start Date</th><th>Lead Created Date</th></tr></thead><tbody></tbody><tfoot></tfoot></table></div>
-        <p class="auto-analysis" id="bb-analysis4"></p>
-        <div class="src">Source: Granicus (Booked Business). One row per unique lead.</div>
-      </div>
-    </section>
-
-    <!-- SOURCES -->
-    <section class="page" id="page-sources">
-      <div class="topbar"><div><div class="eyebrow">Reference</div><h2>Data Sources, Methodology &amp; Definitions</h2></div></div>
-      <div class="panel">
-        <h3>Data Sources</h3>
-        <p style="font-size:13.5px;">This dashboard draws on three systems: <strong>Granicus</strong> (planning visits, partner referrals, repeat ACC accounts, booked business), <strong>Association Insights</strong> (ACC client survey), and <strong>Internal Tracking</strong> (VA-hosted event surveys).</p>
-      </div>
-      <div class="panel">
-        <h3>Methodology</h3>
-        <p style="font-size:13.5px;">The Overview shows 13 KPI cards, driven by the Overview's From/To date picker. Each card compares the picked date range with the same calendar dates one year earlier ("YoY"). By default the range runs from January 1 of the current year through the end of the latest month with populated Planning Visits data. Source sheets update on different lags, so if a sheet's data ends before the To date, that card is cut off at the end of the sheet's latest populated month and the prior-year window is cut off at the same point, keeping the comparison like-for-like. The Planning Visits sheet is monthly, so its cards include every month the picked range touches.</p><p style="font-size:13.5px;">Each section page has its own filters (matching the production dashboard) and recomputes every card, chart, and table live from the raw rows in data.json using the production app.js formulas. Section KPI deltas use the same year-to-date methodology: the selected (or latest) year is compared with the prior year over an identical January-through-cutoff window. Client Survey "Ratings by Year" uses full-year averages. The Hosted Events &amp; Booked Business cross-reference is pinned to 2025 until 2026 Event IDs are reconciled between the two sheets.</p>
-      </div>
-      <div class="panel">
+      <div class="box" id="src-definitions">
         <h3>Definitions</h3>
-        <dl class="def-list">
-          <dt>Partners Visited</dt><dd>A partner property visited in person during a planning visit.</dd>
-          <dt>Partner Referrals</dt><dd>A non-physical referral, such as email, phone, or shared contact info (as distinct from Partners Visited, which is an in-person visit).</dd><dt>Clients Serviced During Planning Visits</dt><dd>Counts the clients who attend each planning visit (row count of the Repeating ACC Clients Services sheet).</dd><dt>Repeat Account</dt><dd>A distinct account (Account ID) with at least one booking whose "Repeat Business" value on the sheet is Yes.</dd><dt>Avg. Conversion Window</dt><dd>Average days from lead created to event start (shown in months once above 90 days).</dd>
+        <dl class="defs">
+          <div><dt># of Planning Visits</dt><dd>The number of planning visits for the months you picked.</dd></div>
+          <div><dt># of Clients Serviced</dt><dd>The number of clients the team served in those months. (Team KPIs also shows &ldquo;Clients Serviced During Planning Visits,&rdquo; which only counts clients who came to a planning visit.)</dd></div>
+          <div><dt># of Partners Visited</dt><dd>A partner property visited in person during a planning visit. Counted since 2026, so there is no earlier year to compare with yet.</dd></div>
+          <div><dt># of Convention Groups Serviced</dt><dd>The number of convention groups the team served.</dd></div>
+          <div><dt># of In-House Groups Serviced</dt><dd>The number of in-house groups the team served. Counted since 2026, so there is no earlier year to compare with yet.</dd></div>
+          <div><dt>Partner Referrals</dt><dd>A referral that is not in person, such as an email, a phone call, or shared contact info. (Partners Visited is the in-person version.)</dd></div>
         </dl>
       </div>
+      <div class="grid2">
+        <div class="box" id="src-sources">
+          <h3>Data sources</h3>
+          <dl class="defs">
+            <div id="src-master"><dt>Master.xlsx</dt><dd>Every number on this dashboard comes from the Master.xlsx workbook in SharePoint (Business Intelligence-Apps site, DS&amp;E folder). The BI team copies the latest numbers from it into the dashboard each month. The systems below feed that workbook.</dd></div>
+            <div><dt>Granicus</dt><dd>Planning visits, partner referrals and client services. Used on Team KPIs and Partner Referrals.</dd></div>
+            <div><dt>Association Insights</dt><dd>The client survey. Used on Client Survey.</dd></div>
+            <div><dt>Internal Tracking</dt><dd>The monthly Planning Visits sheet. Used on Overview and Team KPIs.</dd></div>
+          </dl>
+        </div>
+        <div class="box" id="src-method">
+          <h3>Methodology</h3>
+          <dl class="defs">
+            <div><dt>Overview dates</dt><dd>Start on January 1 of this year and end with the latest month that has numbers. Each number is compared with the same dates last year.</dd></div>
+            <div><dt>When the newest month is not in yet</dt><dd>If your dates go past the latest numbers, both years stop at the same month, so the comparison stays fair.</dd></div>
+            <div><dt>The other tabs</dt><dd>Each tab has its own filters. Changes compare the chosen year with the same months of the year before. Yearly survey ratings use full-year averages.</dd></div>
+            <div><dt>Updates</dt><dd>The monthly Planning Visits sheet in Master.xlsx is updated on the 15th of each month. The dashboard shows the date it was last refreshed at the top of the page.</dd></div>
+          </dl>
+        </div>
+      </div>
     </section>
+  </div></main>
 
-    <div class="foot">
-      <div id="footSource">Sources: Granicus, Association Insights, and Internal Tracking.</div>
-      <div>Powered by Visit Anaheim Business Intelligence Team</div>
-    </div>
-  </main>
+  <footer class="ftr"><div class="wrap">
+    <span id="footSource">Sources: Granicus and Internal Tracking.</span>
+    <span>Powered by Visit Anaheim Business Intelligence Team</span>
+  </div></footer>
 </div>
+
 <div class="modal-overlay" id="feedbackModalOverlay">
   <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="feedbackModalYear">
     <button class="modal-close" id="feedbackModalClose" aria-label="Close">&times;</button>
