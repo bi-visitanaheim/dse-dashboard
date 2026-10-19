@@ -177,10 +177,19 @@
       "date": "2026-08-31",
       "year": 2026,
       "planningVisits": 5,
-      "clientsServiced": 29,
+      "clientsServiced": 33,
       "partnersVisited": 11,
       "conventionGroupsServiced": 5,
       "inHouseGroupsServiced": 2
+    },
+    {
+      "date": "2026-09-30",
+      "year": 2026,
+      "planningVisits": 13,
+      "clientsServiced": 61,
+      "partnersVisited": 57,
+      "conventionGroupsServiced": 4,
+      "inHouseGroupsServiced": 8
     }
   ],
   "partnerReferrals": {
@@ -2632,6 +2641,102 @@
         "user": "KDeSimas",
         "staff": "KDeSimas",
         "count": 1
+      },
+      {
+        "referralId": 3510,
+        "date": "2026-09-23",
+        "year": 2026,
+        "accountName": "Association of American Medical Colleges",
+        "functionName": "2026 Learn Serve Lead: The AAMC Annual Meeting",
+        "leadArrival": "2026-11-07",
+        "leadDeparture": "2026-11-10",
+        "user": "KDeSimas",
+        "staff": "KDeSimas",
+        "count": 1
+      },
+      {
+        "referralId": 3518,
+        "date": "2026-09-24",
+        "year": 2026,
+        "accountName": "Informa Connect",
+        "functionName": "2027 Connect Marketplace",
+        "leadArrival": "2027-08-23",
+        "leadDeparture": "2027-08-25",
+        "user": "KDeSimas",
+        "staff": "KDeSimas",
+        "count": 1
+      },
+      {
+        "referralId": 3520,
+        "date": "2026-09-29",
+        "year": 2026,
+        "accountName": "Informa Media LLC, Natural Products Expo West",
+        "functionName": "Natural Products Expo West 2027",
+        "leadArrival": "2027-03-03",
+        "leadDeparture": "2027-03-05",
+        "user": "KDeSimas",
+        "staff": "KDeSimas",
+        "count": 1
+      },
+      {
+        "referralId": 3511,
+        "date": "2026-09-30",
+        "year": 2026,
+        "accountName": "Asian American Hotel Owners Association, Inc.",
+        "functionName": "2027 AAHOA Annual Convention",
+        "leadArrival": "2027-05-05",
+        "leadDeparture": "2027-05-07",
+        "user": "DDouvalaki",
+        "staff": "DDouvalaki",
+        "count": 1
+      },
+      {
+        "referralId": 3512,
+        "date": "2026-09-30",
+        "year": 2026,
+        "accountName": "HMP Global",
+        "functionName": "2027 Evolution of Psychotherapy Conference",
+        "leadArrival": "2027-12-13",
+        "leadDeparture": "2027-12-18",
+        "user": "DDouvalaki",
+        "staff": "DDouvalaki",
+        "count": 1
+      },
+      {
+        "referralId": 3513,
+        "date": "2026-09-30",
+        "year": 2026,
+        "accountName": "American College of Surgeons",
+        "functionName": null,
+        "leadArrival": null,
+        "leadDeparture": null,
+        "user": "DDouvalaki",
+        "staff": "DDouvalaki",
+        "count": 1
+      },
+      {
+        "referralId": 3525,
+        "date": "2026-10-15",
+        "year": 2026,
+        "accountName": "North American Wholesale Lumber Association",
+        "functionName": null,
+        "leadArrival": null,
+        "leadDeparture": null,
+        "user": "DDouvalaki",
+        "staff": "DDouvalaki",
+        "count": 1
+      },
+      {
+        "referralId": 3526,
+        "date": "2026-10-15",
+        "year": 2026,
+        "accountName": "American College of Surgeons",
+        "functionName": "2026 TQIP Scientific Session and Training Meeting",
+        "leadArrival": "2026-11-13",
+        "leadDeparture": "2026-11-15",
+        "user": "DDouvalaki",
+        "staff": "DDouvalaki",
+        "count": 1
       }
     ]
   },
@@ -4148,6 +4253,30 @@
         "leadId": 35032
       },
       {
+        "question": "Visit Anaheim's Sales & Booking Process",
+        "qNum": 1,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "Visit Anaheim's Sales & Booking Process",
+        "qNum": 1,
+        "rating": 8,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Christina Martinez",
+        "leadId": 41756
+      },
+      {
         "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
         "qNum": 2,
         "rating": 10,
@@ -5648,6 +5777,30 @@
         "leadId": 35032
       },
       {
+        "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
+        "qNum": 2,
+        "rating": 10,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
+        "qNum": 2,
+        "rating": 7,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Christina Martinez",
+        "leadId": 41756
+      },
+      {
         "question": "The Support for Corporate Social Responsibility (CSR)",
         "qNum": 3,
         "rating": null,
@@ -7146,6 +7299,30 @@
         "sentiment": null,
         "manager": "Jenni Pearl",
         "leadId": 35032
+      },
+      {
+        "question": "The Support for Corporate Social Responsibility (CSR)",
+        "qNum": 3,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "The Support for Corporate Social Responsibility (CSR)",
+        "qNum": 3,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Christina Martinez",
+        "leadId": 41756
       },
       {
         "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
@@ -8648,6 +8825,30 @@
         "leadId": 35032
       },
       {
+        "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
+        "qNum": 4,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
+        "qNum": 4,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Christina Martinez",
+        "leadId": 41756
+      },
+      {
         "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
         "qNum": 5,
         "rating": 10,
@@ -10146,6 +10347,30 @@
         "sentiment": null,
         "manager": "Jenni Pearl",
         "leadId": 35032
+      },
+      {
+        "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
+        "qNum": 5,
+        "rating": 10,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
+        "qNum": 5,
+        "rating": 6,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Christina Martinez",
+        "leadId": 41756
       },
       {
         "question": "The Support With Complimentary Concierge Staff",
@@ -11646,6 +11871,30 @@
         "sentiment": null,
         "manager": "Jenni Pearl",
         "leadId": 35032
+      },
+      {
+        "question": "The Support With Complimentary Concierge Staff",
+        "qNum": 6,
+        "rating": 10,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "The Support With Complimentary Concierge Staff",
+        "qNum": 6,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Christina Martinez",
+        "leadId": 41756
       },
       {
         "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
@@ -13148,6 +13397,30 @@
         "leadId": 35032
       },
       {
+        "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
+        "qNum": 7,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": "Visit Anaheim was one of the highlights of working in Anaheim for me. Melanie was extremely helpful in arranging for site visits and looking into local resources for us. I can confidently say that Visit Anaheim is one of the best CVBs that I have worked with.",
+        "sentiment": "Positive",
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
+        "qNum": 7,
+        "rating": null,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": "We had an issue with our self-unloading exhibitors.  We never had an issue in the past, but this year they were being charged just to enter the dock area to unload.  It took hours of back and forth with the facility's parking team to navigate this and come up with a solution.  Hopefully, we don't have the same challenge next year.",
+        "sentiment": "Neutral",
+        "manager": "Christina Martinez",
+        "leadId": 41756
+      },
+      {
         "question": "The Overall Anaheim Experience",
         "qNum": 8,
         "rating": 9.25,
@@ -14646,6 +14919,30 @@
         "sentiment": null,
         "manager": "Jenni Pearl",
         "leadId": 35032
+      },
+      {
+        "question": "The Overall Anaheim Experience",
+        "qNum": 8,
+        "rating": 7,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-10-02T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 10661
+      },
+      {
+        "question": "The Overall Anaheim Experience",
+        "qNum": 8,
+        "rating": 7,
+        "date": "2026-09-23",
+        "year": 2026,
+        "recordedDate": "2026-09-23T14:28:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Christina Martinez",
+        "leadId": 41756
       }
     ],
     "q2q7": {
@@ -14720,7 +15017,7 @@
           }
         ]
       },
-      "totalTestimonials": 90
+      "totalTestimonials": 92
     }
   },
   "repeatingClients": {

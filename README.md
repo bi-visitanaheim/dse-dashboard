@@ -924,3 +924,14 @@ All earlier checks for the remaining tabs are kept. **All 151 checks pass**, run
 **Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan; publish authorized by Samantha Lujan 2026-10-19.
 
 - **Definitions reworded** on the Sources & Methodology tab (`index.html`): Planning Visits = "The number of planning visits the team serviced."; Clients Serviced During Planning Visits = "The number of clients the team serviced during planning visits." No other file changed. `test/verify.mjs`: 195 checks pass (run in `outputs/dse-test-defs-oct19/`).
+
+## Oct 19, 2026 (evening): data refresh from SharePoint Master.xlsx -- PUBLISHED
+
+**Status:** published Oct 19, 2026: official Cowork artifact `dse-dashboard-vabi-preview` updated (draft artifact `dse-dashboard-draft-oct14` matches it), `data.json` + `README.md` committed to GitHub `bi-visitanaheim/dse-dashboard` (`main`, repo root), Vercel auto-redeploys `https://dse-dashboard-iota.vercel.app`.
+**Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan; publish of this data refresh authorized by Samantha Lujan 2026-10-19.
+
+- **Source:** SharePoint `Master.xlsx` (Business Intelligence-Apps / Shared Documents / DS&E / Destination Services and Events Dashboard KPIs, item {5190F585-22F9-43F3-8539-0303AD6DA8CB}) downloaded via the browser, because the OneDrive-synced `../Master.xlsx` was stale (last saved Oct 8). SharePoint last modified 2026-10-19 19:01 UTC (12:01 PM PDT) by Samantha Lujan, version 16.0, 239,243 bytes (MD5 b55c1dc7...; the synced copy is 5aef46c5..., so they differ). The workbook was only downloaded, never modified; `build_data.py` was run against a scratch copy (default `../Master.xlsx` path untouched).
+- **Changes vs. previous data.json:** Planning Visits rows 20 -> 21 (now Jan 2025 - Sep 2026); all-time Planning Visits 153 -> 166, Clients Serviced During Planning Visits 1,142 -> 1,207, Partners Visited 284 -> 341, Convention Groups 113 -> 117, In-House Groups 59 -> 67. Partner Referrals rows 204 -> 212 (latest Oct 15, 2026). ACC Survey rows 1,000 -> 1,016 (latest Sep 23, 2026). Repeating ACC Clients unchanged (118).
+- **Default Overview (Jan 1 - Sep 30, 2026):** 75 Planning Visits, 543 Clients Serviced During Planning Visits, 341 Partners Visited, 51 Convention Groups Serviced, 43 In-House Groups Serviced (was 62 / 478 / 284 / 47 / 35 for Jan 1 - Aug 31, 2026).
+- **Date pickers / Year lists:** follow the data automatically; Overview picker now Jan 1, 2025 - Sep 30, 2026.
+- `test/verify.mjs`: no edits needed; **195 checks pass** (run in `outputs/refresh-1019/work/`). Backup of the previous data.json/README: `outputs/refresh-1019/backup/`.
