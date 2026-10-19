@@ -1,4 +1,8 @@
 // Headless smoke test for the DS&E dashboard
+// Updated Oct 19, 2026 (latest): the "?" definition button was removed from the Partners Visited
+// card (Overview tile + Team KPIs card); Partner Referrals keeps its "?" hint. Key numbers, the
+// period pill and the picker bounds are now derived from data.json instead of hardcoded, so a
+// data refresh from Master.xlsx does not need test edits.
 // Updated Oct 19, 2026 (later): "# of" dropped from every card label on every tab; the
 // clients-serviced card/chart/table row renamed "Clients Serviced During Planning Visits".
 // Updated Oct 19, 2026: date pickers / Year lists bounded by real data; Team KPIs card order
@@ -100,11 +104,18 @@ const pvPopulated = data.planningVisits.filter((r) => r.planningVisits !== null 
 const lastPv = pvPopulated[pvPopulated.length - 1];
 const lastPvEnd = (() => { const y = +lastPv.slice(0, 4), m = +lastPv.slice(5, 7); return lastPv.slice(0, 7) + "-" + String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, "0"); })();
 assert(fromEl.value === lastPvEnd.slice(0, 4) + "-01-01" && toEl.value === lastPvEnd, `default range = Jan 1 -> end of latest populated Planning Visits month (${fromEl.value} -> ${toEl.value})`);
+const LONG = (iso) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const curYear = lastPvEnd.slice(0, 4);
+const pvCur = data.planningVisits.filter((r) => String(r.year) === curYear && r.date <= lastPvEnd);
+const fmtInt = (v) => Number(v).toLocaleString("en-US", { maximumFractionDigits: 0 });
+const sumF = (rows, f) => rows.reduce((s, r) => s + (Number(r[f]) || 0), 0);
+const EXP_YTD = { pv: fmtInt(sumF(pvCur, "planningVisits")), pw: fmtInt(sumF(pvCur, "partnersVisited")), cs: fmtInt(sumF(pvCur, "clientsServiced")) };
 const OV_ORDER = ["Planning Visits", "Clients Serviced During Planning Visits", "Partners Visited", "Convention Groups Serviced", "In-House Groups Serviced"];
 assert(cardVals("ov-kpiGrid").map((x) => x[0]).join("|") === OV_ORDER.join("|"), `Overview renders exactly the five requested cards, in order (${cardVals("ov-kpiGrid").map((x) => x[0]).join(" | ")})`);
 const badge = () => doc.getElementById("ovPeriodTag").textContent;
 console.log("   default pill:", badge());
-assert(badge() === "Jan 1, 2026 – Aug 31, 2026", "Overview period pill shows the picked range in plain words (Jan 1, 2026 – Aug 31, 2026)");
+{ const expPill = `${LONG(curYear + "-01-01")} – ${LONG(lastPvEnd)}`;
+  assert(badge() === expPill, `Overview period pill shows the picked range in plain words (${expPill})`); }
 assert(!doc.getElementById("periodBadge"), 'no separate "Compared:" badge on the Overview');
 
 // Independent re-computation of the five cards straight from data.json.
@@ -138,7 +149,7 @@ function checkRange(tag, from, to) {
 }
 checkRange("default range", fromEl.value, toEl.value);
 { const g = cardMap("ov-kpiGrid"); console.log("   default Overview:", JSON.stringify(g));
-  assert(g["Partners Visited"] === "284" && g["Planning Visits"] === "62", "default Overview: 284 Partners Visited, 62 Planning Visits (matches prior production default)"); }
+  assert(g["Partners Visited"] === EXP_YTD.pw && g["Planning Visits"] === EXP_YTD.pv, `default Overview: ${EXP_YTD.pw} Partners Visited, ${EXP_YTD.pv} Planning Visits (${curYear} sums from data.json)`); }
 
 // ---------- Overview: metric cards shown directly (Q&A cards removed 2026-10-02) ----------
 {
@@ -167,16 +178,15 @@ checkRange("default range", fromEl.value, toEl.value);
   assert(!/\bYoY\b|\bYTD\b|cutoff/i.test(st), "Sources tab avoids jargon (YoY / YTD / cutoff)");
   assert(!/show full metrics/i.test(page.textContent), 'no "Show full metrics" text');
   assert(doc.querySelectorAll("#ov-takeaways li").length > 0, "Key Takeaways render");
-  const pv = grid.querySelector(".kpi-wrap .def-btn");
-  assert(pv && grid.querySelectorAll(".def-btn").length === 1 && pv.closest(".kpi-wrap").querySelector(".label").textContent.trim() === "Partners Visited", "Partners Visited keeps its ? definition button (only card with one)");
-  assert(!pv.closest(".kpi-card"), "? button is not nested inside the clickable card (no interactive-in-interactive)");
-  // jsdom (runScripts "outside-only") skips inline onclick, so call the same handler it names
-  const defId = (pv.getAttribute("onclick").match(/toggleDef\('([^']+)'\)/) || [])[1];
-  assert(defId && typeof window.toggleDef === "function", `? button is wired to toggleDef('${defId}')`);
-  window.toggleDef(defId);
-  assert(doc.querySelector("#ov-kpiGrid .def-pop.open"), "Overview ? button opens its definition popover");
-  doc.body.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  assert(!doc.querySelector("#ov-kpiGrid .def-pop.open"), "clicking elsewhere closes the definition popover");
+  // Oct 19, 2026: the Partners Visited "?" button and its popover are gone; no tile has one.
+  assert(!grid.querySelector(".def-btn, .def-pop, .def-hint, .kpi-def, button") && !grid.querySelector(".has-def"), "Overview tiles have no ? definition button or popover (Partners Visited button removed)");
+  { const pvTile = [...grid.querySelectorAll(".kpi-card")][2];
+    assert(pvTile.querySelector(".label").textContent.trim() === "Partners Visited" && pvTile.querySelector(".drill-arrow"), "Partners Visited tile keeps its label and drill-down arrow");
+    assert(!/\?/.test(pvTile.textContent), "Partners Visited tile shows no ? character"); }
+  assert(typeof window.toggleDef === "undefined" && !/toggleDef|def-btn|def-pop[^o]|kpi-def|has-def/.test(appJs), "dead Overview popover code (toggleDef / .def-btn / .def-pop) removed from app.js");
+  { const css = fs.readFileSync(new URL("../style.css", import.meta.url), "utf8");
+    assert(!/\.def-btn|\.def-pop[^o]|\.kpi-def|\.has-def/.test(css) && /\.def-hint\{/.test(css) && /\.def-popover\{/.test(css), "style.css: Overview popover rules removed; shared .def-hint/.def-popover kept for Partner Referrals"); }
+  assert(!/click (the )?\?|tap (the )?\?|\? for (a |the )?definition/i.test(doc.body.textContent + html), 'no "click ? for a definition" text anywhere');
   // Removed Overview cards (Oct 14, 2026)
   const gt = grid.textContent;
   for (const gone of ["Partner Referrals", "Repeat Account", "VA Team Experience Rating", "VA Hosted Events", "Event Satisfaction", "Leads Generated", "Conversion Window"])
@@ -208,9 +218,6 @@ checkRange("default range", fromEl.value, toEl.value);
     c.dispatchEvent(new window.KeyboardEvent("keydown", { key, bubbles: true }));
     assert(onTeam(), `keyboard ${key === " " ? "Space" : key} on an Overview card opens Team KPIs`);
   }
-  window.showPage("overview");
-  doc.querySelector("#ov-kpiGrid .def-btn").dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
-  assert(doc.getElementById("page-overview").classList.contains("active"), "clicking the ? button does not navigate away");
   assert(errors.length === 0, `no runtime errors during drill-down (${JSON.stringify(errors)})`);
 }
 
@@ -226,7 +233,8 @@ assert(badge() === "Apr 1, 2026 – Jun 30, 2026", `custom range 1 pill updates 
 assert(doc.getElementById("ov-kpiGrid").innerHTML !== defaultSnapshot, "custom range 1 changes the cards");
 checkRange("custom range 1 (Apr 1 – Jun 30, 2026)", "2026-04-01", "2026-06-30");
 console.log("   Q2 2026:", JSON.stringify(cardMap("ov-kpiGrid")));
-assert(cardMap("ov-kpiGrid")["Planning Visits"] === "24", "custom range 1: Planning Visits Apr–Jun 2026 = 5+10+9 = 24");
+{ const q2 = fmtInt(sumF(data.planningVisits.filter((r) => r.date >= "2026-04-01" && r.date <= "2026-06-30"), "planningVisits"));
+  assert(cardMap("ov-kpiGrid")["Planning Visits"] === q2, `custom range 1: Planning Visits Apr–Jun 2026 = ${q2} (sum of the data.json months)`); }
 pick("2025-07-15", "2026-03-10");
 checkRange("custom range 2 (Jul 15, 2025 – Mar 10, 2026, spans two years)", "2025-07-15", "2026-03-10");
 { const tl = [...doc.querySelectorAll("#ov-kpiGrid .delta")].map((d) => d.textContent.trim());
@@ -243,13 +251,13 @@ const pvReal = data.planningVisits.filter((r) => PVF.some((f) => r[f] !== null &
 const dataMin = pvReal[0].slice(0, 7) + "-01", dataMax = monthEnd(pvReal[pvReal.length - 1]);
 console.log("   Overview picker bounds (from data):", dataMin, "->", dataMax);
 assert(fromEl.min === dataMin && toEl.min === dataMin && fromEl.max === dataMax && toEl.max === dataMax, `From/To min = earliest populated Planning Visits date (${fromEl.min}), max = latest (${fromEl.max})`);
-assert(dataMin === "2025-01-01" && dataMax === "2026-08-31", "Planning Visits data runs Jan 1, 2025 – Aug 31, 2026");
+assert(dataMax === lastPvEnd && dataMin <= dataMax, `Planning Visits data runs ${LONG(dataMin)} – ${LONG(dataMax)} (picker bounds follow the data)`);
 pick("2022-01-01", "2022-12-31");
 assert(fromEl.value === dataMin && toEl.value === dataMin, `typed 2022 dates are pulled back into the data range (${fromEl.value} -> ${toEl.value})`);
 pick("2026-02-01", "2026-09-30");
 assert(toEl.value === dataMax, "To date past the latest data is capped at the latest date");
 checkRange("custom range 3 (To beyond the data -> capped)", "2026-02-01", dataMax);
-assert(badge() === "Feb 1, 2026 – Aug 31, 2026" && !doc.getElementById("page-overview").textContent.includes("Data available through"), `range 3: period pill shows the capped dates (${badge()})`);
+assert(badge() === `Feb 1, 2026 – ${LONG(dataMax)}` && !doc.getElementById("page-overview").textContent.includes("Data available through"), `range 3: period pill shows the capped dates (${badge()})`);
 pick("2026-10-01", "2026-12-31");
 assert(fromEl.value === dataMax && toEl.value === dataMax, "range 4: future-only dates are capped at the latest data date");
 checkRange("custom range 4 (future dates, capped)", dataMax, dataMax);
@@ -319,13 +327,14 @@ for (const [page, cfg] of Object.entries(SECTIONS)) {
 // Key real numbers (default filter state), loaded via fetch("data.json")
 window.showPage("team");
 { const t = cardMap("team-kpiGrid"); console.log("   team:", JSON.stringify(t));
-  assert(t["Partners Visited"] === "284" && t["Planning Visits"] === "62", "Team KPIs: 284 Partners Visited, 62 Planning Visits"); }
+  assert(t["Partners Visited"] === EXP_YTD.pw && t["Planning Visits"] === EXP_YTD.pv, `Team KPIs: ${EXP_YTD.pw} Partners Visited, ${EXP_YTD.pv} Planning Visits (from data.json)`); }
 // Oct 19, 2026: Team KPIs card order = Overview order; removed card gone; chart rows.
 { const labs = cardVals("team-kpiGrid").map((x) => x[0]);
   assert(labs.join("|") === "Planning Visits|Clients Serviced During Planning Visits|Partners Visited|Convention Groups Serviced|In House Groups Serviced" && labs.length === 5, `Team KPIs: exactly 5 cards in Overview order (${labs.join(" | ")})`);
   const tg = doc.getElementById("team-kpiGrid");
-  assert(tg.querySelectorAll(".def-hint").length === 1 && tg.querySelectorAll(".kpi-card")[2].querySelector(".def-hint"), "Team KPIs: Partners Visited keeps its ? definition");
-  const t = cardMap("team-kpiGrid"); assert(t["Clients Serviced During Planning Visits"] === "478", `Team KPIs: Clients Serviced During Planning Visits 2026 = 478 (${t["Clients Serviced During Planning Visits"]})`);
+  assert(tg.querySelectorAll(".def-hint, .def-btn, button").length === 0, "Team KPIs: Partners Visited card has no ? definition button (removed Oct 19, 2026)");
+  assert([...tg.querySelectorAll(".kpi-card")][2].querySelector(".label").textContent.trim() === "Partners Visited*", "Team KPIs: Partners Visited card keeps its label with the asterisk");
+  const t = cardMap("team-kpiGrid"); assert(t["Clients Serviced During Planning Visits"] === EXP_YTD.cs, `Team KPIs: Clients Serviced During Planning Visits ${curYear} = ${EXP_YTD.cs} (${t["Clients Serviced During Planning Visits"]})`);
   // Oct 19, 2026 (later): the name now belongs to the Planning Visits clients-serviced metric (2nd card);
   // the old repeatingClients-based card stays removed, so there is exactly one such card.
   assert([...tg.querySelectorAll(".kpi-card .label")].filter((l) => l.textContent.includes("Clients Serviced During Planning Visits")).length === 1, "Team KPIs: exactly one 'Clients Serviced During Planning Visits' card");
@@ -354,7 +363,16 @@ window.showPage("team");
   assert(![...doc.querySelectorAll("select option")].some((o) => /2022/.test(o.value + o.textContent)) && !/2022/.test(fromEl.min + fromEl.max + toEl.min + toEl.max), "no 2022 option or date bound anywhere"); }
 window.showPage("referrals");
 { const r = cardMap("ref-kpiGrid"); console.log("   referrals:", JSON.stringify(r));
-  assert(r["Partner Referrals"] === "103", "Partner Referrals: 103 referrals (2026)"); }
+  const refYears = [...new Set(data.partnerReferrals.raw.map((x) => x.year))].sort();
+  const ry = String(refYears[refYears.length - 1]), expRef = fmtInt(data.partnerReferrals.raw.filter((x) => String(x.year) === ry).length);
+  assert(r["Partner Referrals"] === expRef, `Partner Referrals: ${expRef} referrals (${ry}, from data.json)`);
+  const hint = doc.querySelector("#ref-kpiGrid .def-hint");
+  assert(hint && /non-physical referral/.test(hint.dataset.def), "Partner Referrals keeps its ? definition hint (shared popover code still used)");
+  hint.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  const pop = doc.querySelector(".def-popover");
+  assert(pop && pop.classList.contains("open") && /non-physical referral/.test(pop.textContent), "Partner Referrals ? opens its definition popover");
+  doc.body.dispatchEvent(new window.MouseEvent("click", { bubbles: true }));
+  assert(!pop.classList.contains("open"), "clicking elsewhere closes the Partner Referrals popover"); }
 window.showPage("survey");
 { const sv = cardVals("sur-kpiGrid"); console.log("   survey:", JSON.stringify(sv.map((x) => x.slice(0, 2))));
   assert(sv.length > 0 && /Team Experience/.test(doc.getElementById("sur-kpiGrid").textContent), "Client Survey keeps its team experience rating card"); }

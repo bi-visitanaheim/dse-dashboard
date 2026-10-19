@@ -17,7 +17,10 @@
    moved-to-trade-shows/). Reads data.json (built by build_data.py) at
    runtime via fetch("data.json") -- the monthly refresh (rerun
    build_data.py, re-upload data.json) needs no code changes here.
-   The pre-restyle tabbed version is kept in legacy-tabs/ for rollback. */
+   The pre-restyle tabbed version is kept in legacy-tabs/ for rollback.
+   Oct 19, 2026: the "?" definition button was removed from the Partners
+   Visited card (Overview tile and Team KPIs card); its definition stays on
+   the Sources & Methodology tab. Partner Referrals keeps its "?" hint. */
 
 /* =====================================================================
    OVERVIEW PAGE (Oct 14, 2026)
@@ -131,26 +134,16 @@ const OV = (function () {
   const OV_DRILL = { page: "team", title: "Team KPIs" };
   function computeOverview(from, to) {
     const pvW = windowRows(OVD.pv, "date", "pv", from, to, true);
-    function card(label, short, calc, def) {
-      return { label, short, def, w: pvW, cur: pvW.empty ? null : calc(pvW.cur), pri: pvW.empty ? null : calc(pvW.pri), fmtFn: v => ovFmt(v) };
+    function card(label, short, calc) {
+      return { label, short, w: pvW, cur: pvW.empty ? null : calc(pvW.cur), pri: pvW.empty ? null : calc(pvW.pri), fmtFn: v => ovFmt(v) };
     }
     return [
       card("Planning Visits", "Planning Visits", rs => ovSum(rs, r => r.pv)),
       card("Clients Serviced During Planning Visits", "Clients Serviced During Planning Visits", rs => ovSum(rs, r => r.cs)),
-      card("Partners Visited", "Partners Visited", rs => ovSum(rs, r => r.pw), "A partner property visited in person during a planning visit."),
+      card("Partners Visited", "Partners Visited", rs => ovSum(rs, r => r.pw)),
       card("Convention Groups Serviced", "Convention Groups Serviced", rs => ovSum(rs, r => r.cg)),
       card("In-House Groups Serviced", "In-House Groups Serviced", rs => ovSum(rs, r => r.ih))
     ];
-  }
-
-  function toggleDef(id) {
-    document.querySelectorAll(".def-pop").forEach(el => { if (el.id !== id) el.classList.remove("open"); });
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle("open");
-    document.querySelectorAll(".def-btn[aria-controls]").forEach(b => {
-      const pop = document.getElementById(b.getAttribute("aria-controls"));
-      b.setAttribute("aria-expanded", pop && pop.classList.contains("open") ? "true" : "false");
-    });
   }
 
   function readRange() {
@@ -197,17 +190,13 @@ const OV = (function () {
         : pst !== "ok"
         ? `<div class="delta flat">${noPriorText(pst)}</div>`
         : `<div class="delta ${dd !== null && Math.abs(dd) < 0.005 ? "flat" : ovDeltaClass(dd)}">${dd === null || Math.abs(dd) < 0.005 ? "" : ovDeltaArrow(dd)}${plainDelta(dd)}</div>`;
-      const defBtn = c.def ? `<button type="button" class="def-btn kpi-def" aria-label="What does ${c.short} mean?" aria-controls="def-${i}" aria-expanded="false" onclick="event.stopPropagation();toggleDef('def-${i}')">?</button>` : "";
-      const pop = c.def ? `<div class="def-pop" id="def-${i}" role="note">${c.def}</div>` : "";
-      return `<div class="kpi-wrap${c.def ? " has-def" : ""}">
+      return `<div class="kpi-wrap">
       <div class="kpi-card drill ov-tile" role="button" tabindex="0" data-goto="${OV_DRILL.page}" data-metric="${c.short}">
         <div class="tile-top"><div class="label">${c.label}</div><span class="drill-arrow" aria-hidden="true">&rarr;</span></div>
         <div class="value">${c.fmtFn(c.cur)}</div>
         ${delta}
         <span class="sr-only">Open the ${OV_DRILL.title} page for ${c.short} details.</span>
       </div>
-      ${defBtn}
-      ${pop}
     </div>`;
     }).join("");
     document.getElementById("ov-kpiGrid").innerHTML = html;
@@ -238,7 +227,6 @@ const OV = (function () {
   function bindDrill() {
     const go = el => { if (el && el.dataset.goto) showPage(el.dataset.goto); };
     document.getElementById("ov-kpiGrid").addEventListener("click", e => {
-      if (e.target.closest(".def-btn") || e.target.closest(".def-pop")) return;
       go(e.target.closest("[data-goto]"));
     });
     document.getElementById("ov-kpiGrid").addEventListener("keydown", e => {
@@ -262,20 +250,13 @@ const OV = (function () {
     document.getElementById("ovReset").addEventListener("click", () => {
       fEl.value = DEFAULT_RANGE.from; tEl.value = DEFAULT_RANGE.to; render();
     });
-    document.addEventListener("click", e => {
-      if (!e.target.closest(".def-btn") && !e.target.closest(".def-pop")) {
-        document.querySelectorAll(".def-pop").forEach(el => el.classList.remove("open"));
-        document.querySelectorAll(".def-btn[aria-expanded]").forEach(b => b.setAttribute("aria-expanded", "false"));
-      }
-    });
     bindDrill();
     { const more = document.getElementById("ovSeeSources"); if (more) more.addEventListener("click", () => showPage("sources")); }
     render();
   }
 
-  return { init, render, toggleDef, computeOverview, getDefaultRange: () => DEFAULT_RANGE, getBounds: () => BOUNDS };
+  return { init, render, computeOverview, getDefaultRange: () => DEFAULT_RANGE, getBounds: () => BOUNDS };
 })();
-window.toggleDef = OV.toggleDef;
 
 // ---- Tab navigation (Social Media Dashboard layout, Oct 14, 2026) ----
 // One sticky horizontal tab bar; each tab shows one .page. The active tab
@@ -611,7 +592,7 @@ function renderTeam(year) {
   document.getElementById("team-kpiGrid").innerHTML = [
     kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits)), ytdDeltaText(dPlanningV, fmt), deltaClass(dPlanningV.d), teamRange),
     kpiCard("Clients Serviced During Planning Visits", fmt(sum(rows, r => r.clientsServiced)), ytdDeltaText(dClientsV, fmt), deltaClass(dClientsV.d), teamRange),
-    kpiCard("Partners Visited* <button type=\"button\" class=\"def-hint\" data-def=\"A partner property visited in person during a planning visit.\">?</button>", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
+    kpiCard("Partners Visited*", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
     kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced)), ytdDeltaText(dConvV, fmt), deltaClass(dConvV.d), teamRange),
     kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), ytdDeltaText(dInHouseV, fmt), deltaClass(dInHouseV.d), teamRange)
   ].join("");
@@ -1281,9 +1262,10 @@ function initFeedbackModal() {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFeedbackModal(); });
 }
 
-// Definition hints ("?" badges on the Partners Visited/Partner Referrals
-// cards, Overview + Team KPIs + Partner
-// Referrals tabs). Each badge is a real <button> carrying its definition in
+// Definition hints ("?" badge on the Partner Referrals card, Partner
+// Referrals tab; Oct 19, 2026: the Partners Visited "?" buttons on the
+// Overview tile and Team KPIs card were removed -- that definition lives
+// on the Sources & Methodology tab). Each badge is a real <button> carrying its definition in
 // data-def -- clicking it opens a small popover with that text. This is a
 // single delegated listener (works across every tab's KPI grid regardless of
 // how often those grids get re-rendered by filters) registered in the

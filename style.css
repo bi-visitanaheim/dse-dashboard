@@ -123,14 +123,11 @@ p.desc{font-size:15px;line-height:22px;color:var(--ink);}
 .kpi-card.drill:focus-visible{border-radius:var(--radius-lg);}
 .kpi-card .drill-arrow{font-size:18px;line-height:1;letter-spacing:0;transition:transform var(--ease);}
 .kpi-card.drill:hover .drill-arrow,.kpi-card.drill:focus-visible .drill-arrow{transform:translateX(3px);}
-.kpi-wrap.has-def .label{padding-right:30px;}
-.kpi-wrap .kpi-def{position:absolute;top:44px;right:var(--space-4);z-index:2;}
-.def-btn,.def-hint{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--accent-text);color:var(--accent-text);background:var(--surface-card);font-size:12px;line-height:1;font-weight:700;font-style:italic;cursor:pointer;padding:0;display:inline-grid;place-items:center;flex:none;}
-.def-btn:hover,.def-hint:hover,.def-btn[aria-expanded="true"]{background:var(--accent-text);color:var(--on-dark);}
-.def-pop,.def-popover{display:none;background:var(--surface-card);color:var(--ink);border-top:3px solid var(--rule);font-size:14px;line-height:20px;padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);}
-.def-pop{position:absolute;top:72px;left:var(--space-3);right:var(--space-3);z-index:5;}
+.def-hint{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--accent-text);color:var(--accent-text);background:var(--surface-card);font-size:12px;line-height:1;font-weight:700;font-style:italic;cursor:pointer;padding:0;display:inline-grid;place-items:center;flex:none;}
+.def-hint:hover{background:var(--accent-text);color:var(--on-dark);}
+.def-popover{display:none;background:var(--surface-card);color:var(--ink);border-top:3px solid var(--rule);font-size:14px;line-height:20px;padding:var(--space-3) var(--space-4);border-radius:var(--radius-md);box-shadow:var(--shadow-lg);}
 .def-popover{position:absolute;z-index:50;max-width:280px;}
-.def-pop.open,.def-popover.open{display:block;}
+.def-popover.open{display:block;}
 
 /* ---- Cards ---- */
 .box{background:var(--surface-card);border-top:3px solid var(--rule);border-radius:var(--radius-lg);box-shadow:var(--shadow-sm);padding:var(--space-5);min-width:0;}
@@ -173,9 +170,6 @@ p.auto-analysis strong{color:var(--heading);}
 .kpi-card .label{overflow-wrap:break-word;}
 .ov-tile .value{font-size:clamp(40px,22cqi,60px);line-height:1;}
 .ov-tile .delta{font-size:14px;line-height:20px;}
-.ov-grid .kpi-wrap.has-def .label{padding-right:28px;}
-.ov-grid .kpi-wrap .kpi-def{top:var(--space-5);right:48px;}
-.ov-grid .def-pop{top:64px;}
 .ov-ins{max-width:880px;}
 .ov-ins .ins-l li{font-size:17px;line-height:26px;}
 .ov-more{margin-top:calc(-1 * var(--space-3));}
@@ -276,13 +270,11 @@ table.mini tfoot td{border-top:2px solid var(--table-rule);border-bottom:none;fo
   .date-range.light input{width:100%;min-width:0;min-height:44px;font-size:16px;}
   .date-range.light .btn{grid-column:1 / -1;min-height:44px;font-size:15px;}
   .ov-tile .value{font-size:40px;}
-  .ov-grid .kpi-wrap .kpi-def{top:var(--space-4);right:44px;}
   .linkbtn{min-height:44px;}
   .strip,.ov-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-4);}
   .ov-grid > .kpi-wrap:nth-child(5){grid-column:1 / -1;}
   .kpi-card,.box,.ins{padding:var(--space-4);}
   .kpi-card .value{font-size:32px;}
-  .kpi-wrap .kpi-def{top:36px;right:var(--space-3);}
   .chart-box{height:260px;}
   .chart-box.tall{height:340px;}
   .table-scroll{max-height:60vh;border:1px solid var(--border-subtle);border-radius:var(--radius-sm);}
@@ -297,14 +289,14 @@ table.mini tfoot td{border-top:2px solid var(--table-rule);border-bottom:none;fo
   .strip,.ov-grid{grid-template-columns:minmax(0,1fr);}
   .ov-grid > .kpi-wrap:nth-child(5){grid-column:auto;}
 }
-@media (pointer:coarse){ .def-btn,.def-hint{width:28px;height:28px;font-size:13px;} }
+@media (pointer:coarse){ .def-hint{width:28px;height:28px;font-size:13px;} }
 @media (prefers-reduced-motion:reduce){ *,*::before,*::after{transition:none !important;animation:none !important;} .btn:hover,.kpi-card.drill:hover{transform:none;} }
 
 /* ---- Print / Export PDF: active tab only, landscape letter ---- */
 @page{size:letter landscape;margin:.45in;}
 @media print{
   body{background:var(--WHITE);}
-  .skip,.hdr-ctl,.tabs,.def-btn,.modal-overlay,.date-range .btn,.ov-more{display:none !important;}
+  .skip,.hdr-ctl,.tabs,.modal-overlay,.date-range .btn,.ov-more{display:none !important;}
   .wrap{max-width:none;padding-inline:0;}
   .hdr .wrap{padding-block:0 var(--space-3);}
   main{padding-block:var(--space-4);}
