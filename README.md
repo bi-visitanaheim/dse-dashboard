@@ -4,6 +4,21 @@
 **Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan. Oct 19, 2026 changes (including the afternoon Partners Visited button removal, definition rewording and data refresh): publish authorized by Samantha Lujan 2026-10-19.
 **Data source (since Oct 16, 2026):** `Master.xlsx` in SharePoint -- site *Business Intelligence-Apps* (https://visitanaheimorg.sharepoint.com/sites/BusinessIntelligence-Apps), library *Shared Documents*, folder `DS&E/Destination Services and Events Dashboard KPIs/Master.xlsx`.
 
+## Oct 19, 2026: "Refresh data" button published, INERT until credentials are configured
+
+**Approval:** John Picou, channel not stated, 2026-10-19, as reported by Samantha Lujan; publish authorized by Samantha Lujan 2026-10-19; no passcode by user decision (see "Decision for John" in [`SETUP-REFRESH.md`](SETUP-REFRESH.md)).
+
+The code for a one-click **Refresh** button (next to Export PDF) is now in the repo, but it does nothing yet. The Microsoft Entra app registration, the GitHub secrets and the Vercel environment variables do **not** exist yet (John Picou / Israel Esparza will create them). Until they do:
+
+- The dashboard looks and works exactly as before: the button and its status line are **hidden**.
+- `GET /api/status` returns `200 {"configured":false,"enabled":false,"status":"not_configured",...}`; `POST /api/refresh` returns `503 {"configured":false,"status":"not_configured",...}`. Neither calls GitHub; no secrets are returned.
+- The workflow `.github/workflows/refresh-data.yml` has **no daily schedule** (the `cron` line is commented out). A manual run stops at its first step ("Refresh is not set up yet") and never contacts SharePoint or commits anything.
+- The Cowork artifact build (`build_artifact.py`) strips the button and `refresh.js` entirely.
+
+**To enable it:** follow [`SETUP-REFRESH.md`](SETUP-REFRESH.md) sections (a) Entra app (read-only, `Sites.Selected`), (b) GitHub secrets/variables, (c) Vercel env vars `GITHUB_TOKEN`, `GITHUB_REPO`, `GITHUB_WORKFLOW_FILE`, `GITHUB_REF` + redeploy, (e) first test run, and (f) to turn on the daily schedule. Section (d) recommends protecting the site; (g) is rollback.
+
+New files: `refresh.js`, `api/status.js`, `api/refresh.js` (Vercel Node functions, CommonJS, no dependencies, no `package.json`), `scripts/fetch_master.py`, `scripts/check_data.py`, `.github/workflows/refresh-data.yml`, `SETUP-REFRESH.md`. Changed: `index.html` (hidden button markup + `refresh.js` tag), `app.js` (`window.DSE_reloadData` in-place reload hook), `style.css` (`.refresh-*` styles), `build_artifact.py` (strips the button from the artifact). `vercel.json` unchanged. Local-only tests (not uploaded): `test/refresh-ui.test.mjs`, `test/refresh-api.test.mjs`, `test/test_refresh_scripts.py`. Pre-publish copies of the changed files: Cowork outputs `backup-pre-refresh-publish/`.
+
 ## How to refresh the dashboard from Master.xlsx (monthly)
 
 The website does **not** read SharePoint directly -- a public static site cannot sign in to Microsoft 365. "Connected" means: `Master.xlsx` -> `build_data.py` -> `data.json` -> GitHub -> Vercel. Do this after Master.xlsx is updated (Planning Visits is updated on the 15th):
