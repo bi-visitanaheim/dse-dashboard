@@ -1,0 +1,130 @@
+# Refresh data.json from SharePoint Master.xlsx
+# Published Oct 19, 2026 (approved by John Picou). INERT until credentials exist. See SETUP-REFRESH.md.
+# Until the secrets below are added, a manual run stops at the first step with a clear error
+# and never contacts SharePoint or commits anything.
+#
+# Started by the dashboard's "Refresh" button (via api/refresh.js -> workflow_dispatch),
+# or by hand (Actions tab -> "Refresh data" -> Run workflow). The daily schedule is off for now.
+# It only ever reads Master.xlsx (read-only Microsoft Graph app) and only commits
+# data.json, and only when the data actually changed and passed the sanity check.
+#
+# Repository secrets (Settings -> Secrets and variables -> Actions -> Secrets):
+#   MS_TENANT_ID, MS_CLIENT_ID, and EITHER MS_CLIENT_SECRET
+#   OR (preferred) MS_CLIENT_CERT_PEM + MS_CLIENT_CERT_THUMBPRINT
+# Repository variables (same page -> Variables; not secret):
+#   SP_HOSTNAME   visitanaheimorg.sharepoint.com
+#   SP_SITE_PATH  /sites/BusinessIntelligence-Apps
+#   SP_FILE_PATH  DS&E/Destination Services and Events Dashboard KPIs/Master.xlsx
+#   SP_ITEM_ID    {5190F585-22F9-43F3-8539-0303AD6DA8CB}
+#   REFRESH_SCHEDULE_ENABLED  set to "false" to pause the daily run without editing this file
+
+name: Refresh data
+
+on:
+  workflow_dispatch:
+    inputs:
+      trigger:
+        description: "Who started the run (dashboard-button or manual)"
+        required: false
+        default: manual
+        type: string
+  # Daily schedule is OFF (Oct 19, 2026): the feature is published but inert until the
+  # Microsoft app registration and secrets exist. To turn the daily 14:00 UTC run on
+  # (7:00 AM PDT / 6:00 AM PST) after setup, un-comment the next two lines (SETUP-REFRESH.md, section f).
+  # schedule:
+  #   - cron: "0 14 * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: >-
+      github.repository == 'bi-visitanaheim/dse-dashboard' &&
+      (github.event_name != 'schedule' || vars.REFRESH_SCHEDULE_ENABLED != 'false')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check credentials are configured (fails fast, nothing else runs)
+        env:
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_CLIENT_CERT_PEM: ${{ secrets.MS_CLIENT_CERT_PEM }}
+          MS_CLIENT_CERT_THUMBPRINT: ${{ secrets.MS_CLIENT_CERT_THUMBPRINT }}
+        run: |
+          if [ -z "$MS_TENANT_ID" ] || [ -z "$MS_CLIENT_ID" ] || { [ -z "$MS_CLIENT_SECRET" ] && { [ -z "$MS_CLIENT_CERT_PEM" ] || [ -z "$MS_CLIENT_CERT_THUMBPRINT" ]; }; }; then
+            msg="Refresh is not set up yet: add MS_TENANT_ID, MS_CLIENT_ID and MS_CLIENT_SECRET (or MS_CLIENT_CERT_PEM + MS_CLIENT_CERT_THUMBPRINT) as repository secrets. See SETUP-REFRESH.md. Nothing was downloaded or committed."
+            echo "::error title=Refresh not configured::$msg"
+            echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "Credentials present."
+
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python packages (pinned)
+        run: python -m pip install --disable-pip-version-check "openpyxl==3.1.5" "requests==2.32.3" "msal==1.31.0"
+
+      - name: Download Master.xlsx from SharePoint (read-only)
+        env:
+          MS_TENANT_ID: ${{ secrets.MS_TENANT_ID }}
+          MS_CLIENT_ID: ${{ secrets.MS_CLIENT_ID }}
+          MS_CLIENT_SECRET: ${{ secrets.MS_CLIENT_SECRET }}
+          MS_CLIENT_CERT_PEM: ${{ secrets.MS_CLIENT_CERT_PEM }}
+          MS_CLIENT_CERT_THUMBPRINT: ${{ secrets.MS_CLIENT_CERT_THUMBPRINT }}
+          SP_HOSTNAME: ${{ vars.SP_HOSTNAME || 'visitanaheimorg.sharepoint.com' }}
+          SP_SITE_PATH: ${{ vars.SP_SITE_PATH || '/sites/BusinessIntelligence-Apps' }}
+          SP_FILE_PATH: ${{ vars.SP_FILE_PATH || 'DS&E/Destination Services and Events Dashboard KPIs/Master.xlsx' }}
+          SP_ITEM_ID: ${{ vars.SP_ITEM_ID || '{5190F585-22F9-43F3-8539-0303AD6DA8CB}' }}
+        run: python scripts/fetch_master.py --out "$RUNNER_TEMP/Master.xlsx"
+
+      - name: Keep a copy of the current data.json
+        run: cp data.json "$RUNNER_TEMP/previous-data.json"
+
+      - name: Build data.json (build_data.py)
+        run: python build_data.py "$RUNNER_TEMP/Master.xlsx"
+
+      - name: Sanity check (fails loudly, nothing is committed)
+        id: check
+        run: >-
+          python scripts/check_data.py data.json
+          --previous "$RUNNER_TEMP/previous-data.json"
+          --workbook "$RUNNER_TEMP/Master.xlsx"
+
+      - name: Optional dashboard smoke test (only if test/verify.mjs is in the repo)
+        if: hashFiles('test/verify.mjs') != ''
+        run: |
+          npm install --no-save --no-audit --no-fund jsdom@24.1.3
+          node test/verify.mjs
+
+      - name: Commit data.json if it changed
+        if: steps.check.outputs.changed == 'true'
+        env:
+          TRIGGER: ${{ github.event.inputs.trigger || github.event_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "Refresh data.json from SharePoint Master.xlsx (automated, ${TRIGGER})" \
+                     -m "Built by the Refresh data workflow, run ${GITHUB_RUN_ID}. Only data.json changed."
+          git push origin HEAD:main
+
+      - name: Nothing new
+        if: steps.check.outputs.changed != 'true'
+        run: |
+          git checkout -- data.json
+          echo "No data changes in Master.xlsx -- nothing committed." >> "$GITHUB_STEP_SUMMARY"
