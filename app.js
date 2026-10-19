@@ -255,7 +255,22 @@ const OV = (function () {
     render();
   }
 
-  return { init, render, computeOverview, getDefaultRange: () => DEFAULT_RANGE, getBounds: () => BOUNDS };
+  // Refresh-data feature (published Oct 19, 2026; inert until configured): swap in a newer
+  // data.json without re-binding any listeners. Resets the date pickers to the
+  // new default range (latest populated month) and re-renders the Overview.
+  function reload(DATA) {
+    OVD = buildOverviewData(DATA);
+    DEFAULT_RANGE = computeDefaultRange(OVD, DATA.generatedAt);
+    BOUNDS = dataBounds(OVD);
+    document.getElementById("refreshedAt").textContent = DATA.generatedAt || "";
+    const fEl = document.getElementById("ovFrom"), tEl = document.getElementById("ovTo");
+    if (BOUNDS) [fEl, tEl].forEach(el => { el.min = BOUNDS.min; el.max = BOUNDS.max; });
+    if (BOUNDS && DEFAULT_RANGE.from < BOUNDS.min) DEFAULT_RANGE.from = BOUNDS.min;
+    fEl.value = DEFAULT_RANGE.from; tEl.value = DEFAULT_RANGE.to;
+    render();
+  }
+
+  return { init, reload, render, computeOverview, getDefaultRange: () => DEFAULT_RANGE, getBounds: () => BOUNDS };
 })();
 
 // ---- Tab navigation (Social Media Dashboard layout, Oct 14, 2026) ----
@@ -1494,6 +1509,15 @@ window.onSectionShow = function (id) {
       initTeam();
       initReferrals();
       initSurvey();
+    },
+    // Refresh-data feature: new DATA, re-populate the Year/filter lists and
+    // re-render every section. Only .onchange handlers are (re)assigned here,
+    // so nothing is double-bound; the modal / definition hints keep theirs.
+    reload(data) {
+      DATA = data;
+      initTeam();
+      initReferrals();
+      initSurvey();
     }
   };
 })();
@@ -1516,4 +1540,14 @@ async function boot() {
   Sections.start(data);
   OV.init(data);
 }
+// Refresh-data feature (Oct 19, 2026): refresh.js calls this after a newer data.json
+// is deployed, so the page updates in place (no full reload). Keeps the
+// current tab; resets filters to their defaults for the new data.
+window.DSE_reloadData = function (data) {
+  if (!data || !Array.isArray(data.planningVisits)) throw new Error("reload: data.json shape not recognised");
+  Sections.reload(data);
+  OV.reload(data);
+  const cur = document.querySelector(".tab[data-page].active");
+  if (cur && window.onSectionShow) window.onSectionShow(cur.dataset.page);
+};
 boot();

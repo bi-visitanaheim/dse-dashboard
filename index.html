@@ -20,6 +20,10 @@
       </div>
     </div>
     <div class="hdr-ctl" aria-label="Page controls">
+      <!-- refresh:start (Refresh data button; hidden until /api/status answers; removed from the Cowork artifact build) -->
+      <p class="refresh-status" id="refreshStatus" role="status" aria-live="polite" hidden></p>
+      <button type="button" class="btn refresh-btn" id="refreshData" aria-label="Refresh data" aria-describedby="refreshStatus" hidden><span class="spin" aria-hidden="true"></span>Refresh</button>
+      <!-- refresh:end -->
       <button type="button" class="btn primary" id="exportPdf">Export PDF</button>
     </div>
   </div></header>
@@ -282,5 +286,6 @@
 </div>
 
 <script src="app.js"></script>
+<script src="refresh.js"></script>
 </body>
 </html>
