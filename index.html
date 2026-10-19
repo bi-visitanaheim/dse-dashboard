@@ -70,7 +70,9 @@
         <label>Year <select id="team-year"></select></label>
       </div>
       <div class="kpi-grid strip" id="team-kpiGrid"></div>
-      <div class="grid2">
+      <!-- Oct 19, 2026 layout: row 1 = Partners Visited & Planning Visits | Clients Serviced During Planning Visits;
+           row 2 = Groups Serviced | Year over Year KPIs. Two columns on desktop, one on phones (same reading order). -->
+      <div class="grid2 eq" id="team-row1">
         <div class="box">
           <h3>Partners Visited* &amp; Planning Visits <span class="tag">Monthly</span></h3>
           <div class="chart-box"><canvas id="team-chart1"></canvas></div>
@@ -78,24 +80,24 @@
           <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
         <div class="box">
+          <h3>Clients Serviced During Planning Visits <span class="tag">Monthly</span></h3>
+          <div class="chart-box"><canvas id="team-chart3"></canvas></div>
+          <p class="auto-analysis" id="team-analysis3"></p>
+          <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
+        </div>
+      </div>
+      <div class="grid2 eq" id="team-row2">
+        <div class="box">
           <h3>Groups Serviced <span class="tag">Monthly</span></h3>
           <div class="chart-box"><canvas id="team-chart2"></canvas></div>
           <p class="auto-analysis" id="team-analysis2"></p>
           <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
-      </div>
-      <div class="grid2">
         <div class="box">
           <h3>Year over Year KPIs</h3>
           <div class="table-scroll" tabindex="0" role="region" aria-label="Year over Year KPIs"><table class="mini" id="team-yoyTable"><thead><tr><th>Metric</th><th>Prior Year</th><th>Selected/Latest Year</th><th>YoY % Change</th></tr></thead><tbody></tbody></table></div>
           <p class="auto-analysis" id="team-yoy-analysis"></p>
           <p class="src">Source: Granicus and Internal Tracking (Planning Visits). Year-to-date window, same cutoff month both years.</p>
-        </div>
-        <div class="box">
-          <h3>Clients Serviced <span class="tag">Monthly</span></h3>
-          <div class="chart-box"><canvas id="team-chart3"></canvas></div>
-          <p class="auto-analysis" id="team-analysis3"></p>
-          <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
       </div>
       <div class="box notes">
@@ -103,7 +105,6 @@
         <dl class="defs">
           <div><dt>Partners Visited</dt><dd>A partner property visited in person during a planning visit.</dd></div>
           <div><dt>Partner Referrals</dt><dd>A non-physical referral, such as email, phone, or shared contact info (see the Partner Referrals tab).</dd></div>
-          <div><dt>Clients Serviced During Planning Visits</dt><dd>Counts the clients who attend each planning visit.</dd></div>
         </dl>
         <p class="footnote">*Partners Visited and In House Groups Serviced only began being tracked in 2026, so no prior-year comparison is available for them yet.</p>
       </div>
@@ -235,11 +236,11 @@
       <div class="box" id="src-definitions">
         <h3>Definitions</h3>
         <dl class="defs">
-          <div><dt># of Planning Visits</dt><dd>The number of planning visits for the months you picked.</dd></div>
-          <div><dt># of Clients Serviced</dt><dd>The number of clients the team served in those months. (Team KPIs also shows &ldquo;Clients Serviced During Planning Visits,&rdquo; which only counts clients who came to a planning visit.)</dd></div>
-          <div><dt># of Partners Visited</dt><dd>A partner property visited in person during a planning visit. Counted since 2026, so there is no earlier year to compare with yet.</dd></div>
-          <div><dt># of Convention Groups Serviced</dt><dd>The number of convention groups the team served.</dd></div>
-          <div><dt># of In-House Groups Serviced</dt><dd>The number of in-house groups the team served. Counted since 2026, so there is no earlier year to compare with yet.</dd></div>
+          <div><dt>Planning Visits</dt><dd>The number of planning visits for the months you picked.</dd></div>
+          <div><dt>Clients Serviced During Planning Visits</dt><dd>The number of clients the team served during planning visits in those months.</dd></div>
+          <div><dt>Partners Visited</dt><dd>A partner property visited in person during a planning visit. Counted since 2026, so there is no earlier year to compare with yet.</dd></div>
+          <div><dt>Convention Groups Serviced</dt><dd>The number of convention groups the team served.</dd></div>
+          <div><dt>In-House Groups Serviced</dt><dd>The number of in-house groups the team served. Counted since 2026, so there is no earlier year to compare with yet.</dd></div>
           <div><dt>Partner Referrals</dt><dd>A referral that is not in person, such as an email, a phone call, or shared contact info. (Partners Visited is the in-person version.)</dd></div>
         </dl>
       </div>

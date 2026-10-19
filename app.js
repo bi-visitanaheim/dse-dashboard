@@ -22,9 +22,10 @@
 /* =====================================================================
    OVERVIEW PAGE (Oct 14, 2026)
    ---------------------------------------------------------------------
-   Five KPI cards, in this order: # of Planning Visits, # of Clients
-   Serviced, # of Partners Visited, # of Convention Groups Serviced,
-   # of In-House Groups Serviced. All five come from the monthly Planning
+   Five KPI cards, in this order: Planning Visits, Clients Serviced During
+   Planning Visits, Partners Visited, Convention Groups Serviced,
+   In-House Groups Serviced (Oct 19, 2026: the leading count prefix was
+   dropped from every card label and the second card was renamed). All five come from the monthly Planning
    Visits sheet and are driven by the From/To date-range picker:
      - current period = every month the picked From..To range touches
      - prior period   = the same months one year earlier
@@ -105,6 +106,19 @@ const OV = (function () {
     };
   }
 
+  // Oct 19, 2026: the From/To pickers are bounded by the real data -- min =
+  // first day of the earliest Planning Visits month with any metric filled
+  // in, max = last day of the latest such month (placeholder rows with all
+  // metrics blank are ignored). Without min/max the browser's native date
+  // picker offered any year (e.g. 2022) even though the data starts in 2025.
+  const OV_FIELDS = ["pv", "cs", "pw", "cg", "ih"];
+  function dataBounds(D) {
+    const ds = D.pv.filter(r => isValidIso(r.date) && OV_FIELDS.some(f => r[f] !== null && r[f] !== undefined)).map(r => r.date).sort();
+    if (!ds.length) return null;
+    return { min: ds[0].slice(0, 7) + "-01", max: monthEndIso(ds[ds.length - 1]) };
+  }
+  let BOUNDS = null;
+
   function computeDefaultRange(D, generatedAt) {
     const pvLatest = latestDate(D.pv, "date", "pv");
     const to = pvLatest ? monthEndIso(pvLatest) : (isValidIso(generatedAt) ? generatedAt : new Date().toISOString().slice(0, 10));
@@ -121,11 +135,11 @@ const OV = (function () {
       return { label, short, def, w: pvW, cur: pvW.empty ? null : calc(pvW.cur), pri: pvW.empty ? null : calc(pvW.pri), fmtFn: v => ovFmt(v) };
     }
     return [
-      card("# of Planning Visits", "Planning Visits", rs => ovSum(rs, r => r.pv)),
-      card("# of Clients Serviced", "Clients Serviced", rs => ovSum(rs, r => r.cs)),
-      card("# of Partners Visited", "Partners Visited", rs => ovSum(rs, r => r.pw), "A partner property visited in person during a planning visit."),
-      card("# of Convention Groups Serviced", "Convention Groups Serviced", rs => ovSum(rs, r => r.cg)),
-      card("# of In-House Groups Serviced", "In-House Groups Serviced", rs => ovSum(rs, r => r.ih))
+      card("Planning Visits", "Planning Visits", rs => ovSum(rs, r => r.pv)),
+      card("Clients Serviced During Planning Visits", "Clients Serviced During Planning Visits", rs => ovSum(rs, r => r.cs)),
+      card("Partners Visited", "Partners Visited", rs => ovSum(rs, r => r.pw), "A partner property visited in person during a planning visit."),
+      card("Convention Groups Serviced", "Convention Groups Serviced", rs => ovSum(rs, r => r.cg)),
+      card("In-House Groups Serviced", "In-House Groups Serviced", rs => ovSum(rs, r => r.ih))
     ];
   }
 
@@ -144,6 +158,11 @@ const OV = (function () {
     let from = isValidIso(fEl.value) ? fEl.value : DEFAULT_RANGE.from;
     let to = isValidIso(tEl.value) ? tEl.value : DEFAULT_RANGE.to;
     if (from > to) { const t = from; from = to; to = t; }
+    // Keep typed dates inside the data's earliest..latest dates.
+    if (BOUNDS) {
+      const clamp = v => v < BOUNDS.min ? BOUNDS.min : v > BOUNDS.max ? BOUNDS.max : v;
+      from = clamp(from); to = clamp(to);
+    }
     fEl.value = from; tEl.value = to;
     return { from, to };
   }
@@ -158,13 +177,25 @@ const OV = (function () {
     if (dd <= -0.005) return "Down " + ovPct(Math.abs(dd), 0) + " vs. last year";
     return "About the same as last year";
   }
+  // Oct 19, 2026: when the same dates last year fall (fully or partly)
+  // before the earliest data, say so plainly instead of comparing to zeros.
+  function priorStatus(from, effTo) {
+    if (!BOUNDS || shiftYear(from, -1) >= BOUNDS.min) return "ok";
+    return shiftYear(effTo || from, -1) < BOUNDS.min ? "none" : "partial";
+  }
+  function noPriorText(st) {
+    return st === "none" ? "No data for the same dates last year" : "Last year's numbers start " + longDate(BOUNDS.min) + ", so no full comparison";
+  }
   function render() {
     const { from, to } = readRange();
     const cats = computeOverview(from, to);
+    const pst = priorStatus(from, cats[0].w.effTo);
     const html = cats.map((c, i) => {
-      const dd = c.w.empty ? null : ovPctChange(c.pri, c.cur);
+      const dd = (c.w.empty || pst !== "ok") ? null : ovPctChange(c.pri, c.cur);
       const delta = c.w.empty
         ? `<div class="delta flat">No data in this date range</div>`
+        : pst !== "ok"
+        ? `<div class="delta flat">${noPriorText(pst)}</div>`
         : `<div class="delta ${dd !== null && Math.abs(dd) < 0.005 ? "flat" : ovDeltaClass(dd)}">${dd === null || Math.abs(dd) < 0.005 ? "" : ovDeltaArrow(dd)}${plainDelta(dd)}</div>`;
       const defBtn = c.def ? `<button type="button" class="def-btn kpi-def" aria-label="What does ${c.short} mean?" aria-controls="def-${i}" aria-expanded="false" onclick="event.stopPropagation();toggleDef('def-${i}')">?</button>` : "";
       const pop = c.def ? `<div class="def-pop" id="def-${i}" role="note">${c.def}</div>` : "";
@@ -183,10 +214,11 @@ const OV = (function () {
 
     // Key takeaways: at most three one-sentence bullets, number in bold.
     const tk = cats.filter(c => !c.w.empty).slice(0, 3).map(c => {
-      const dd = ovPctChange(c.pri, c.cur);
+      const dd = pst !== "ok" ? null : ovPctChange(c.pri, c.cur);
       const name = c.short.toLowerCase();
       let cmp;
-      if (dd === null) cmp = ", the first year this is counted.";
+      if (pst !== "ok") cmp = pst === "none" ? ", with no data for the same dates last year to compare." : ", but last year's numbers only cover part of these dates.";
+      else if (dd === null) cmp = ", the first year this is counted.";
       else if (dd >= 0.005) cmp = `, up ${ovPct(Math.abs(dd), 0)} compared with last year.`;
       else if (dd <= -0.005) cmp = `, down ${ovPct(Math.abs(dd), 0)} compared with last year.`;
       else cmp = ", about the same as last year.";
@@ -219,8 +251,11 @@ const OV = (function () {
   function init(DATA) {
     OVD = buildOverviewData(DATA);
     DEFAULT_RANGE = computeDefaultRange(OVD, DATA.generatedAt);
+    BOUNDS = dataBounds(OVD);
     document.getElementById("refreshedAt").textContent = DATA.generatedAt || "";
     const fEl = document.getElementById("ovFrom"), tEl = document.getElementById("ovTo");
+    if (BOUNDS) [fEl, tEl].forEach(el => { el.min = BOUNDS.min; el.max = BOUNDS.max; });
+    if (BOUNDS && DEFAULT_RANGE.from < BOUNDS.min) DEFAULT_RANGE.from = BOUNDS.min;
     fEl.value = DEFAULT_RANGE.from; tEl.value = DEFAULT_RANGE.to;
     fEl.addEventListener("change", render);
     tEl.addEventListener("change", render);
@@ -238,7 +273,7 @@ const OV = (function () {
     render();
   }
 
-  return { init, render, toggleDef, computeOverview, getDefaultRange: () => DEFAULT_RANGE };
+  return { init, render, toggleDef, computeOverview, getDefaultRange: () => DEFAULT_RANGE, getBounds: () => BOUNDS };
 })();
 window.toggleDef = OV.toggleDef;
 
@@ -368,6 +403,12 @@ function rangeLabelFiltered(rows, dateField, checkFields) {
   return rangeLabel(valid, dateField);
 }
 function getYears(arr) { return [...new Set(arr.map(r => r.year).filter(Boolean))].sort(); }
+// Oct 19, 2026: Year dropdowns list only years that actually have data --
+// a row counts only if at least one of `checkFields` has a real value
+// (placeholder rows with every metric blank are ignored).
+function hasVal(v) { return v !== null && v !== undefined && v !== ""; }
+function yearsWithData(arr, checkFields) { return getYears(arr.filter(r => checkFields.some(f => hasVal(r[f])))); }
+const PV_FIELDS = ["planningVisits", "clientsServiced", "partnersVisited", "conventionGroupsServiced", "inHouseGroupsServiced"];
 // "Select All" is the display label for every filter's all-inclusive option
 // dashboard-wide (value stays "All" so existing filter logic/tests don't need
 // to change, only the visible text).
@@ -534,7 +575,7 @@ function ytdRows(rows, dateField, year, cutoff) {
 // =====================================================================
 function initTeam() {
   const sel = document.getElementById("team-year");
-  const years = getYears(DATA.planningVisits);
+  const years = yearsWithData(DATA.planningVisits, PV_FIELDS);
   populateYearSelect(sel, years, () => renderTeam(sel.value));
   // Defaults to 2026 (falls back to "All" if 2026 isn't in the data yet).
   const defaultYear = years.includes(2026) ? "2026" : "All";
@@ -548,7 +589,7 @@ function renderTeam(year) {
   // Dynamic date-range subtitle (see rangeLabelFiltered) -- reflects the
   // actual earliest-to-latest populated month for the selected Year filter,
   // skipping the placeholder future-month row that has no real data yet.
-  const teamRange = rangeLabelFiltered(rows, "date", ["partnersVisited", "planningVisits", "conventionGroupsServiced", "inHouseGroupsServiced", "clientsServiced"]);
+  const teamRange = rangeLabelFiltered(rows, "date", PV_FIELDS);
 
   // YoY % delta on every card -- same YTD-cutoff methodology as the Overview
   // tab's own cards (see ytdYoyMetric), not a full-year comparison. This
@@ -563,25 +604,16 @@ function renderTeam(year) {
   const dInHouseV = teamYoy(r => r.inHouseGroupsServiced);
   const dClientsV = teamYoy(r => r.clientsServiced);
 
-  // "Clients Serviced During Planning Visits" -- moved here from the former
-  // Repeat ACC Accounts tab (retired Oct 14, 2026) so it sits next to
-  // Planning Visits, since this counts the clients who attend each planning
-  // visit (a distinct metric from "Clients Serviced" below, which is the
-  // planning-visits sheet's own per-visit client count). Pulls from the same
-  // repeatingClients dataset (Granicus, Repeating ACC Clients Services),
-  // filtered by this tab's own Year selector (on startDate).
-  const repRowsForTeam = byYear(DATA.repeatingClients.raw, year);
-  const teamClientsServicedDuringVisits = repRowsForTeam.length;
-  const { prior: repPriorY, latest: repLatestY } = resolveYoyYears(DATA.repeatingClients.raw, year);
-  const dClientsServicedVisits = ytdYoyMetric(DATA.repeatingClients.raw, "startDate", repLatestY, repPriorY, null, rs => rs.length);
-
+  // Oct 19, 2026: card order matches the Overview tiles left to right
+  // (Planning Visits, Clients Serviced During Planning Visits, Partners Visited, Convention Groups,
+  // In-House Groups). The former "planning-visit clients" card (from the
+  // repeatingClients dataset) was removed at the user's request.
   document.getElementById("team-kpiGrid").innerHTML = [
-    kpiCard("Partners Visited* <button type=\"button\" class=\"def-hint\" data-def=\"A partner property visited in person during a planning visit.\">?</button>", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
     kpiCard("Planning Visits", fmt(sum(rows, r => r.planningVisits)), ytdDeltaText(dPlanningV, fmt), deltaClass(dPlanningV.d), teamRange),
-    kpiCard("Clients Serviced During Planning Visits <button type=\"button\" class=\"def-hint\" data-def=\"Counts the clients who attend each planning visit.\">?</button>", fmt(teamClientsServicedDuringVisits), ytdDeltaText(dClientsServicedVisits, fmt), deltaClass(dClientsServicedVisits.d), teamRange),
+    kpiCard("Clients Serviced During Planning Visits", fmt(sum(rows, r => r.clientsServiced)), ytdDeltaText(dClientsV, fmt), deltaClass(dClientsV.d), teamRange),
+    kpiCard("Partners Visited* <button type=\"button\" class=\"def-hint\" data-def=\"A partner property visited in person during a planning visit.\">?</button>", fmt(sum(rows, r => r.partnersVisited)), ytdDeltaText(dPartnersV, fmt), deltaClass(dPartnersV.d), teamRange),
     kpiCard("Convention Groups Serviced", fmt(sum(rows, r => r.conventionGroupsServiced)), ytdDeltaText(dConvV, fmt), deltaClass(dConvV.d), teamRange),
-    kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), ytdDeltaText(dInHouseV, fmt), deltaClass(dInHouseV.d), teamRange),
-    kpiCard("Clients Serviced", fmt(sum(rows, r => r.clientsServiced)), ytdDeltaText(dClientsV, fmt), deltaClass(dClientsV.d), teamRange)
+    kpiCard("In House Groups Serviced*", fmt(sum(rows, r => r.inHouseGroupsServiced)), ytdDeltaText(dInHouseV, fmt), deltaClass(dInHouseV.d), teamRange)
   ].join("");
 
   const labels = rows.map(r => monthLabel(r.date.slice(0, 7)));
@@ -604,7 +636,7 @@ function renderTeam(year) {
   });
   makeChart("team-chart3", {
     type: "bar",
-    data: { labels, datasets: [{ label: "Clients Serviced", data: rows.map(r => r.clientsServiced), backgroundColor: COLORS.teal, borderRadius: 4 }] },
+    data: { labels, datasets: [{ label: "Clients Serviced During Planning Visits", data: rows.map(r => r.clientsServiced), backgroundColor: COLORS.teal, borderRadius: 4 }] },
     options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 22 } }, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
   });
 
@@ -613,7 +645,7 @@ function renderTeam(year) {
     { label: "Planning Visits", fn: r => r.planningVisits },
     { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
     { label: "In House Groups Serviced*", fn: r => r.inHouseGroupsServiced },
-    { label: "Clients Serviced", fn: r => r.clientsServiced }
+    { label: "Clients Serviced During Planning Visits", fn: r => r.clientsServiced }
   ], year, "date", ["planningVisits"]);
 
   bindMonthLink("team", ["team-chart1", "team-chart2", "team-chart3"]);
@@ -630,7 +662,7 @@ function renderTeam(year) {
   if (isPastYear(all, year)) {
     document.getElementById("team-analysis1").innerHTML = `In <strong>${year}</strong>, the team logged a total of <strong>${fmt(sum(rows, r => r.partnersVisited))}</strong> partner visits and <strong>${fmt(sum(rows, r => r.planningVisits))}</strong> planning visits.`;
     document.getElementById("team-analysis2").innerHTML = `In <strong>${year}</strong>, the team serviced a total of <strong>${fmt(sum(rows, r => r.conventionGroupsServiced))}</strong> convention groups and <strong>${fmt(sum(rows, r => r.inHouseGroupsServiced))}</strong> in-house groups.`;
-    document.getElementById("team-analysis3").innerHTML = `In <strong>${year}</strong>, the team serviced a total of <strong>${fmt(sum(rows, r => r.clientsServiced))}</strong> clients.`;
+    document.getElementById("team-analysis3").innerHTML = `In <strong>${year}</strong>, the team serviced a total of <strong>${fmt(sum(rows, r => r.clientsServiced))}</strong> clients during planning visits.`;
   } else {
     const latest1 = latestRowWithData(rows, ["partnersVisited", "planningVisits"]);
     const latest2 = latestRowWithData(rows, ["conventionGroupsServiced", "inHouseGroupsServiced"]);
@@ -642,7 +674,7 @@ function renderTeam(year) {
       ? `In <strong>${monthLabel(latest2.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest2.conventionGroupsServiced)}</strong> convention groups and <strong>${fmt(latest2.inHouseGroupsServiced)}</strong> in-house groups.`
       : "No data available for this period yet.";
     document.getElementById("team-analysis3").innerHTML = latest3
-      ? `In <strong>${monthLabel(latest3.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest3.clientsServiced)}</strong> clients.`
+      ? `In <strong>${monthLabel(latest3.date.slice(0, 7))}</strong>, the team serviced <strong>${fmt(latest3.clientsServiced)}</strong> clients during planning visits.`
       : "No data available for this period yet.";
   }
 
@@ -651,7 +683,7 @@ function renderTeam(year) {
     { label: "Planning Visits", fn: r => r.planningVisits },
     { label: "Convention Groups Serviced", fn: r => r.conventionGroupsServiced },
     { label: "In House Groups Serviced", fn: r => r.inHouseGroupsServiced },
-    { label: "Clients Serviced", fn: r => r.clientsServiced }
+    { label: "Clients Serviced During Planning Visits", fn: r => r.clientsServiced }
   ], year, "date", ["planningVisits"]);
 
   setReportingPeriod("team", teamRange);
@@ -759,6 +791,9 @@ function renderYoyTable(tableId, rows, metrics, selectedYear, dateField, cutoffC
   const tbody = document.querySelector(`#${tableId} tbody`);
   const noData = `<tr><td colspan="4">No prior-year data available for this selection.</td></tr>`;
   if (prior === undefined || latest === undefined) { tbody.innerHTML = noData; return; }
+  // Oct 19, 2026: if the data has no rows at all for the prior year (e.g.
+  // 2025 selected, data starts in 2025), say so instead of a column of zeros.
+  if (!getYears(rows).includes(prior)) { tbody.innerHTML = `<tr><td colspan="4">No ${prior} data to compare with (the data starts in ${Math.min(...getYears(rows))}).</td></tr>`; return; }
   // Always shows every metric passed in, in the order given -- if a metric
   // has no prior-year data at all (e.g. a column the source sheet didn't
   // start tracking until a later year), its % change just shows as "--"
@@ -780,7 +815,7 @@ function initReferrals() {
   const sel = document.getElementById("ref-year");
   const mgrSel = document.getElementById("ref-manager");
   function applyFilters() { renderReferrals(sel.value, mgrSel.value); }
-  const years = getYears(DATA.partnerReferrals.raw);
+  const years = yearsWithData(DATA.partnerReferrals.raw, ["date"]);
   populateYearSelect(sel, years, applyFilters);
   // "Service Manager" filters on the same DS&E staff member field the
   // Referral Detail table's "User" column and the "Partner Referrals by
@@ -1015,7 +1050,7 @@ function initSurvey() {
   const mgrSel = document.getElementById("sur-manager");
   const qSel = document.getElementById("sur-question");
   function applyFilters() { renderSurvey(yearSel.value, mgrSel.value, qSel.value); renderQ2Q7(yearSel.value, mgrSel.value); }
-  const years = getYears(DATA.accSurvey.raw);
+  const years = yearsWithData(DATA.accSurvey.raw, ["rating", "feedback"]);
   populateYearSelect(yearSel, years, applyFilters);
   const managers = [...new Set(DATA.accSurvey.raw.map(r => r.manager).filter(Boolean))].sort();
   mgrSel.innerHTML = SELECT_ALL_OPTION + managers.map(m => `<option value="${m}">${m}</option>`).join("");
@@ -1246,8 +1281,8 @@ function initFeedbackModal() {
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeFeedbackModal(); });
 }
 
-// Definition hints ("?" badges on Partners Visited/Partner Referrals/Clients
-// Serviced During Planning Visits cards, Overview + Team KPIs + Partner
+// Definition hints ("?" badges on the Partners Visited/Partner Referrals
+// cards, Overview + Team KPIs + Partner
 // Referrals tabs). Each badge is a real <button> carrying its definition in
 // data-def -- clicking it opens a small popover with that text. This is a
 // single delegated listener (works across every tab's KPI grid regardless of

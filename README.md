@@ -1,7 +1,7 @@
 # Destination Services & Events Dashboard
 
 **Live site:** https://dse-dashboard-iota.vercel.app (Vercel, auto-deploys from GitHub `bi-visitanaheim/dse-dashboard`, branch `main`).
-**Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan.
+**Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan. Oct 19, 2026 changes: publish authorized by Samantha Lujan 2026-10-19.
 **Data source (since Oct 16, 2026):** `Master.xlsx` in SharePoint -- site *Business Intelligence-Apps* (https://visitanaheimorg.sharepoint.com/sites/BusinessIntelligence-Apps), library *Shared Documents*, folder `DS&E/Destination Services and Events Dashboard KPIs/Master.xlsx`.
 
 ## How to refresh the dashboard from Master.xlsx (monthly)
@@ -15,7 +15,7 @@ The website does **not** read SharePoint directly -- a public static site cannot
 5. Upload the new `data.json` to the GitHub repo root (github.com -> *Add file* -> *Upload files* -> commit to `main`). Vercel redeploys in about a minute.
 6. Optional: rebuild the Cowork artifact with `python3 build_artifact.py out.html` and update artifact `dse-dashboard-vabi-preview`.
 
-Sheets read from Master.xlsx (columns are matched by header name): **Planning Visits** (Overview, Team KPIs), **Partner Referrals Details** (Partner Referrals), **ACC Survey** (Client Survey), **Repeating ACC Clients Services** (Team KPIs "Clients Serviced During Planning Visits"). Master.xlsx's *Event Surveys* and *Booked Business* sheets are not used by this dashboard. Master.xlsx is never modified by the script.
+Sheets read from Master.xlsx (columns are matched by header name): **Planning Visits** (Overview, Team KPIs), **Partner Referrals Details** (Partner Referrals), **ACC Survey** (Client Survey). **Repeating ACC Clients Services** is still read into `data.json` (`repeatingClients`) but, since Oct 19, 2026, no tab displays it. Master.xlsx's *Event Surveys* and *Booked Business* sheets are not used by this dashboard. Master.xlsx is never modified by the script.
 
 ---
 
@@ -891,3 +891,16 @@ All earlier checks for the remaining tabs are kept. **All 151 checks pass**, run
 **Tests:** `test/verify.mjs` gained checks for the Master.xlsx source, the clear-error behavior, the Sources tab text, no draft wording, and the root logo. All 158 checks pass (run in `outputs/dse-test-oct16/`). In the GitHub repo the test file lives at the root as `verify.mjs` (the repo has no `test/` folder); run it from a local copy where it sits in `test/`.
 
 **Published:** official Cowork artifact `dse-dashboard-vabi-preview` updated; GitHub `main` updated through the browser upload page with `index.html`, `app.js`, `style.css`, `data.json`, `build_data.py`, `README.md`, `verify.mjs`, `visit-anaheim-teal.png` (`vercel.json` and `logo.png` unchanged). Not uploaded: `legacy-tabs/`, `moved-to-trade-shows/`, `removed-hosted-events/`, `build_artifact.py`, `brand/`, backups.
+
+
+## Oct 19, 2026 changes -- PUBLISHED
+
+**Status:** published Oct 19, 2026: official Cowork artifact `dse-dashboard-vabi-preview` updated (draft artifact `dse-dashboard-draft-oct14` now matches it), files committed to GitHub `bi-visitanaheim/dse-dashboard` (`main`, repo root; `test/verify.mjs` lives at the root as `verify.mjs`), Vercel auto-redeploys `https://dse-dashboard-iota.vercel.app`.
+**Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan; publish authorized by Samantha Lujan 2026-10-19 ("make live").
+
+- **Date filters bounded by the data.** The Overview From/To pickers had no `min`/`max`, so the browser's date picker offered any year (e.g. 2022). They now use min = first day of the earliest Planning Visits month with any value (Jan 1, 2025) and max = last day of the latest such month (Aug 31, 2026); typed dates outside that range are pulled back in. Year dropdowns list only years with real rows: Team KPIs 2025-2026 (Planning Visits), Partner Referrals 2025-2026 (referral date Jan 16, 2025 - Sep 21, 2026), Client Survey 2023-2026 (survey date Oct 4, 2023 - Aug 17, 2026, rows with a rating or feedback).
+- **No fake comparisons.** If the same dates last year are before the data starts, Overview tiles say "No data for the same dates last year" (or that last year only partly has data) instead of a %. YoY tables say "No 2024 data to compare with" instead of zeros.
+- **Team KPIs cards:** "Clients Serviced During Planning Visits" removed (app.js no longer reads `repeatingClients`; `build_artifact.py` drops it from the artifact automatically; `build_data.py`/`data.json` unchanged). Card order now matches the Overview: Planning Visits, Clients Serviced, Partners Visited*, Convention Groups Serviced, In House Groups Serviced*.
+- **Team KPIs layout:** row 1 = Partners Visited* & Planning Visits | Clients Serviced; row 2 = Groups Serviced | Year over Year KPIs. Equal-height cards per row (`.grid2.eq`); one column on phones in the same order.
+- **Card labels (later on Oct 19).** The leading "# of " was removed from every data card label on every tab (only the Overview tiles had it): Overview now reads Planning Visits, Clients Serviced During Planning Visits, Partners Visited (keeps its "?"), Convention Groups Serviced, In-House Groups Serviced; the Sources & Methodology definitions match. The clients-serviced metric (Planning Visits sheet, `clientsServiced`) is now named **"Clients Serviced During Planning Visits"** everywhere: Overview tile (2nd), Team KPIs card (2nd), Team KPIs chart title, Year over Year KPIs table row, takeaway / auto-analysis sentences and the definition. Order unchanged. CSS: the tile label takes the free width and wraps to 2-3 lines, the drill-down arrow stays top-right (`flex:0 0 auto`), the number is pushed to the same height in every tile of a row (`.ov-tile .value{margin-top:auto}`); 5-up on wide screens, 2-up / 1-up on phones as before. Backup of the pre-change files: `outputs/backup-pre-label-oct19/`.
+- `test/verify.mjs`: 191 checks pass (new: no "# of" in any card label on any tab or in index.html, new names on Overview/Team KPIs/YoY table/takeaways, tile wrap CSS).

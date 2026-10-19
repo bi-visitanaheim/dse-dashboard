@@ -138,6 +138,10 @@ p.desc{font-size:15px;line-height:22px;color:var(--ink);}
 .box > .src{margin-top:var(--space-4);}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-5);align-items:start;}
 .grid2 > *{min-width:0;}
+/* Oct 19, 2026: equal-height, aligned cards in each Team KPIs row (source line pinned to the bottom). */
+.grid2.eq{align-items:stretch;}
+.grid2.eq > .box{display:flex;flex-direction:column;}
+.grid2.eq > .box > .src{margin-top:auto;padding-top:var(--space-4);}
 .chart-box{height:300px;position:relative;margin-top:var(--space-3);}
 .chart-box.tall{height:420px;}
 canvas{max-width:100%;}
@@ -160,6 +164,13 @@ p.auto-analysis strong{color:var(--heading);}
 .ov-tile .tile-top{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-2);}
 .ov-tile .label{font-size:15px;line-height:20px;color:var(--ink);}
 .ov-tile .drill-arrow{font-size:20px;line-height:20px;color:var(--accent-text);}
+/* Oct 19, 2026: longer labels (e.g. "Clients Serviced During Planning Visits") wrap to 2-3 lines;
+   the label takes the free width, the arrow keeps its top-right spot, and the number sits at the
+   same height in every tile of a row. */
+.ov-tile .tile-top .label{flex:1 1 auto;min-width:0;overflow-wrap:break-word;}
+.ov-tile .tile-top .drill-arrow{flex:0 0 auto;}
+.ov-tile .value{margin-top:auto;}
+.kpi-card .label{overflow-wrap:break-word;}
 .ov-tile .value{font-size:clamp(40px,22cqi,60px);line-height:1;}
 .ov-tile .delta{font-size:14px;line-height:20px;}
 .ov-grid .kpi-wrap.has-def .label{padding-right:28px;}
