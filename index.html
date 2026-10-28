@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Destination Services &amp; Events Dashboard | Visit Anaheim</title>
+<title>Destination Services Dashboard | Visit Anaheim</title>
 <link rel="stylesheet" href="style.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.5.0/chart.umd.min.js"></script>
 </head>
@@ -15,7 +15,7 @@
     <div class="hdr-id">
       <img class="logo" src="visit-anaheim-teal.png" alt="Visit Anaheim" width="720" height="263" />
       <div class="titles">
-        <h1 id="dashTitle">Destination Services &amp; Events Dashboard</h1>
+        <h1 id="dashTitle">Destination Services Dashboard</h1>
         <p class="per" id="periodLine">Monthly update &middot; Data last refreshed <span id="refreshedAt">&mdash;</span></p>
       </div>
     </div>
@@ -33,7 +33,7 @@
     <button type="button" class="tab" data-page="team" aria-current="false">Team KPIs</button>
     <button type="button" class="tab" data-page="referrals" aria-current="false">Partner Referrals</button>
     <button type="button" class="tab" data-page="survey" aria-current="false">Client Survey</button>
-    <button type="button" class="tab" data-page="sources" aria-current="false">Sources &amp; Methodology</button>
+    <button type="button" class="tab" data-page="sources" aria-current="false">Definitions &amp; Sources</button>
   </div></nav>
 
   <main id="main" tabindex="-1"><div class="wrap">
@@ -74,8 +74,8 @@
         <label>Year <select id="team-year"></select></label>
       </div>
       <div class="kpi-grid strip" id="team-kpiGrid"></div>
-      <!-- Oct 19, 2026 layout: row 1 = Partners Visited & Planning Visits | Clients Serviced During Planning Visits;
-           row 2 = Groups Serviced | Year over Year KPIs. Two columns on desktop, one on phones (same reading order). -->
+      <!-- Oct 19, 2026 layout: row 1 = Partners Visited & Planning Visits | Groups Serviced;
+           row 2 = Clients Serviced During Planning Visits | Year over Year KPIs (swapped Oct 28, 2026). Two columns on desktop, one on phones (same reading order). -->
       <div class="grid2 eq" id="team-row1">
         <div class="box">
           <h3>Partners Visited* &amp; Planning Visits <span class="tag">Monthly</span></h3>
@@ -84,16 +84,16 @@
           <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
         <div class="box">
-          <h3>Clients Serviced During Planning Visits <span class="tag">Monthly</span></h3>
-          <div class="chart-box"><canvas id="team-chart3"></canvas></div>
+          <h3>Groups Serviced <span class="tag">Monthly</span></h3>
+          <div class="chart-box"><canvas id="team-chart2"></canvas></div>
           <p class="auto-analysis" id="team-analysis3"></p>
           <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
       </div>
       <div class="grid2 eq" id="team-row2">
         <div class="box">
-          <h3>Groups Serviced <span class="tag">Monthly</span></h3>
-          <div class="chart-box"><canvas id="team-chart2"></canvas></div>
+          <h3>Clients Serviced During Planning Visits <span class="tag">Monthly</span></h3>
+          <div class="chart-box"><canvas id="team-chart3"></canvas></div>
           <p class="auto-analysis" id="team-analysis2"></p>
           <p class="src">Source: Granicus and Internal Tracking (Planning Visits).</p>
         </div>
@@ -105,11 +105,6 @@
         </div>
       </div>
       <div class="box notes">
-        <h3>Definitions</h3>
-        <dl class="defs">
-          <div><dt>Partners Visited</dt><dd>A partner property visited in person during a planning visit.</dd></div>
-          <div><dt>Partner Referrals</dt><dd>A non-physical referral, such as email, phone, or shared contact info (see the Partner Referrals tab).</dd></div>
-        </dl>
         <p class="footnote">*Partners Visited and In House Groups Serviced only began being tracked in 2026, so no prior-year comparison is available for them yet.</p>
       </div>
     </section>
@@ -198,7 +193,7 @@
         </div>
       </div>
       <div class="box">
-        <h3 id="sur-chart3-title">Avg. Rating by DS&amp;E Manager</h3>
+        <h3 id="sur-chart3-title">Avg. Rating by DS Manager</h3>
         <p class="desc" id="sur-chart3-desc">Averaged across all six rated questions, grouped by the manager named on each response.</p>
         <div class="chart-box"><canvas id="sur-chart3"></canvas></div>
         <p class="auto-analysis" id="sur-analysis3"></p>
@@ -232,7 +227,7 @@
     <section class="page" id="page-sources" aria-labelledby="h-sources">
       <div class="page-h">
         <div class="ph">
-          <p class="overline">Sources &amp; Methodology</p>
+          <p class="overline">Definitions &amp; Sources</p>
           <h2 id="h-sources">Where the numbers come from</h2>
           <p class="sub">What each number means, where it comes from, and how it is counted.</p>
         </div>

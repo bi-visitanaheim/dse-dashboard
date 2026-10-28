@@ -1,9 +1,9 @@
-/* Destination Services & Events Dashboard -- app.js
+/* Destination Services Dashboard -- app.js
    Layout (Oct 14, 2026): same shell as the Visit Anaheim Social Media
    Dashboard -- header band (logo, title, Export PDF), sticky horizontal tab
-   bar (Overview | Team KPIs | Partner Referrals | Client Survey | Sources &
-   Methodology), centered content, footer. Definitions, data sources and
-   methodology sit on the Sources & Methodology tab.
+   bar (Overview | Team KPIs | Partner Referrals | Client Survey | Definitions & Sources)
+   centered content, footer. Definitions, data sources and
+   methodology sit on the Definitions & Sources tab.
    Oct 14, 2026: Hosted Events tab removed (no longer relevant); its code is
    saved in removed-hosted-events/ (not deployed). data.json still carries
    the event survey section, but app.js no longer reads it.
@@ -20,7 +20,7 @@
    The pre-restyle tabbed version is kept in legacy-tabs/ for rollback.
    Oct 19, 2026: the "?" definition button was removed from the Partners
    Visited card (Overview tile and Team KPIs card); its definition stays on
-   the Sources & Methodology tab. Partner Referrals keeps its "?" hint. */
+   the Definitions & Sources tab. Partner Referrals keeps its "?" hint. */
 
 /* =====================================================================
    OVERVIEW PAGE (Oct 14, 2026)
@@ -163,7 +163,7 @@ const OV = (function () {
   // Overview render (simplified Oct 14, 2026 for non-technical readers):
   // big number, short label, one plain "vs. last year" line per tile; at
   // most three one-sentence takeaways; no source, cutoff or method text
-  // (those live on the Sources & Methodology tab).
+  // (those live on the Definitions & Sources tab).
   function plainDelta(dd) {
     if (dd === null) return "New this year, nothing to compare yet";
     if (dd >= 0.005) return "Up " + ovPct(Math.abs(dd), 0) + " vs. last year";
@@ -615,7 +615,7 @@ function renderTeam(year) {
   const labels = rows.map(r => monthLabel(r.date.slice(0, 7)));
   // Extra top padding on all three charts so a bar's data label never gets
   // clipped by the chart area's edge when that bar is near the tallest on
-  // the chart (same fix as the Client Survey "Avg. Rating by DS&E Manager" chart).
+  // the chart (same fix as the Client Survey "Avg. Rating by DS Manager" chart).
   makeChart("team-chart1", {
     data: { labels, datasets: [
       { type: "bar", label: "Partners Visited*", data: rows.map(r => r.partnersVisited), backgroundColor: COLORS.seriesA, borderRadius: 4 },
@@ -1109,14 +1109,14 @@ function renderSurvey(year, manager, question) {
 
   document.getElementById("sur-kpiGrid").innerHTML = [
     kpiCard("The Overall Anaheim Experience Score", fmt(overallScore, 2), ytdDeltaText(dOverallScore, v => fmt(v, 2)), deltaClass(dOverallScore.d), surRange),
-    kpiCard("DS&amp;E Manager Experience Score", fmt(managerScore, 2), ytdDeltaText(dManagerScore, v => fmt(v, 2)), deltaClass(dManagerScore.d), surRange),
+    kpiCard("DS Manager Experience Score", fmt(managerScore, 2), ytdDeltaText(dManagerScore, v => fmt(v, 2)), deltaClass(dManagerScore.d), surRange),
     kpiCard(teamScoreLabel, fmt(teamScore, 2), ytdDeltaText(dTeamScore, v => fmt(v, 2)), deltaClass(dTeamScore.d), surRange, "", teamScoreNote),
     kpiCard("Survey Respondents", fmt(respondents), ytdDeltaText(dRespondents, fmt), deltaClass(dRespondents.d), surRange)
   ].join("");
 
   document.getElementById("sur-chart1-title").innerHTML = "VA Survey Questions Rating" + titleSuffix;
   document.getElementById("sur-chart2-title").innerHTML = "Avg. Rating by Month" + titleSuffix + ` <span class="tag">Monthly</span>`;
-  document.getElementById("sur-chart3-title").innerHTML = "Avg. Rating by DS&amp;E Manager" + titleSuffix;
+  document.getElementById("sur-chart3-title").innerHTML = "Avg. Rating by DS Manager" + titleSuffix;
   document.getElementById("sur-yoyValues-title").innerHTML = "Ratings by Year" + titleSuffix;
   document.getElementById("sur-yoyPct-title").innerHTML = "Year-over-Year % Change" + titleSuffix;
   const sur2DescEl = document.getElementById("sur-chart2-desc");
@@ -1280,7 +1280,7 @@ function initFeedbackModal() {
 // Definition hints ("?" badge on the Partner Referrals card, Partner
 // Referrals tab; Oct 19, 2026: the Partners Visited "?" buttons on the
 // Overview tile and Team KPIs card were removed -- that definition lives
-// on the Sources & Methodology tab). Each badge is a real <button> carrying its definition in
+// on the Definitions & Sources tab). Each badge is a real <button> carrying its definition in
 // data-def -- clicking it opens a small popover with that text. This is a
 // single delegated listener (works across every tab's KPI grid regardless of
 // how often those grids get re-rendered by filters) registered in the

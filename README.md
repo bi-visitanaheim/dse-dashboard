@@ -1,37 +1,16 @@
-# Destination Services & Events Dashboard
+# Destination Services Dashboard
+
+
+## Oct 28, 2026 changes (requested by Samantha Lujan; NOT yet published at time of writing)
+- Dashboard renamed "Destination Services Dashboard" (was "Destination Services & Events Dashboard"); "DS&E Manager" labels now read "DS Manager" (Client Survey card and chart).
+- Tab "Sources & Methodology" renamed "Definitions & Sources".
+- Team KPIs: Definitions block removed (the * footnote stays); Groups Serviced chart moved up beside Partners Visited & Planning Visits, Clients Serviced During Planning Visits chart now sits beside Year over Year KPIs.
+- The SharePoint folder name "DS&E" in the Master.xlsx source note is a real path and was left unchanged.
+- Tests: 197 dashboard, 61 UI, 78 API, 19 Python checks pass.
 
 **Live site:** https://dse-dashboard-iota.vercel.app (Vercel, auto-deploys from GitHub `bi-visitanaheim/dse-dashboard`, branch `main`).
 **Approval:** John Picou, channel not stated, 2026-10-16, as reported by Samantha Lujan. Oct 19, 2026 changes (including the afternoon Partners Visited button removal, definition rewording and data refresh): publish authorized by Samantha Lujan 2026-10-19.
 **Data source (since Oct 16, 2026):** `Master.xlsx` in SharePoint -- site *Business Intelligence-Apps* (https://visitanaheimorg.sharepoint.com/sites/BusinessIntelligence-Apps), library *Shared Documents*, folder `DS&E/Destination Services and Events Dashboard KPIs/Master.xlsx`.
-
-## Oct 21, 2026: "Refresh data" button is LIVE (configured end to end)
-
-Configured by Israel Esparza on 2026-10-21, following [`SETUP-REFRESH.md`](SETUP-REFRESH.md). Approval on record: John Picou, channel not stated, 2026-10-19, as reported by Samantha Lujan; publish authorized by Samantha Lujan; no passcode by her decision. This supersedes the "INERT" status in the Oct 19 section below.
-
-**What was configured**
-
-| Where | What | Value / note |
-|---|---|---|
-| Microsoft Entra | App registration "VA DSE Dashboard Refresh" | Single tenant. Client ID is stored only in the `MS_CLIENT_ID` secret (not repeated here; this repo is public). Graph **application** permission `Sites.Selected` only, admin consent granted. Credential: **client secret** (not a certificate). |
-| SharePoint (Graph) | Per-site grant | `POST /sites/{site-id}/permissions` with `roles: ["read"]` for the app, on site *Business Intelligence-Apps* only. Site id: `visitanaheimorg.sharepoint.com,12a84d99-5b19-446a-9802-cfe61ab10122,bcdbd3a2-0655-4438-a19f-1072e0352133`. Verified with `GET .../permissions` (one entry, `read`). |
-| GitHub repo | Actions secrets | `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET` |
-| GitHub repo | Actions variables | `SP_HOSTNAME=visitanaheimorg.sharepoint.com`, `SP_SITE_PATH=/sites/BusinessIntelligence-Apps`, `SP_FILE_PATH=DS&E/Destination Services and Events Dashboard KPIs/Master.xlsx`, `SP_ITEM_ID={5190F585-22F9-43F3-8539-0303AD6DA8CB}`, `REFRESH_SCHEDULE_ENABLED=true` (has no effect while the cron lines stay commented out) |
-| GitHub | Fine-grained token `dse-dashboard-vercel-refresh` | Owner `bi-visitanaheim`, repo `dse-dashboard` only, Actions read/write + Contents read-only, 90-day expiry (created 2026-10-21, so expires about 2027-01-19). |
-| Vercel (Production only) | Env vars | `GITHUB_TOKEN` (secret), `GITHUB_REPO=bi-visitanaheim/dse-dashboard`, `GITHUB_WORKFLOW_FILE=refresh-data.yml`, `GITHUB_REF=main`; production redeployed 2026-10-21. |
-
-**Verified on 2026-10-21**
-
-- PR #1 (`refresh-feature-publish`) was already merged into `main` (commit `56520e7`).
-- Manual run *Refresh data #2*: signed in to Graph (app-only, client secret), found site *Business Intelligence-Apps* and `Master.xlsx` (239,243 bytes), built 21 Planning Visits / 212 referral / 1,016 survey / 118 repeat-client rows, sanity check passed, `changed: false`, nothing committed. (Run #1 failed before the site grant existed.)
-- Live site: `/api/status` returns `configured:true, enabled:true`; the **Refresh** button shows next to Export PDF. Pressing it started run #3 (`dashboard-button`), which succeeded, and the page showed "No newer data in Master.xlsx". On the first run that does change data, confirm that the bot's `data.json` commit triggers a Vercel redeploy.
-- The Cowork artifact (`dse-dashboard-vabi-preview`) stays button-free: `build_artifact.py` strips the markup and `refresh.js`, and `refresh.js` only shows the button when same-origin `/api/status` answers `enabled:true`.
-
-**Still open**
-
-- **Daily schedule: OFF.** Turn it on only when asked: un-comment the two `schedule` lines in `.github/workflows/refresh-data.yml` (SETUP-REFRESH.md section f).
-- **Credential expiry:** Entra client secret, see the date under Entra → App registrations → VA DSE Dashboard Refresh → Certificates & secrets. GitHub token, about 2027-01-19. Rotate both before they expire (SETUP-REFRESH.md section f).
-- **Site protection (decision for John Picou):** the site and repo are public, and with no passcode anyone with the URL can start a refresh (rate-limited, read-only, and it cannot change what gets committed). `data.json` also contains survey comments and staff names. See SETUP-REFRESH.md section d.
-- Housekeeping: workflow log warns that `actions/checkout@v4` / `actions/setup-python@v5` target deprecated Node 20, and that `ubuntu-latest` moves to Ubuntu 26. Neither affects the run today.
 
 ## Oct 19, 2026: "Refresh data" button published, INERT until credentials are configured
 
