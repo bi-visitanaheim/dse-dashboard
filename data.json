@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-19",
+  "generatedAt": "2026-11-18",
   "source": "Master.xlsx (SharePoint: BusinessIntelligence-Apps / DS&E / Destination Services and Events Dashboard KPIs)",
   "planningVisits": [
     {
@@ -190,6 +190,15 @@
       "partnersVisited": 57,
       "conventionGroupsServiced": 4,
       "inHouseGroupsServiced": 8
+    },
+    {
+      "date": "2026-10-31",
+      "year": 2026,
+      "planningVisits": 9,
+      "clientsServiced": 66,
+      "partnersVisited": 33,
+      "conventionGroupsServiced": 3,
+      "inHouseGroupsServiced": 3
     }
   ],
   "partnerReferrals": {
@@ -2715,6 +2724,54 @@
         "count": 1
       },
       {
+        "referralId": 3530,
+        "date": "2026-10-08",
+        "year": 2026,
+        "accountName": "Messe Dusseldorf North America",
+        "functionName": "XPONENTIAL 2028",
+        "leadArrival": "2028-05-08",
+        "leadDeparture": "2028-05-11",
+        "user": "KDeSimas",
+        "staff": "KDeSimas",
+        "count": 1
+      },
+      {
+        "referralId": 3529,
+        "date": "2026-10-09",
+        "year": 2026,
+        "accountName": "International Facility Management Association",
+        "functionName": "2026 WORLD WORKPLACE CONFERENCE & EXPO",
+        "leadArrival": "2026-11-18",
+        "leadDeparture": "2026-11-20",
+        "user": "KDeSimas",
+        "staff": "KDeSimas",
+        "count": 1
+      },
+      {
+        "referralId": 3531,
+        "date": "2026-10-13",
+        "year": 2026,
+        "accountName": "Asian American Hotel Owners Association, Inc.",
+        "functionName": "2027 AAHOA Annual Convention",
+        "leadArrival": "2027-05-05",
+        "leadDeparture": "2027-05-07",
+        "user": "KDeSimas",
+        "staff": "KDeSimas",
+        "count": 1
+      },
+      {
+        "referralId": 3532,
+        "date": "2026-10-14",
+        "year": 2026,
+        "accountName": "Global Event Services, LLC",
+        "functionName": "2027 ACR Educational Conference",
+        "leadArrival": "2027-10-25",
+        "leadDeparture": "2027-10-31",
+        "user": "KDeSimas",
+        "staff": "KDeSimas",
+        "count": 1
+      },
+      {
         "referralId": 3525,
         "date": "2026-10-15",
         "year": 2026,
@@ -2734,6 +2791,66 @@
         "functionName": "2026 TQIP Scientific Session and Training Meeting",
         "leadArrival": "2026-11-13",
         "leadDeparture": "2026-11-15",
+        "user": "DDouvalaki",
+        "staff": "DDouvalaki",
+        "count": 1
+      },
+      {
+        "referralId": 3539,
+        "date": "2026-10-28",
+        "year": 2026,
+        "accountName": "APCO International, Inc.",
+        "functionName": "2027 APCO ANNUAL CONFERENCE & EXPO",
+        "leadArrival": "2027-07-25",
+        "leadDeparture": "2027-07-28",
+        "user": "DDouvalaki",
+        "staff": "DDouvalaki",
+        "count": 1
+      },
+      {
+        "referralId": 3548,
+        "date": "2026-11-09",
+        "year": 2026,
+        "accountName": "IEEE Computer Society",
+        "functionName": null,
+        "leadArrival": null,
+        "leadDeparture": null,
+        "user": "MPollak",
+        "staff": "MPollak",
+        "count": 1
+      },
+      {
+        "referralId": 3551,
+        "date": "2026-11-11",
+        "year": 2026,
+        "accountName": null,
+        "functionName": "2027 First Point Collegiate Challenge",
+        "leadArrival": "2027-01-15",
+        "leadDeparture": "2027-01-17",
+        "user": "CMartinez",
+        "staff": "CMartinez",
+        "count": 1
+      },
+      {
+        "referralId": 3552,
+        "date": "2026-11-11",
+        "year": 2026,
+        "accountName": null,
+        "functionName": "2027 Midsummer Scream",
+        "leadArrival": "2027-08-06",
+        "leadDeparture": "2027-08-08",
+        "user": "CMartinez",
+        "staff": "CMartinez",
+        "count": 1
+      },
+      {
+        "referralId": 3560,
+        "date": "2026-11-17",
+        "year": 2026,
+        "accountName": "Asian American Hotel Owners Association, Inc.",
+        "functionName": "2027 AAHOA Annual Convention",
+        "leadArrival": "2027-05-05",
+        "leadDeparture": "2027-05-07",
         "user": "DDouvalaki",
         "staff": "DDouvalaki",
         "count": 1
@@ -4277,6 +4394,54 @@
         "leadId": 41756
       },
       {
+        "question": "Visit Anaheim's Sales & Booking Process",
+        "qNum": 1,
+        "rating": 10,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "Visit Anaheim's Sales & Booking Process",
+        "qNum": 1,
+        "rating": 8,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "Visit Anaheim's Sales & Booking Process",
+        "qNum": 1,
+        "rating": 6,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "Visit Anaheim's Sales & Booking Process",
+        "qNum": 1,
+        "rating": 9,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
+      },
+      {
         "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
         "qNum": 2,
         "rating": 10,
@@ -5801,6 +5966,54 @@
         "leadId": 41756
       },
       {
+        "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
+        "qNum": 2,
+        "rating": 9,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
+        "qNum": 2,
+        "rating": 8,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
+        "qNum": 2,
+        "rating": 8,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "The Experience With Your Visit Anaheim Destination Service and Events Manager",
+        "qNum": 2,
+        "rating": 10,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
+      },
+      {
         "question": "The Support for Corporate Social Responsibility (CSR)",
         "qNum": 3,
         "rating": null,
@@ -7323,6 +7536,54 @@
         "sentiment": null,
         "manager": "Christina Martinez",
         "leadId": 41756
+      },
+      {
+        "question": "The Support for Corporate Social Responsibility (CSR)",
+        "qNum": 3,
+        "rating": null,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "The Support for Corporate Social Responsibility (CSR)",
+        "qNum": 3,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "The Support for Corporate Social Responsibility (CSR)",
+        "qNum": 3,
+        "rating": 7,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "The Support for Corporate Social Responsibility (CSR)",
+        "qNum": 3,
+        "rating": 10,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
       },
       {
         "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
@@ -8849,6 +9110,54 @@
         "leadId": 41756
       },
       {
+        "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
+        "qNum": 4,
+        "rating": null,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
+        "qNum": 4,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
+        "qNum": 4,
+        "rating": 7,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "The Support for Marketing (Media Relations, Communications, and Social Media)",
+        "qNum": 4,
+        "rating": 10,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
+      },
+      {
         "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
         "qNum": 5,
         "rating": 10,
@@ -10371,6 +10680,54 @@
         "sentiment": null,
         "manager": "Christina Martinez",
         "leadId": 41756
+      },
+      {
+        "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
+        "qNum": 5,
+        "rating": 7,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
+        "qNum": 5,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
+        "qNum": 5,
+        "rating": 7,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "The Extent To Which Visit Anaheim Assisted With Meeting Your Event Objectives?",
+        "qNum": 5,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
       },
       {
         "question": "The Support With Complimentary Concierge Staff",
@@ -11895,6 +12252,54 @@
         "sentiment": null,
         "manager": "Christina Martinez",
         "leadId": 41756
+      },
+      {
+        "question": "The Support With Complimentary Concierge Staff",
+        "qNum": 6,
+        "rating": null,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "The Support With Complimentary Concierge Staff",
+        "qNum": 6,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "The Support With Complimentary Concierge Staff",
+        "qNum": 6,
+        "rating": 8,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "The Support With Complimentary Concierge Staff",
+        "qNum": 6,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
       },
       {
         "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
@@ -13421,6 +13826,54 @@
         "leadId": 41756
       },
       {
+        "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
+        "qNum": 7,
+        "rating": null,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": "When the economy and tourism is taking a hit like we did this year.  It would be nice if your team could be a bit more proactive in support.   We were a signed contract and we were going to happen, but as I see on the prior questions, there was social media and marketing we might have been able to have access to? We NEVER received any information on this and that is disappointing to find out now, via a questionnaire and once we are complete.  This was a struggle for us.  LAcons typically have 6 to 10K in attendance.  We were just shy of 5K in person (we made up a lot virtually).  We were successful due to our efforts.  It might have been even better if we had some support from the VAteam.  And we did ask. We either heard crickets or \"there is nothing we can do\".  Still, I would recommend Anaheim and consider Anaheim for future events.  Overall, the experience was a positive one.  We do not hold Anaheim responsible for the state of the country.",
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
+        "qNum": 7,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
+        "qNum": 7,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "Please provide additional comments, observations, and/or testimonials about Visit Anaheim.",
+        "qNum": 7,
+        "rating": null,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": "great location for a city wide event, much tougher for smaller shows, in terms of getting YoY dates consistently, as well as housing challenges.",
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
+      },
+      {
         "question": "The Overall Anaheim Experience",
         "qNum": 8,
         "rating": 9.25,
@@ -14943,6 +15396,54 @@
         "sentiment": null,
         "manager": "Christina Martinez",
         "leadId": 41756
+      },
+      {
+        "question": "The Overall Anaheim Experience",
+        "qNum": 8,
+        "rating": 9,
+        "date": "2026-10-19",
+        "year": 2026,
+        "recordedDate": "2026-10-19T17:06:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 37262
+      },
+      {
+        "question": "The Overall Anaheim Experience",
+        "qNum": 8,
+        "rating": 8,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:15:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Jenni Pearl",
+        "leadId": 41052
+      },
+      {
+        "question": "The Overall Anaheim Experience",
+        "qNum": 8,
+        "rating": 7,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T13:54:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 31420
+      },
+      {
+        "question": "The Overall Anaheim Experience",
+        "qNum": 8,
+        "rating": 7,
+        "date": "2026-10-26",
+        "year": 2026,
+        "recordedDate": "2026-10-26T14:05:00",
+        "feedback": null,
+        "sentiment": null,
+        "manager": "Melanie Pollak",
+        "leadId": 41368
       }
     ],
     "q2q7": {
@@ -14952,12 +15453,12 @@
         "2023": 9.18,
         "2024": 9.21,
         "2025": 9.0,
-        "2026": 8.5
+        "2026": 8.56
       },
       "q2Yoy": {
         "2023-2024": 0.0033,
         "2024-2025": -0.0228,
-        "2025-2026": -0.0556
+        "2025-2026": -0.0489
       },
       "testimonialSamples": {
         "2023": [
@@ -15017,7 +15518,7 @@
           }
         ]
       },
-      "totalTestimonials": 92
+      "totalTestimonials": 94
     }
   },
   "repeatingClients": {
