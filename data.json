@@ -199,6 +199,15 @@
       "partnersVisited": 33,
       "conventionGroupsServiced": 3,
       "inHouseGroupsServiced": 3
+    },
+    {
+      "date": "2026-11-30",
+      "year": 2026,
+      "planningVisits": 4,
+      "clientsServiced": 24,
+      "partnersVisited": 21,
+      "conventionGroupsServiced": 10,
+      "inHouseGroupsServiced": 5
     }
   ],
   "partnerReferrals": {
